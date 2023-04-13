@@ -1,0 +1,5 @@
+UAI: "{{UAI}}"
+IGRSubnetCIDR: "{{igrSubnetCIDR}}"
+{% if extSubnetCIDR != "NA" -%}
+EXTSubnetCIDR: "{{extSubnetCIDR}}"
+{% endif -%}

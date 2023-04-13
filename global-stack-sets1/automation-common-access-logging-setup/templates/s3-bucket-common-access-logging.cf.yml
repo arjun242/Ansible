@@ -1,0 +1,149 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates Encypted S3 Bucket
+# This Bucket will be use for access Logging on aws resources.
+# S3 access Loging, ALB access Logging. 
+# Encrypted with servrer side encryption Amazon S3 master-key (SSE-S3)
+# Access Logging is disabled for this bucket. filtered in auto remidiation from config and ssm doc.
+Mappings:
+  AWSELB: #https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html
+    us-east-1:
+      Account: 'arn:aws:iam::127311923021:root'
+    eu-west-1:
+      Account: 'arn:aws:iam::156460612806:root'
+    us-west-1:
+      Account: 'arn:aws:iam::027434742980:root'
+    ap-southeast-1:
+      Account: 'arn:aws:iam::114774131450:root'
+      
+Resources:
+
+  S3EncryptedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join
+                    - '-'
+                    - - !ImportValue VPCAlias
+                      - 'common-log-bucket'
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules: 
+          - 
+            Id: 90DaysCleanup
+            Status: Enabled
+            ExpirationInDays: '90'
+      AccessControl: LogDeliveryWrite
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+      - Key: uai
+        Value: 'uai3037033'
+      - Key: confidential
+        Value: 'yes'
+      - Key: env
+        Value: 'prd'
+      - Key: Name
+        Value: !Join
+                - '-'
+                - - !ImportValue VPCAlias
+                  - 'common-log-bucket'
+      - Key: Encryption
+        Value: AES256-SSE-S3
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3EncryptedBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: PutObjectPolicy
+        Statement:
+
+          - Sid: FULL_ACCESS_TO_OPS_ACCOUNT
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::325381443140:root"
+            Action: 
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub "arn:aws:s3:::${S3EncryptedBucket}/*"
+              - !Sub "arn:aws:s3:::${S3EncryptedBucket}"
+
+          - Sid: ROOT_ACCOUNT_ACCESS
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: s3:*
+            Resource:
+              - !Sub "arn:aws:s3:::${S3EncryptedBucket}/*"
+              - !Sub "arn:aws:s3:::${S3EncryptedBucket}"
+
+          - Sid: ElbAWSAct
+            Effect: "Allow"
+            Principal: 
+              AWS: !FindInMap
+                - AWSELB
+                - !Ref "AWS::Region"
+                - Account
+            Action: "s3:PutObject"
+            Resource: !Sub 'arn:aws:s3:::${S3EncryptedBucket}/*'
+
+          - Sid: ELB_LOG_Delevery
+            Effect: Allow
+            Principal:
+              Service: "delivery.logs.amazonaws.com"
+            Action:
+              - s3:PutObject
+            Resource: 
+              - !Sub "arn:aws:s3:::${S3EncryptedBucket}/*"
+            Condition:
+              StringEquals: 
+                s3:x-amz-acl: "bucket-owner-full-control"
+
+          - Sid: ELB_LOG_Delevery_Acl
+            Effect: Allow
+            Principal:
+              Service: "delivery.logs.amazonaws.com"
+            Action: s3:GetBucketAcl
+            Resource: 
+              - !Sub "arn:aws:s3:::${S3EncryptedBucket}"
+
+          - Sid: Prohibit access over plain HTTP
+            Effect: 'Deny'
+            Principal: '*'
+            Action: '*'
+            Resource:
+              - !Sub "arn:aws:s3:::${S3EncryptedBucket}"
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  CommonBucketSSMParameter:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/CommonLogBucket
+        Description: Specify the Common Log Bucket Name
+        Type: String
+        Value: !Ref S3EncryptedBucket
+
+Outputs:
+  CommonLogBucketARN:
+    Value: !GetAtt S3EncryptedBucket.Arn
+    Description: AWS common logging S3 bucket ARN
+    Export:
+      Name: "AWSCommonLogBucketArn"
+
+  CommonLogBucketname:
+    Value: !Ref S3EncryptedBucket
+    Description: AWS common logging S3 bucket Name
+    Export:
+      Name: "AWSCommonLogBucketName"

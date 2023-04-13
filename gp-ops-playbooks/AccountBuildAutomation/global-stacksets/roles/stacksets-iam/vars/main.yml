@@ -1,0 +1,8 @@
+source_directory: "/tmp/account-automation-folder/directory_to_be_synced"
+# git_org: "gp-ops-non-prod"
+# git_repo: ""
+terminate: False
+# aws_account_name: "gp-aws5-dr"
+# aws_account_id: "935191336473"
+# aws_region: "us-east-1"
+# vpc_alias: "gp-aws5-dr"

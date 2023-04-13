@@ -1,0 +1,33 @@
+---
+- name: Include vars file
+  include_vars: main.yml
+
+- name: Create a new directory <account-name>-<account-id>
+  file:
+    state: directory
+    path: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 28-evm-patching.yml
+  template:
+    src: "28-evm-patching.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- debug: var=ansible_date_time
+
+- name: Copy Ansible Metadata file
+  template:
+    src: "{{role_path}}/files/ansible_metadata.txt"
+    dest: "{{source_directory}}/ansible_metadata.txt"
+  vars:
+    current_date_jinja: "{{ ansible_date_time.date }} {{ansible_date_time.time}} UTC"
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_repo: gr-accounts-setup
+    message: "Ansible rendered evm-power-security stacksets files"
+
+# Pause for 2 minutes to build app cache.
+- pause:
+    minutes: 2

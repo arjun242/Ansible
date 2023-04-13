@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::665129569626:role/inf/dev-infra-master-jenkins",
+          "arn:aws:iam::665129569626:role/app/uai3047316/gp-ansible-app-qa-ec2"
+        ]
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}

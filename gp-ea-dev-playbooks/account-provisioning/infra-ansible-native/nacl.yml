@@ -1,0 +1,6 @@
+---
+- hosts: localhost
+  roles:
+    - create-iam-role 
+    # - nacl-native
+    # - delete-iam-role

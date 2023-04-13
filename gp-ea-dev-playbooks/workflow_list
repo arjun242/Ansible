@@ -1,0 +1,11 @@
+Workflow setup:
+
+0. Initscript(creates a ansible service role) (Modify the role template)
+1. assume role (will assume the ansible service role) (Done) (role-assume.yml)
+2.A creates nacl (both creation of nacl and also templates ready)  (Done) ()
+2.B. push to github (source is nacl and destination is cft-infra-nacl) (Done) (templates structure review is pending)
+
+
+
+3. create a subnet (Both creation of subnets andtemplates ready)
+4. push to github (source is subnet and destination is cft-infra-templates)

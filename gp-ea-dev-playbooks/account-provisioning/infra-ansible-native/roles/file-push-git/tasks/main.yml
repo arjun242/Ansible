@@ -1,0 +1,3 @@
+---
+- name: Git Repo Check Playbook
+  import_tasks: push-file-new.yml

@@ -1,0 +1,3 @@
+---
+- name: NACL creation playbook
+  import_tasks: nacl-native-template-tasks.yml

@@ -1,0 +1,66 @@
+---
+- name: Filter Reachable instances from all instanes
+  hosts: all
+  ignore_unreachable: true
+  #no_log: true
+ 
+  environment:
+    PATH: "{{ lookup('env', 'PATH') }}: /usr/local/bin/aws"
+  tasks:
+ #Ping remote instances using ansible PING module
+   - include_vars: static_vars.yml
+   - name: ping the instance_ids
+     ping:
+     register: ping_out
+     no_log: true
+   - name: updating status as ok
+     shell: |
+       aws dynamodb update-item --table-name "{{ ddb_table_name }}" --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"Connectivity": {"Value": {"S": "OK"}}}' --region "{{ region }}"
+     when: ping_out.ping is defined or ping_out.ping == 'pong'
+     delegate_to: localhost
+     ignore_errors: true
+   - name: update status as temperory when UNREACHABLE 
+     shell: |
+       aws dynamodb update-item --table-name "{{ ddb_table_name }}" --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"Connectivity": {"Value": {"S": "Temperory"}}}' --region "{{ region }}"
+     when: ping_out.unreachable is defined
+     delegate_to: localhost
+     ignore_errors: true
+#group instances which are reachable from Ansible control node   
+   - group_by: key=reachable
+     when: ping_out.ping is defined or ping_out.ping == 'pong'
+     ignore_errors: true
+#--------------------------------
+#Play2
+     
+- name: LDAP Installation Playbook
+  hosts: reachable
+  environment:
+    PATH: "{{ lookup('env', 'PATH') }}: /usr/local/bin/aws"
+  tasks:
+  - include_vars: static_vars.yml
+#Checking LDAP installation by status of sssd service
+  - name: Get Service Status
+    systemd:
+      name: "sssd"
+    register: sssd_service_status
+#Print message if LDAP alreay installed
+  - name: Notify if LDAP installation was SKIPPED
+    debug:
+      msg: "LDAP has been installed"
+    when: 
+    - sssd_service_status.status.LoadError is not defined
+#Update LDAP Installation status as Already installed to Dynamodb
+  - name: updating LDAP status
+    shell: |
+      aws dynamodb update-item --table-name "{{ ddb_table_name }}" --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"LdapStatus": {"Value": {"S": "Already installed"}}}' --region "{{ region }}"
+    when: 
+    - sssd_service_status.status.LoadError is not defined
+    delegate_to: localhost
+  
+# If LDAP not installed and OS_FAMILY belongs to REDHAT,include ldap role
+  - name: Including the role 
+    include_role:
+      name: uai3047316-ldap-role       
+    when: 
+    - sssd_service_status.status.LoadError is defined
+    - ansible_facts['os_family'] == "RedHat"

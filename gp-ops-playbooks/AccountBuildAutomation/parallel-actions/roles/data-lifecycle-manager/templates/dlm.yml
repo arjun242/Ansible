@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create Data Lifecycle Manager policies
+Parameters:
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed. UAI starting sequence. MUST be in lowercase.
+    ConstraintDescription: The UAI must be valid, but specified as uai in lower case followed by 7 digits
+    AllowedPattern: ^uai[0-9]*$
+    MinLength: !!int 10
+    MaxLength: !!int 10
+    Default: uai3026350
+  
+  DLMRoleArn:
+    Type: String
+    Description: Service role for Data Lifecycle Manager
+
+Resources:
+  DLMPolicyNonProd:
+    Type: AWS::DLM::LifecyclePolicy
+    Properties:
+      Description: DLM Lifecycle policy for non-prod EBS resources
+      ExecutionRoleArn: !Ref DLMRoleArn
+      State: ENABLED
+      PolicyDetails:
+        PolicyType: EBS_SNAPSHOT_MANAGEMENT
+        Parameters:
+          ExcludeBootVolume: false
+        ResourceLocations:
+          - CLOUD
+        ResourceTypes:
+          - INSTANCE
+        TargetTags:
+          - Key: env
+            Value: dev
+          - Key: env
+            Value: qa
+        Schedules:
+          - Name: "Non-Prod-DLM"
+            VariableTags:
+              - Key: instance-id
+                Value: "$(instance-id)"
+              - Key: timestamp
+                Value: "$(timestamp)"
+            CopyTags: true
+            RetainRule:
+              Interval: 7
+              IntervalUnit: DAYS
+            CreateRule:
+              Interval: 24
+              IntervalUnit: HOURS
+              Times:
+                - 04:00
+      Tags:
+        - Key: Name
+          Value: Non-Prod-Policy
+        - Key: uai
+          Value: !Ref UAI
+
+  DLMPolicyProd:
+    Type: AWS::DLM::LifecyclePolicy
+    Properties:
+      Description: DLM Lifecycle policy for non-prod EBS resources
+      ExecutionRoleArn: !Ref DLMRoleArn
+      State: ENABLED
+      PolicyDetails:
+        PolicyType: EBS_SNAPSHOT_MANAGEMENT
+        Parameters:
+          ExcludeBootVolume: false
+        ResourceLocations:
+          - CLOUD
+        ResourceTypes:
+          - INSTANCE
+        TargetTags:
+          - Key: env
+            Value: prd
+        Schedules:
+          - Name: "Prod-DLM"
+            VariableTags:
+              - Key: instance-id
+                Value: "$(instance-id)"
+              - Key: timestamp
+                Value: "$(timestamp)"
+            CopyTags: true
+            RetainRule:
+              Interval: 30
+              IntervalUnit: DAYS
+            CreateRule:
+              Interval: 24
+              IntervalUnit: HOURS
+              Times:
+                - 04:00
+      Tags:
+        - Key: Name
+          Value: Prod-Policy
+        - Key: uai
+          Value: !Ref UAI

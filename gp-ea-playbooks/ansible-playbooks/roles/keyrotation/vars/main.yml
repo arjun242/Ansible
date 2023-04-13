@@ -1,0 +1,125 @@
+---
+region: "{{ ansible_ec2_instance_identity_document_region }}"
+ansible_port: 22
+user: gecloud
+#ansible_python_interpreter: /usr/bin/python3.6
+var: ansible_date_time
+
+#List for vpc_id and key name per VPC
+vpc_keys:
+    #gp-powermax account details with corresponding ansible vault
+  - vpc_id: vpc-02c95a3c40349cbf1
+    key: gp-powermax-basekey-2022
+    oldkey: 
+      - gp-powermax-basekey
+      - gp-base-key
+    acc_id: '665129569626'
+    pub_secret: 'gp-powermax-basekey-2022.yml'
+    #gp_power_us_east details with corresponding ansible vault
+  - vpc_id: vpc-039f02e457785ff6f
+    key: gp-power-us-east-basekey-2022
+    oldkey: 
+      - gp-base-key
+    acc_id: '538462866776'
+    pub_secret: 'gp-power-us-east-basekey-2022.yml'
+    #pnw_preprod details with corresponding ansible vault
+  - vpc_id: vpc-85a560e0
+    key: pnw-preprod-basekey-2022
+    oldkey: 
+      - PWT-base-key.pem
+      - PWT-base-us1n.pem
+    acc_id: '930136447543'
+    pub_secret: 'pnw-preprod-basekey-2022.yml'
+    #pnw-prod details with corresponding ansible vault
+  - vpc_id: vpc-92a461f7
+    key: pnw-prod-basekey-2022
+    oldkey: 
+      - PWT-base-key.pem
+      - PWT-base-us1p.pem
+    acc_id: '988201728534'
+    pub_secret: 'pnw-prod-basekey-2022.yml'
+    #ent_emea_pnw details with corresponding ansible vault
+  - vpc_id: vpc-37519c52
+    key: EU1P-basekey-2022
+    oldkey: 
+      - PWT-base-key-EU
+      - PWT-base-eu1p.pem
+    acc_id: '322870840626'
+    pub_secret: 'EU1P-basekey-2022.yml'
+    #ent_emea_pnw_preprod details with corresponding ansible vault
+  - vpc_id: vpc-d82280bd
+    key: EU1N-basekey-2022
+    oldkey: 
+      - PWT-base-key-EU
+    acc_id: '951854665038'
+    pub_secret: 'EU1N-basekey-2022.yml'
+    #pwr_sharedhr details with corresponding ansible vault
+  - vpc_id: vpc-fa827e83
+    key: pwr-sharedhr-basekey-2022
+    oldkey: 
+      - PWT-base-us8p.pem
+    acc_id: '464798753408'
+    pub_secret: 'pwr-sharedhr-basekey-2022.yml'
+  #primavera details with corresponding ansible vault
+  - vpc_id: vpc-98635bfc
+    key: primavera-basekey-2022
+    oldkey: 
+      - PWR-Primavera-Base
+    acc_id: '821735935111'
+    pub_secret: 'primavera-basekey-2022.yml'
+   #pwr-power-services details with corresponding ansible vault
+  - vpc_id: vpc-4178b926
+    key: power-services-basekey-2022
+    oldkey: 
+      - PWT-base-us4n.pem
+    acc_id: '564772463473'
+    pub_secret: 'power-services-basekey-2022.yml'
+  #gp_us_east_gr details with corresponding ansible vault
+  - vpc_id: vpc-0f06b83a7188c73c4
+    key: gp-us-east-gr-basekey-2022
+    oldkey: 
+      - gp-base-key
+    acc_id: '762713699569'
+    pub_secret: 'gp-us-east-gr-basekey-2022.yml'
+  #gp_aws3_b details with corresponding ansible vault
+#  - vpc_id: vpc-0f0c78503202c5e8f
+#    key: gp-aws3-b-basekey-2022
+#    oldkey: '' #No base key
+#    acc_id: '935909890532'
+#    pub_secret: 'gp-aws3-b-basekey-2022.yml'
+  #gp-aws4-b details with corresponding ansible vault
+ # - vpc_id: vpc-0a4271af49d553eaa
+ #    key: gp-aws4-b-basekey-2022
+ #   oldkey: '' #No base key
+ #   acc_id: '221550846714'
+ #   pub_secret: 'gp-aws4-b-basekey-2022.yml'
+   #gp-aws5-d details with corresponding ansible vault
+#  - vpc_id: vpc-0bbc3f187f6ccea99
+#    key: gp-aws5-d-basekey-2022
+#    oldkey: '' #No base key
+#    acc_id: '987201782067'
+#    pub_secret: 'gp-awsd-b-basekey-2022.yml'
+  #gp-aws7-p details with corresponding ansible vault
+#  - vpc_id: vpc-0e76e3fabafda8684
+#    key: gp-aws7-p-basekey-2022
+#    oldkey: '' #No base key
+#    acc_id: '907050794246'
+#    pub_secret: 'gp-aws7-p-basekey-2022.yml'
+  #gp-aws8-d details with corresponding ansible vault
+#  - vpc_id: vpc-0e3940737d19e7997
+#    key: gp-aws8-d-basekey-2022
+#    oldkey: '' # No base key
+#    acc_id: '598619258634'
+#    pub_secret: 'gp-aws8-d-basekey-2022.yml'
+  #gp-aws9-p details with corresponding ansible vault
+#  - vpc_id: vpc-01302e3dbb7acc250
+#    key: gp-aws9-p-basekey-2022
+#    oldkey: '' # No base key
+#    acc_id: '056449842814'
+#    pub_secret: 'gp-aws9-p-basekey-2022.yml'
+  #gp-aws10-d details with corresponding ansible vault
+#  - vpc_id: vpc-0f2c3b37c9f448c9f
+#    key: gp-aws10-d-basekey-2022
+#    oldkey: '' # No base key
+#    acc_id: '548907177521'
+#    pub_secret: 'gp-aws10-d-basekey-2022.yml'

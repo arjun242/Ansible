@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "StackName",
+    "ParameterValue": "uai3045169-gp-provisioningremediations-prd"
+  },
+  {
+    "ParameterKey": "UAI",
+    "ParameterValue": "uai3045169"
+  },
+  {
+    "ParameterKey": "AppName",
+    "ParameterValue": "ProvisioningRemediations"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prd"
+  },
+  {
+    "ParameterKey": "ConnectionARN",
+    "ParameterValue": "arn:aws:codestar-connections:us-east-1:987201782067:connection/347e5412-4642-4186-94c9-195be945edd6"
+  },
+  {
+    "ParameterKey": "RepositoryId",
+    "ParameterValue": "gp-ops/ProvisioningRemediations"
+  }
+]

@@ -1,0 +1,157 @@
+---
+#To fetch the credentials from the secret.yml file
+- include_vars: secret.yml
+  no_log: true
+
+#Gathers facts for the EC2 hosts
+- name: Gather EC2 facts
+  ignore_unreachable: yes
+  ec2_metadata_facts:
+  
+- name: Gather Installed Packages Facts
+  become: yes
+  package_facts:
+    manager: "auto"
+  
+- name: Setting the variable for existing version of installed package
+  set_fact:
+    existing_version: "{{ ansible_facts.packages['splunkforwarder'][0].version }}"
+  when: "'splunkforwarder' in ansible_facts.packages"  
+  
+- set_fact:
+    mac: "{{ ansible_ec2_mac | replace(':','_')}}"
+
+- name: Set vpc variable with mac value
+  set_fact:
+    vp: "{{ 'ansible_ec2_network_interfaces_macs_' + '{{ mac }}' + '_vpc_id' }}"
+  
+#Playbook to install Splunk
+#This task sets variables with the gathered ec2 metadata facts from instance level
+- name: set variable values
+  set_fact:
+    hstname_linux: "{{ ansible_hostname }}"
+    instype_linux: "{{ ansible_ec2_instance_type }}"
+    ip_linux: "{{ ansible_default_ipv4['address'] }}"
+    insid_linux: "{{ ansible_ec2_instance_id }}"
+    reg: "{{ ansible_ec2_instance_identity_document_region }}"
+    acc: "{{ ansible_ec2_identity_credentials_ec2_info_accountid }}"
+    vpcid: "{{ lookup('vars', vp) }}"
+
+- name: Check if splunk is installed
+  become: yes
+  stat:
+    path: /opt/splunkforwarder/bin/splunk
+  register: splunk_path
+
+- name: splunk is installed already
+  debug: msg='splunk is already installed under /opt/splunkforwarder'
+  when: splunk_path.stat.exists == true
+
+- name: Stop the Splunk Service
+  become: yes
+  service: 
+    name: SplunkForwarder.service
+    state: stopped
+  when: splunk_path.stat.exists == false or ("'splunkforwarder' in ansible_facts.packages" and existing_version != version_linux)
+  
+# This block is executed when Splunk agent is not already installed for Ubuntu
+- block:
+
+     # This task downloads the package from the defined url 
+     - name: Download splunk agent
+       get_url:
+         url: "{{ splunk_url_ubuntu }}"
+         dest: "/tmp/"
+       become: yes
+       tags: download_splunk_ubuntu
+
+     - name: Installing the splunk agent on Ubuntu
+       apt:
+         name: "/tmp/{{ splunk_uf_package_ubuntu }}"
+         state: present
+       become: yes
+       tags: install_on_ubuntu
+
+     # This task deletes the Splunk downloaded File after successful installation
+     - name: Deleting the splunk file
+       file:
+         path: "/tmp/{{ splunk_uf_package_ubuntu }}"
+         state: absent
+       become: yes
+       tags: delete_splunk_deb
+
+  when: ansible_os_family == "Ubuntu" and (splunk_path.stat.exists == false or ("'splunkforwarder' in ansible_facts.packages" and existing_version != version_linux)) 
+     
+# This block is executed when Splunk agent is not already installed for OS family RedHat
+- block:
+
+     # This task downloads the package from the defined url  
+     - name: Download splunk agent
+       get_url:
+         url: "{{ splunk_url_rhel }}"
+         dest: "/tmp/"
+       become: yes
+       tags: download_splunk_ubuntu
+
+     - name: Installing the splunk agent on Rhel
+       yum:
+         name: "/tmp/{{ splunk_uf_package_rhel }}"
+         state: present
+       become: yes
+       tags: install_on_rhel
+
+     # This task deletes the Splunk downloaded File after successful installation 
+     - name: Deleting the splunk file
+       file:
+         path: "/tmp/{{ splunk_uf_package_rhel }}"
+         state: absent
+       become: yes
+       tags: delete_splunk_rhel
+
+  when: ansible_os_family == "RedHat" and (splunk_path.stat.exists == false or ("'splunkforwarder' in ansible_facts.packages" and existing_version != version_linux)) 
+
+# This task creates directories in respective paths
+- name: "create splunk default directory"
+  become: yes
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+     - '/opt/splunkforwarder/etc/system/local'
+     - '/opt/splunkforwarder/etc/apps/deployment_client/default'
+  
+# Template a file 
+- name: "Template a file to deploymentclient.conf"
+  become: yes  
+  template:
+    dest: '{{ deployment_directory }}/deploymentclient.conf'
+    src: deploymentclient.conf.j2
+    mode: '0600'
+  notify: restart splunk
+
+- name: "Template a file to server.conf"
+  become: yes
+  template:
+    dest: '{{ deployment_directory }}/server.conf'
+    src: server.conf.j2
+    mode: '0644'  
+  notify: restart splunk
+
+- name: "Template a file to inputs.conf"
+  become: yes
+  template:
+    dest: /opt/splunkforwarder/etc/system/local/inputs.conf
+    src: inputs.conf.j2
+    mode: '0600'
+  notify: restart splunk
+  
+# This task accepts Splunk License
+- name: accept Splunk license 
+  command: /opt/splunkforwarder/bin/splunk start  --accept-license --answer-yes --no-prompt
+  become: yes
+  when: splunk_path.stat.exists == false or ("'splunkforwarder' in ansible_facts.packages" and existing_version != version_linux)
+
+# Adding Splunk to boot startup services
+- name: enable boot-start
+  shell: if [ "$(/opt/splunkforwarder/bin/splunk display boot-start | grep not | wc -l)" -ne 0 ]; then "/opt/splunkforwarder/bin/splunk enable boot-start"; fi; /opt/splunkforwarder/bin/splunk start
+  become: yes

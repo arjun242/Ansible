@@ -1,0 +1,19 @@
+{
+    "groupId": "",
+    "description": "Fedrole {{ FedRoleName }}",
+    "groupName": "@GE AWS_{{ FedRoleName }}_{{ AwsAccountId }}",
+    "expires": false,
+    "expirationDate": "4712-12-31",
+    "primaryManager": "{{ Manager }}",
+    "otherManagers": ["{{ Manager }}"],
+    "groupType": "DST",
+    "membershipType": "Public",
+    "businessUnitId": "1883351",
+    "subBusinessUnitId": "1883351",
+    "allowedToSend": [],
+    "mail": "{{ DLEmail }}@ge.com",
+    "alternateMail": null,
+    "hideFromAddressLists": false,
+    "members":{{ list_Members }},
+    "enableAccessReview": false
+}

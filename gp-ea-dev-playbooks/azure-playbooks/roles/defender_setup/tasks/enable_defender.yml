@@ -1,0 +1,6 @@
+---
+# This Playbook will enable microsoft defender for the subscription
+ - name: Run the enable encryption powershell script
+   script: enable_defender.ps1 {{ subscription_name }} {{ subscription_id }}
+   args:
+      executable: /usr/bin/pwsh

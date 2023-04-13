@@ -1,0 +1,43 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+stacksets:
+  - name: dbss-rds-exports
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-kms-default
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-iam-rds-sqlserver-servicerole
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-sns-topics
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-hardening-ecs-tasks-role
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-s3-buckets
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-s3-buckets-policy
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-hardening-ecs-task-mysql-dev
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-hardening-ecs-task-oracle-dev
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-hardening-ecs-task-postgresql-dev
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-hardening-ecs-cluster
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-hardening-lambda
+    parameters:
+      VPCAlias: {{ vpc_alias }}
+  - name: dbss-rds-hardening-lambda-role
+    parameters:
+      VPCAlias: {{ vpc_alias }}

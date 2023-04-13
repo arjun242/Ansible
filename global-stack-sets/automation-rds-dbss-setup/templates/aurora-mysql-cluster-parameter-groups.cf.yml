@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the mysql cluster parameter groups (and default parameter groups) that are neccessary for Aurora builds.
+              It must be created prior to any Instance Instances
+              Last version 30-May-2020
+ # History:
+  # 14-Apr-2020: Initial version
+  #Stack Name: dbss-aurora-mysql-cluster-parameter-groups
+  # 30-May-2020: Added VPC alias parameter
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+
+Resources:
+
+  rdsmysqldefaultclusterparamgroup57:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora MySQL Default Cluster Parameter Group for 5.7
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        server_audit_logging: "0"
+
+  rdsmysqlisoclusterparamgroup57:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora MySQL ISO Cluster Parameter Group for 5.7
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        server_audit_logging: "1"
+        server_audit_events: "CONNECT,QUERY,TABLE"
+        server_audit_excl_users: "admin"
+  
+  rdsmysqlsoxclusterparamgroup57:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora MySQL SOX Cluster Parameter Group for 5.7
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        server_audit_logging: "1"
+        server_audit_events: "CONNECT,QUERY,TABLE"
+        server_audit_excl_users: "admin"
+
+  rdsmysqldodclusterparamgroup57:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora MySQL DOD Cluster Parameter Group for 5.7
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        server_audit_logging: "1"
+        server_audit_events: "CONNECT,QUERY,TABLE"
+        server_audit_excl_users: "admin"
+
+  rdsmysqlgxpclusterparamgroup57:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora MySQL GXP Cluster Parameter Group for 5.7
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        server_audit_logging: "1"
+        server_audit_events: "CONNECT,QUERY,TABLE"
+        server_audit_excl_users: "admin"
+
+Outputs:
+
+  rdsmysqldefaultclusterparamgroup57:
+    Description: "RDS Cluster Parameter Group with default parameters for MySQL 5.7 "
+    Value: !Ref rdsmysqldefaultclusterparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-mysql:default:57'
+
+  rdsmysqlisoclusterparamgroup57:
+    Description: "RDS Cluster Parameter Group with ISO parameters for MySQL 5.7 "
+    Value: !Ref rdsmysqlisoclusterparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-mysql:iso:57'
+
+  rdsmysqlsoxclusterparamgroup57:
+    Description: "RDS Cluster Parameter Group with SOX parameters for MySQL 5.7 "
+    Value: !Ref rdsmysqlsoxclusterparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-mysql:sox:57'
+  
+  rdsmysqldodclusterparamgroup57:
+    Description: "RDS Cluster Parameter Group with DOD parameters for MySQL 5.7 "
+    Value: !Ref rdsmysqldodclusterparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-mysql:dod:57'
+
+  rdsmysqlgxpclusterparamgroup57:
+    Description: "RDS Cluster Parameter Group with GXP parameters for MySQL 5.7 "
+    Value: !Ref rdsmysqlgxpclusterparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-mysql:gxp:57'

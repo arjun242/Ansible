@@ -1,0 +1,6 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+- name: iam-ansible-managed-role-prd

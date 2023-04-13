@@ -1,0 +1,11 @@
+{
+    "Content": "file://uai3031569-lpm-artifact-deploy.yml", 
+    "Name": "uai3031569-lpm-artifact-deploy", 
+    "VersionName": "1.0",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "0"
+	}]
+ }

@@ -1,0 +1,6 @@
+UAI: uai3037033
+AppName: ldap
+Env: prd
+TargetGroupProtocol: HTTPS
+TargetGroupPort: 5001
+HealthCheckPath: /frontendui

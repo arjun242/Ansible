@@ -1,0 +1,195 @@
+---
+schemaVersion: '2.2'
+description: Send commands to Amazon CloudWatch Agent
+parameters:
+  action:
+    description: The action CloudWatch Agent should take.
+    type: String
+    default: configure
+    allowedValues:
+    - configure
+    - configure (append)
+    - start
+    - status
+    - stop
+  mode:
+    description: Controls platform-specific default behavior such as whether to include
+      EC2 Metadata in metrics.
+    type: String
+    default: ec2
+    allowedValues:
+    - ec2
+    - onPremise
+    - auto
+  optionalConfigurationSource:
+    description: Only for 'configure' action. Store of the configuration. For CloudWatch
+      Agent's defaults, use 'default'
+    type: String
+    allowedValues:
+    - default
+    - ssm
+    default: ssm
+  optionalConfigurationLocation:
+    description: Only for 'configure' actions. Required if loading CloudWatch Agent
+      config from other locations except 'default'. The value is like ssm parameter
+      store name for ssm config source.
+    type: String
+    default: ''
+    allowedPattern: '[^"]*'
+  optionalRestart:
+    description: Only for 'configure' actions. If 'yes', restarts the agent to use
+      the new configuration. Otherwise the new config will only apply on the next
+      agent restart.
+    type: String
+    default: 'yes'
+    allowedValues:
+    - 'yes'
+    - 'no'
+mainSteps:
+- action: aws:configurePackage
+  name: configurePackage
+  inputs:
+    name: AmazonCloudWatchAgent
+    action: Install
+    version: ''
+- name: ControlCloudWatchAgentWindows
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+    - platformType
+    - Windows
+  inputs:
+    runCommand:
+    - " Set-StrictMode -Version 2.0"
+    - " $ErrorActionPreference = 'Stop'"
+    - ' $Cmd = "${Env:ProgramFiles}\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1"'
+    - ' if (!(Test-Path -LiteralPath "${Cmd}")) {'
+    - "     Write-Output 'CloudWatch Agent not installed.  Please install it using
+      the AWS-ConfigureAWSPackage SSM Document.'"
+    - "     exit 1"
+    - " }"
+    - " $Params = @()"
+    - " $Action = '{{action}}'"
+    - " if ($Action -eq 'configure') {"
+    - "     $Action = 'fetch-config'"
+    - " } elseif ($Action -eq 'configure (append)') {"
+    - "     $Action = 'append-config'"
+    - " }"
+    - " if ($Action -eq 'fetch-config' -Or $Action -eq 'append-config') {"
+    - "     $Config = '/automation/WindowsCloudWatchConfig'"
+    - "     if ('{{optionalConfigurationSource}}' -eq 'ssm') {"
+    - '         if (!("${Config}")) {'
+    - "             Write-Output 'SSM Parameter Store name is required when configuring
+      from Parameter Store.'"
+    - "             exit 1"
+    - "         } else {"
+    - '             $Config = "ssm:${Config}"'
+    - "         }"
+    - "     } else {"
+    - "         $Config = 'default'"
+    - "     }"
+    - '     $Params += (''-c'', "${Config}")'
+    - "     if ('{{optionalRestart}}' -eq 'yes') {"
+    - "         $Params += '-s'"
+    - "     }"
+    - " }"
+    - ' $Params += (''-a'', "${Action}", ''-m'', ''{{mode}}'')'
+    - ' Invoke-Expression "& ''${Cmd}'' ${Params}"'
+    - " sleep 30"
+    - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+    - Start-Sleep -s 20
+    - choco install jq --force -version 1.5 -Y
+    - Start-Sleep -s 10
+    - " $REGION=invoke-restmethod -uri http://169.254.169.254/latest/meta-data/placement/region"
+    - " $ACC=Invoke-WebRequest -uri http://169.254.169.254/latest/dynamic/instance-identity/document -UseBasicParsing | select-string 'accountId' | jq -r .accountId"
+    - $ARN=(write-output "arn:aws:sns:'$REGION':'$ACC':CloudWatchMetrics") -replace("\'","")
+    - " $INSTANCEID=invoke-restmethod -uri http://169.254.169.254/latest/meta-data/instance-id"
+    - ' aws cloudwatch put-metric-alarm --alarm-name $INSTANCEID-disk --alarm-description "Alarm check LogicalDisk" --actions-enabled
+      --alarm-actions $ARN --metric-name "LogicalDisk % Free Space" --namespace CWAgent
+      --statistic Average --period 300 --threshold 20 --comparison-operator LessThanThreshold --dimensions
+      Name=InstanceId,Value=$INSTANCEID Name=instance,Value=C: Name=objectname,Value=LogicalDisk --evaluation-periods 2 --region $REGION'
+    - ' aws cloudwatch put-metric-alarm --alarm-name $INSTANCEID-mem --alarm-description "Alarm when memory used is high" --actions-enabled
+      --alarm-actions $ARN --metric-name "Memory % Committed Bytes In Use" --namespace CWAgent
+      --statistic Average --period 300 --threshold 80 --comparison-operator GreaterThanThreshold --dimensions
+      Name=InstanceId,Value=$INSTANCEID Name=objectname,Value=Memory --evaluation-periods 2 --region $REGION'
+- name: ControlCloudWatchAgentLinux
+  action: aws:runShellScript
+  precondition:
+    StringEquals:
+    - platformType
+    - Linux
+  inputs:
+    runCommand:
+    - " #!/bin/sh"
+    - " set -e"
+    - " set -u"
+    - " pip install --upgrade pip"
+    - " pip install --upgrade --user awscli"
+    - " cmd='/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl'"
+    - ' if [ ! -x "${cmd}" ]; then'
+    - "     echo 'CloudWatch Agent not installed.  Please install it using the AWS-ConfigureAWSPackage
+      SSM Document.'"
+    - " exit 1"
+    - " fi"
+    - ' action="{{action}}"'
+    - ' if [ "${action}" = ''configure'' ]; then'
+    - "     action='fetch-config'"
+    - ' elif [ "${action}" = ''configure (append)'' ]; then'
+    - "     action='append-config'"
+    - " fi"
+    - ' if [ "${action}" = ''fetch-config'' ] || [ "${action}" = ''append-config''
+      ]; then'
+    - "     config=/automation/LinuxCloudWatchConfig"
+    - "     if [ '{{optionalConfigurationSource}}' = 'ssm' ]; then"
+    - '         if [ ! "${config}" ]; then'
+    - "             echo 'SSM Parameter Store name is required when configuring from
+      Parameter Store.'"
+    - "             exit 1"
+    - "         else"
+    - '             config="ssm:${config}"'
+    - "         fi"
+    - "     else"
+    - "         config='default'"
+    - "     fi"
+    - '     cmd="${cmd} -c ${config}"'
+    - "     if [ '{{optionalRestart}}' = 'yes' ]; then"
+    - '         cmd="${cmd} -s"'
+    - "     fi"
+    - " fi"
+    - ' cmd="${cmd} -a ${action} -m {{mode}}"'
+    - " ${cmd}"
+    - " yum install jq -y"
+    - " sleep 2"
+    - " export region=`curl http://169.254.169.254/latest/user-data |grep awsregion
+      |head -1 |cut -d '=' -f 2`"
+    - " EC2DOCUMENT=$(curl -s -S 'http://169.254.169.254/latest/dynamic/instance-identity/document/')"
+    - ' export region=$(echo "${EC2DOCUMENT}" | jq -r ''.region'')'
+    - " echo $region"
+    - acc=`curl http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId`
+    - arn=`echo "arn:aws:sns:$region:$acc:CloudWatchMetrics"`
+    - " instanceId=`curl http://169.254.169.254/latest/meta-data/instance-id`"
+    - " CPU_USAGE=90"
+    - ' aws cloudwatch put-metric-alarm --alarm-name "$instanceId-cpu" --alarm-description
+      "Alarm when CPU exceeds $CPU_USAGE %" --actions-enabled --alarm-actions "$arn"
+      --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --dimensions
+      Name=InstanceId,Value=$instanceId --period 300 --threshold $CPU_USAGE --comparison-operator
+      GreaterThanThreshold --evaluation-periods 3 --unit  Percent --region $region'
+    - " sleep 1"
+    - ' aws cloudwatch put-metric-alarm --alarm-name "$instanceId-status-checks" --alarm-description
+      "Alarm when statusCheck failed" --actions-enabled --alarm-actions "$arn"
+      --metric-name StatusCheckFailed --namespace AWS/EC2 --statistic Maximum --dimensions  Name=InstanceId,Value=$instanceId
+      --period 300 --threshold 1 --comparison-operator GreaterThanOrEqualToThreshold
+      --evaluation-periods 1 --unit Count --region $region'
+    - " DEVICE=`df -khT | awk -F' ' '{ print $1 }' | sed 1,5d | sed -n 1p | cut -d'/' -f 3`"
+    - " FSTYPE=`df -khT | awk -F' ' '{ print $2 }' | sed 1,5d | sed -n 1p`"
+    - ' aws cloudwatch put-metric-alarm --alarm-name "$instanceId-disk" --alarm-description
+      "Alarm when root disk used is high" --actions-enabled --alarm-actions "$arn"
+      --namespace CWAgent --metric-name disk_used_percent --statistic Average --period
+      300 --evaluation-periods 3 --threshold 75 --comparison-operator GreaterThanOrEqualToThreshold
+      --dimensions Name=InstanceId,Value=$instanceId Name=device,Value=$DEVICE Name=fstype,Value=$FSTYPE
+      Name=path,Value=/ --region $region'
+    - ' aws cloudwatch put-metric-alarm --alarm-name "$instanceId-mem" --alarm-description
+      "Alarm when memory used is high" --actions-enabled --alarm-actions "$arn"
+      --metric-name mem_used_percent --namespace CWAgent --statistic Average --dimensions  Name=InstanceId,Value=$instanceId
+      --period 300 --threshold 80 --comparison-operator GreaterThanOrEqualToThreshold
+      --evaluation-periods 3 --region $region'

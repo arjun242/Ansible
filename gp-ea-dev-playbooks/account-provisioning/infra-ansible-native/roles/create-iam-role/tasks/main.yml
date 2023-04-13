@@ -1,0 +1,37 @@
+---
+# - name: Create temp IAM role
+#   iam:
+#     name: ansible-account-automation-role
+#     managed_policy:
+#       - ops-jenkins-execution-VPC
+#     aws_access_key: "{{ acc_key }}"
+#     aws_secret_key: "{{ sec_key }}"
+#     security_token: "{{ security_token }}"
+#     region: us-east-1
+#     state: present
+#   register: tempRole
+
+# - name: Assuming newly created role
+#   sts_assume_role:
+#     role_arn: "{{ tempRole.iam_role.arn }}"
+#     role_session_name: "RoleSession"
+#     region: "us-east-1"
+#     register: assumed_role
+
+- name: Import NACL-Native role
+  include_role:
+    name: nacl-native
+  vars:
+    nacl_name: "test-nacl-2"
+    region: "us-east-1"
+    vpc_id: "vpc-02c95a3c40349cbf1"
+    # acct_auto_aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    # acct_auto_aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    # acct_auto_aws_session_token: "{{ assumed_role.sts_creds.session_token }}"
+    acct_auto_aws_access_key: "{{ acc_key }}"
+    acct_auto_aws_secret_key: "{{ sec_key}}"
+    acct_auto_aws_session_token: "{{ security_token }}"
+    application_name: "gp-nacl-application"
+    app_tag: "gp-cloud-common"
+    uai: "uai304730"
+

@@ -1,0 +1,60 @@
+custom_resources:
+  - name: gp-provisioning-remediations-pipeline
+    custom_stackset_name: gp-provisioning-remediations-pipeline
+    description: Sets up the CI/CD pipelines for the ProvisioningRemdiations repository
+    template_file: templates/Pipeline.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change
+    # deploy_to:
+    #   - account: ent-emea-pnw-preprod
+    #     override_parameter_file: parameters/ent-emea-pnw-preprod.yml
+    #     regions:
+    #       - eu-west-1
+    #   - account: pnw-preprod
+    #     override_parameter_file: parameters/pnw-preprod.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: gp-aws5-d
+    #     override_parameter_file: parameters/gp-aws5-d.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: ent-emea-pnw
+    #     override_parameter_file: parameters/ent-emea-pnw.yml
+    #     regions:
+    #       - eu-west-1
+    #   - account: pwr-sharedhr
+    #     override_parameter_file: parameters/pwr-sharedhr.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: pwr-itsecops
+    #     override_parameter_file: parameters/pwr-itsecops.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: pwr-power-services
+    #     override_parameter_file: parameters/pwr-power-services.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: gp-us-east-gr
+    #     override_parameter_file: parameters/gp-us-east-gr.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: pwr-primavera
+    #     override_parameter_file: parameters/pwr-primavera.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: pnw-prod
+    #     override_parameter_file: parameters/pnw-prod.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: gp-ops
+    #     override_parameter_file: parameters/gp-ops.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: gp-aws3-b
+    #     override_parameter_file: parameters/gp-aws3-b.yml
+    #     regions:
+    #       - us-east-1
+    #   - account: gp-aws4-b
+    #     override_parameter_file: parameters/gp-aws4-b.yml
+    #     regions:
+    #       - us-east-1

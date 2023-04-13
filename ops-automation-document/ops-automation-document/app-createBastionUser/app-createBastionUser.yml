@@ -1,0 +1,33 @@
+ # History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to get logged in at EC2 instance.
+parameters:
+  BucketName:
+    type: String
+    default: '{{ssm:/automation/ami/bucket}}'
+    description: common bucket
+  userName:
+    type: String
+    default: ''
+    description: "(Required) login user"
+  sshkey:
+    type: String
+    default: ''
+    description: "(Required) ssh public key" 
+mainSteps:
+- name: UserLogin
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - aws s3 cp s3://{{BucketName}}/ssmukm.sh /tmp/ssmukm.sh
+    - chmod 755 /tmp/ssmukm.sh  
+    - cd /tmp
+    - groupadd  bastion-user
+    - ./ssmukm.sh -u '{{userName}}' -k '{{sshkey}}' -e 1440 -v
+    - sleep 20
+    - rm -rf /tmp/ssmukm.sh

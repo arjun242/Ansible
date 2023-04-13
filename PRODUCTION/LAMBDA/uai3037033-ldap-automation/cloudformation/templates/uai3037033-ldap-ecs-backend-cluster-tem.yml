@@ -1,0 +1,54 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation template for ECS Cluster (Backend Cluster).
+
+Parameters:
+
+  AppName:
+    Type: String
+    MaxLength: 25
+    MinLength: 3
+    Description: Name of the application, keep to 15 characters or less
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed.
+    ConstraintDescription: The UAI must be valid, but specified as 'uai' followed by 7 digits.
+    AllowedPattern: '^uai[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    Default: prd
+    AllowedValues:
+    - nonprd
+    - prd
+  ClusterInstance:
+    Type: String
+    Description: UI Cluster Instance
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${UAI}-${AppName}-${Env}-${ClusterInstance}"
+      Tags:
+      - Key: "name"
+        Value: !Sub "${UAI}-${AppName}-${Env}-${ClusterInstance}"
+      - Key: "uai"
+        Value: !Ref UAI
+      - Key: "app"
+        Value: !Ref AppName
+      - Key: "env"
+        Value: !Ref Env
+
+Outputs:
+  Clustername:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+    Export:
+      Name: ldapbackendcluster   
+  ClusterArn:
+    Description: 'ECS Cluster ARN value'
+    Value: !GetAtt ECSCluster.Arn
+    

@@ -1,0 +1,65 @@
+---
+- set_stats:
+    data:
+      to_be_deleted:
+        - folder_name: route-tables
+          repo: cft-infra-templates
+          message: "Ansible is deleting route-tables"
+          stackNames:
+            - "{{prefix}}app-route-table"
+
+- name: New folder for Route Table
+  file:
+    state: directory
+    path: "/tmp/account-automation-folder/route-table/"
+
+- name: Render CF template
+  template:
+    src: gp-route-table-public.yml
+    dest: "/tmp/account-automation-folder/route-table/"
+
+- name: Set CF stack names as facts
+  set_fact:
+    exportVpcStackName: "{{prefix}}export-vpc-default"
+    eipNatGatewayStackName: "{{prefix}}EIP-Nat-Gateway"
+
+- cloudformation_info:
+    stack_name: "{{ exportVpcStackName }}"
+    all_facts: yes
+    region: "{{ region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  register: exportVpcInfo
+
+- cloudformation_info:
+    stack_name: "{{ eipNatGatewayStackName }}"
+    all_facts: yes
+    region: "{{ region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  register: eipNatInfo
+
+- name: Create app-route-table stack
+  cloudformation:
+    stack_name: "{{prefix}}app-route-table"
+    state: "present"
+    region: "{{ region }}"
+    template: "/tmp/account-automation-folder/route-table/gp-route-table-public.yml"
+    template_parameters:
+      NatGatewayId: "{{eipNatInfo.cloudformation[eipNatGatewayStackName].stack_outputs.NATID}}"
+      VgwID: "{{exportVpcInfo.cloudformation[exportVpcStackName].stack_outputs.ExportVPCGatewayId}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Render CFT files
+  include_tasks: route-table-render.yml
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_repo: cft-infra-templates
+    message: "Ansible is creating route-tables"

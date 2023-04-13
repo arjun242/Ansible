@@ -1,0 +1,11 @@
+{
+    "Content": "file://app-autodeploy-pushbuild-chefzero.yml", 
+    "Name": "app-autodeploy-pushbuild-chefzero", 
+    "VersionName": "1.0",
+    "DocumentType": "Command",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

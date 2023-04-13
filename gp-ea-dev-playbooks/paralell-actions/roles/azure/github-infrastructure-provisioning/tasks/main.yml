@@ -1,0 +1,61 @@
+---
+# include directories & secrets
+- name: Include vars file
+  include_vars: templates-directory.yml
+- name: Include secret vars
+  include_vars: secret.yml
+  no_log: true
+  
+# include parameter directory location
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/terraform"
+
+# clone target code repository
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/{{deployment_org}}/{{deployment_repo}}"
+    dest: "{{source_directory}}/{{resource_folder}}/{{deployment_repo}}"
+    clone: yes
+    recursive: yes
+    version: master
+
+# generate terraform file & replace contents with parameters
+- name: Generate terraform file & replace with parameters
+  template:
+   src: "storage_account.tf"
+   dest: "{{source_directory}}/{{resource_folder}}/terraform/storage_account.tf"
+
+# record terraform module output within variable block
+- name: Stage terraform module output within variable to be used within subsequent steps
+  command: "cat {{source_directory}}/{{resource_folder}}/terraform/storage_account.tf" 
+  register: terraform
+
+# append storage_account.tf terraform file onto main.tf
+- name: Make sure that contents of storage_account.tf exist within main.tf
+  blockinfile:
+    path: "{{source_directory}}/{{resource_folder}}/{{deployment_repo}}/main.tf"
+    block: "{{ terraform.stdout }}"
+    
+# Write .pem to secrets vault
+- name: Commit newly created/copied file to remote github
+  command: "{{ item }}"
+  args:
+    chdir: "{{source_directory}}/{{resource_folder}}/{{deployment_repo}}"
+  with_items:
+    - git config --global user.email '502813500@ge.com'
+    - git config --global user.name 'github-functional-sso'
+    - git checkout -b '{{deployment_repo}}'
+    - git add {{source_directory}}/{{resource_folder}}/{{deployment_repo}}/main.tf
+    - git commit -m 'Committing newly created terraform storage account'
+    - git push origin {{deployment_repo}}
+
+#Delete project repository
+- name: Delete directory for parameter file
+  file:
+   state: absent
+   path: "{{source_directory}}/{{resource_folder}}/"
+
+    
+

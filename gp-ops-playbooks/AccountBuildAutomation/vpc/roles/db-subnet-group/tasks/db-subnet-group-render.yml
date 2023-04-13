@@ -1,0 +1,21 @@
+---
+- name: Include vars file
+  include_vars: db-subnet-group-vars.yml
+
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Create a new directory for stack_master templates
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Copy stack-master.yml
+  template:
+    src: "stack_master.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/stack_master.yml"
+
+- name: Copy subnet-group.yml to templates
+  template:
+    src: "{{role_path}}/templates/subnet-group.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"

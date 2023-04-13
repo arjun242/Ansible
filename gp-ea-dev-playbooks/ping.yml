@@ -1,0 +1,27 @@
+# ---
+# - hosts: all
+#   gather_facts: no
+#   tasks:
+#   - ping: 
+#   tasks:
+#     - block:
+#         - name: determine hosts that are up
+#           wait_for_connection:
+#             timeout: 5
+#         - name: add devices with connectivity to the "running_hosts" group
+#           group_by:
+#             key: "running_hosts"
+#       rescue:
+#         - debug: msg="cannot connect to {{inventory_hostname}}"
+
+# - hosts: running_hosts
+#   gather_facts: no
+#   tasks:
+#   - ping: 
+
+---
+- hosts: all
+  tasks:
+    - name: Print message
+      debug:
+        msg: Hello Ansible World

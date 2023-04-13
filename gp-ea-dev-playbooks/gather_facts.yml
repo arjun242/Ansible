@@ -1,0 +1,15 @@
+---
+- hosts: all
+  gather_facts: true
+  tasks:
+    - name: Pinging Target Nodes
+      setup: 
+#       debug:
+#         msg: "HELLO"
+#      meta: clear_facts
+
+# - hosts: all
+#   gather_facts: false
+#   tasks:
+#     - name: Clear gathered facts from all currently targeted hosts
+#       meta: clear_facts

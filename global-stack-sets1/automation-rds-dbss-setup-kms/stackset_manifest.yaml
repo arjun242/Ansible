@@ -1,0 +1,58 @@
+custom_resources:
+
+  - name: dbss-rds-kms-default
+    custom_stackset_name: dbss-rds-kms-default
+    description: Default KmsKey for RDS
+    template_file: templates/rds-default-kms-key.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/gp-ops.yml
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        override_parameter_file: parameters/ent-emea-pnw-preprod.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw
+        override_parameter_file: parameters/ent-emea-pnw.yml
+        regions:
+          - eu-west-1
+   
+      - account: pwr-power-services
+        override_parameter_file: parameters/pwr-power-services.yml
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        override_parameter_file: parameters/pwr-itsecops.yml
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        override_parameter_file: parameters/pwr-primavera.yml
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        override_parameter_file: parameters/pnw-preprod.yml
+        regions:
+          - us-east-1      
+      - account: pnw-prod
+        override_parameter_file: parameters/pnw-prod.yml
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        override_parameter_file: parameters/gp-aws3-b.yml
+        regions:
+          - us-east-1
+      - account: gp-aws5-d
+        override_parameter_file: parameters/gp-aws5-d.yml
+        regions:
+          - us-east-1

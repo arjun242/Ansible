@@ -1,0 +1,19 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+stacksets:
+  - name: dbss-rds-hardening-ecr-aurora-mysql
+    parameters:
+      Platform: aurora-mysql
+  - name: dbss-rds-hardening-ecr-aurora-postgresql
+    parameters:
+      Platform: aurora-postgresql
+  - name: dbss-rds-hardening-ecr-mysql
+    parameters:
+      Platform: mysql
+  - name: dbss-rds-hardening-ecr-oracle
+    parameters:
+      Platform: oracle
+  - name: dbss-rds-hardening-ecr-postgresql
+    parameters:
+      Platform: postgresql

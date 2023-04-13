@@ -1,0 +1,131 @@
+--- 
+- 
+  hosts: all
+  name: "Splunk setup"
+  tasks:
+    - 
+      name: checking if splunk is install
+      stat: 
+        path=/opt/splunkforwarder
+      register: splunk_path
+    - 
+      name: splunk is install
+      debug: 
+        msg: "splunk is already installed under /opt/splunkforwarder"
+      when: splunk_path.stat.exists
+    - 
+      command: "aws s3 cp s3://gp-us-east-ops-automation-common-tools/splunkforwarder-7.2.9.1-605df3f0dfdd-linux-2.6-x86_64.rpm /tmp"
+      name: "Download splunk Agent"
+    - 
+      name: "Install splunk Agent"
+      yum: 
+        name: /tmp/splunkforwarder-7.2.9.1-605df3f0dfdd-linux-2.6-x86_64.rpm
+        state: present
+    -
+      command: "aws s3 cp s3://gp-us-east-ops-automation-common-tools/deploymentclient.conf /tmp"
+      name: "Download splunk deployment_client.conf"
+    -
+      command: "aws s3 cp s3://gp-us-east-ops-automation-common-tools/server.conf /tmp"
+      name: "Download splunk server.conf"
+    -
+      command: "aws s3 cp s3://gp-us-east-ops-automation-common-tools/inputs.conf /tmp"
+      name: "Download splunk server.conf"
+    - 
+      name: "create splunk local directory"
+      file: 
+        path: /opt/splunkforwarder/etc/system/local
+        state: directory
+    - 
+      name: "create splunk local directory"
+      file: 
+        path: /opt/splunkforwarder/etc/apps/deployment_client/default
+        state: directory
+    -
+      name: "get hostname"
+      shell: "curl http://169.254.169.254/latest/meta-data/hostname"
+      register: host
+      ignore_errors: true
+    -
+      name: "get instance-id"
+      shell: "curl http://169.254.169.254/latest/meta-data/instance-id"
+      register: instanceid
+      ignore_errors: true
+    -
+      name: "get ip"
+      shell: "curl http://169.254.169.254/latest/meta-data/local-ipv4"
+      register: ip
+      ignore_errors: true
+    -
+      name: "get mac"
+      shell: "curl http://169.254.169.254/latest/meta-data/mac"
+      register: macid
+      ignore_errors: true
+    -
+      name: "get vpc-id"
+      shell: "curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/{{ macid.stdout }}/vpc-id"
+      register: vpcid
+      ignore_errors: true
+    - 
+      name: "Install jq"
+      yum: 
+        name: jq
+        state: present
+    -
+      name: "get region"
+      shell: "curl http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region"
+      register: regionname
+      ignore_errors: true
+    -
+      name: "get account-id"
+      shell: "curl http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId"
+      register: accountid
+      ignore_errors: true
+    -
+      name: "get instancetype"
+      shell: "curl http://169.254.169.254/latest/meta-data/instance-type"
+      register: instancetype
+      ignore_errors: true
+    - 
+      name: "Template a file to deploymentclinet.conf"
+      template: 
+        dest: /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+        src: /tmp/deploymentclient.conf
+        mode: '0755'
+      vars:
+        reg: "{{ regionname.stdout }}"
+        vpc: "{{ vpcid.stdout }}"
+        acc: "{{ accountid.stdout }}"
+        instype: "{{ instancetype.stdout }}"
+      notify: restart splunk
+    -
+      name: "Template a file to server.conf"
+      template: 
+        dest: /opt/splunkforwarder/etc/apps/deployment_client/default/server.conf
+        src: /tmp/server.conf
+        mode: '0755'
+      notify: restart splunk
+    -
+      name: "Template a file to inputs.conf"
+      template: 
+        dest: /opt/splunkforwarder/etc/system/local/inputs.conf
+        src: /tmp/inputs.conf
+        mode: '0755'
+      vars:
+        reg: "{{ regionname.stdout }}"
+        vpc: "{{ vpcid.stdout }}"
+        insid: "{{ instanceid.stdout }}"
+        ipadd: "{{ ip.stdout }}"
+        hstname: "{{ host.stdout }}"
+      notify: restart splunk
+    - 
+      name: accept license and start splunk
+      shell: /opt/splunkforwarder/bin/splunk start --answer-yes --no-prompt --accept-license
+      when: splunk_path.stat.exists == false
+    - 
+      name: enable boot-start
+      shell: if [ "$(/opt/splunkforwarder/bin/splunk display boot-start | grep not | wc -l)" -ne 0 ]; then "/opt/splunkforwarder/bin/splunk enable boot-start"; fi
+      when: splunk_path.stat.exists == false
+  handlers:
+    -
+      name: restart splunk
+      shell: /opt/splunkforwarder/bin/splunk restart

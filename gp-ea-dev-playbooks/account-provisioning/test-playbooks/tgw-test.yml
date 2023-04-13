@@ -1,0 +1,15 @@
+---
+- name: Get list of Transit Gateways in account
+  hosts: localhost
+  tasks:
+    - name: Transit gateway module
+      ec2_transit_gateway_info:
+        aws_access_key: "{{access_key}}"
+        aws_secret_key : "{{secret_key}}"
+        security_token: "{{session_token}}"
+        region: "{{aws_region}}"
+      register: tgw_info
+    
+    - name: Set TGW info as fact
+      set_fact:
+        tgw: "{{tgw_info.transit_gateways[0].transit_gateway_id}}"

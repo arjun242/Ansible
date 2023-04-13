@@ -1,0 +1,106 @@
+---
+# This Playbook consists of tasks which will be executed on Windows Hosts
+
+# This task is used to fetch the credentials from secret.yml
+- include_vars: secret.yml
+  no_log: true
+  
+# This task checks if Splunk is installed
+- name: Check if splunk is already installed
+  win_service:
+   name: SplunkForwarder
+  register: splunk_service
+
+# This task is executed if Splunk is already installed
+- name: splunk is installed already
+  debug: msg='splunk is already installed under C:\ProgramFiles\SplunkUniversalForwarder'
+  when: splunk_service.exists == true
+
+#  This block is executed for Splunk installation when Splunk is not already installed
+- block:
+  
+  # This task downloads Splunk Agent file from Global s3 bucket 
+  - name: Download Splunk agent
+    win_get_url:
+      url: "{{ splunk_url_windows }}"
+      dest: C:\splunkforwarder-7.2.9.1-605df3f0dfdd-x64-release.msi
+    tags: download_splunk_msi
+
+  # This task installs Splunk
+  - name: Installing splunk on Windows
+    become_method: runas
+    win_package:
+      path: C:\splunkforwarder-7.2.9.1-605df3f0dfdd-x64-release.msi
+      state: present
+      log_path: C:\splunkansiblelogs
+      arguments:
+       - AGREETOLICENSE=Yes 
+       - /quiet
+    tags: install_splunk_msi
+
+  # This task deletes the Splunk msi downloaded File after successful installation
+  - name: Deleting the splunk msi File
+    win_file:
+      path: C:\splunkforwarder-7.2.9.1-605df3f0dfdd-x64-release.msi
+      state: absent
+    tags: delete_splunk_msi
+  when: splunk_service.exists == False or update == 'yes'
+    
+# This task creates directories in respective paths
+- name: "create splunk default directory"
+  win_file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client'
+    - 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client\default'
+  
+# Gathers variables for template
+- name: Gathers various Metadata facts
+  win_shell: $hn = invoke-restmethod -uri http://169.254.169.254/latest/meta-data/hostname; echo $hn; \
+             $ins = invoke-restmethod -uri http://169.254.169.254/latest/meta-data/instance-id; echo $ins; \
+             $ip = Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/local-ipv4; echo $ip; \
+             $mac = Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/mac; echo $mac; \
+             $VPC = Invoke-RestMethod -uri http://169.254.169.254/latest/meta-data/network/interfaces/macs/$mac/vpc-id; echo $VPC; \
+             $acid = (Invoke-RestMethod http://169.254.169.254/latest/dynamic/instance-identity/document).accountId; echo $acid; \
+             $Reg = (Invoke-RestMethod http://169.254.169.254/latest/dynamic/instance-identity/document).region; echo $Reg; \
+             $insType = Invoke-RestMethod http://169.254.169.254/latest/meta-data/instance-type; echo $insType; 
+  register: output
+
+#Setting the gathered facts to variables
+- name: Setting all variables
+  set_fact:
+    ip_windows: "{{ output.stdout_lines[2] }}"
+    hostnm_windows: "{{ output.stdout_lines[0] }}"
+    insid_windows: "{{ output.stdout_lines[1] }}"
+    acc: "{{ output.stdout_lines[5] }}"
+    reg: "{{ output.stdout_lines[6] }}"
+    vpc: "{{ output.stdout_lines[4] }}"
+    instype_windows: "{{ output.stdout_lines[7] }}"
+
+# These three tasks will always execute and upon successful execution and if there is any change made in the conf files, Splunk Service will be restarted
+- name: "Template a file to deploymentclient.conf"
+  template:
+    src: win_deploymentclient.conf.j2
+    dest: '{{ win_deployment_directory }}\deploymentclient.conf'
+    newline_sequence: '\r\n'
+  notify: restart splunk windows
+ 
+- name: "Template a file to server.conf"
+  template:
+    dest: '{{ win_deployment_directory }}\server.conf'
+    src: win_server.conf.j2
+    newline_sequence: '\r\n'
+  notify: restart splunk windows
+      
+- name: "Template a file to inputs.conf"
+  template:
+    dest: C:\Program Files\SplunkUniversalForwarder\etc\system\local\inputs.conf
+    src: win_inputs.conf.j2
+    newline_sequence: '\r\n'
+  notify: restart splunk windows
+  
+- name: Starting the Splunk service 
+  win_service:
+    name: SplunkForwarder
+    state: started

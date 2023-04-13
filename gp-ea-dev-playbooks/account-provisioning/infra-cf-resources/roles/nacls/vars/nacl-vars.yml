@@ -1,0 +1,6 @@
+aws_region: "us-east-1"
+resource_folder: nacl
+# nacl:
+  # UAI: uai3026350
+  # APPSubnetCIDR: 10.0.0.0/8
+  # DBSubnetCIDR: 10.0.0.0/8

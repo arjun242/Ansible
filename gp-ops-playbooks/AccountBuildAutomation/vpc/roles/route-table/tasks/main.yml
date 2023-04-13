@@ -1,0 +1,88 @@
+---
+- set_stats:
+    data:
+      to_be_deleted:
+        - folder_name: route-tables
+          repo: cft-infra-templates
+          message: "Ansible is deleting route-tables"
+          stackNames:
+            - "{{prefix}}app-route-table"
+
+- name: New folder for Route Table
+  file:
+    state: directory
+    path: "/tmp/account-automation-folder/route-table/"
+
+- name: Render CF template with VGW
+  template:
+    src: gp-route-table-public-vgw.yml
+    dest: "/tmp/account-automation-folder/route-table/"
+  when: "{{ vpcGatewayId != 'NA' }}"
+
+- name: Render CF template with TGW
+  template:
+    src: gp-route-table-public-tgw.yml
+    dest: "/tmp/account-automation-folder/route-table/"
+  when: "{{ transitGatewayId != 'NA' }}"
+
+- name: Set CF stack names as facts
+  set_fact:
+    exportVpcStackName: "{{prefix}}export-vpc-default"
+    eipNatGatewayStackName: "{{prefix}}EIP-Nat-Gateway"
+
+- cloudformation_info:
+    stack_name: "{{ exportVpcStackName }}"
+    all_facts: yes
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  register: exportVpcInfo
+
+- cloudformation_info:
+    stack_name: "{{ eipNatGatewayStackName }}"
+    all_facts: yes
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  register: eipNatInfo
+
+- name: Create app-route-table stack with VGW
+  cloudformation:
+    stack_name: "{{prefix}}app-route-table"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/route-table/gp-route-table-public-vgw.yml"
+    template_parameters:
+      NatGatewayId: "{{eipNatInfo.cloudformation[eipNatGatewayStackName].stack_outputs.NATID}}"
+      VgwID: "{{exportVpcInfo.cloudformation[exportVpcStackName].stack_outputs.ExportVPCGatewayId}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  when: "{{ vpcGatewayId != 'NA' }}"
+
+- name: Create app-route-table stack with TGW
+  cloudformation:
+    stack_name: "{{prefix}}app-route-table"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/route-table/gp-route-table-public-tgw.yml"
+    template_parameters:
+      NatGatewayId: "{{eipNatInfo.cloudformation[eipNatGatewayStackName].stack_outputs.NATID}}"
+      TgwID: "{{exportVpcInfo.cloudformation[exportVpcStackName].stack_outputs.ExportTransitGatewayId}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  when: "{{ transitGatewayId != 'NA' }}"
+
+- name: Render CFT files
+  include_tasks: route-table-render.yml
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_org: "{{org}}"
+    github_enterprise_repo: cft-infra-templates
+    message: "Ansible is creating route-tables"

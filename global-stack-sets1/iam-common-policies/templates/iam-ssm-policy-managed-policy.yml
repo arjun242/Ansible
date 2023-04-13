@@ -1,0 +1,258 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Defaults IAM resources to manage SSM Session
+Resources:
+
+################################################################################
+# Resources Section
+#   10/4/2019 - Initial Version
+#     Allowed IPs are found from 
+#       - https://internet.ge.com/docs/zscaler-public-ip-space/  - Internal GE IPs
+#       - https://ips.zscalertwo.net/cenr - zscalr service
+################################################################################ 
+
+# Start Session Policy.  
+# MUST BE ATTACHED TO ANY ROLE with ssm:StartSession...   
+  SSMStartSessionDenyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'This is a deny policy to block all traffic not comming from '   
+      ManagedPolicyName: 'ssm-session-deny'     
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: SSMBlockSessions
+            Effect: Deny
+            Action: "ssm:StartSession"
+            Resource: "*"
+            Condition:
+              NotIpAddress:
+                aws:SourceIp:
+                - 165.225.34.0/23   #Dallas
+                - 165.225.216.0/23  #Dallas
+                - 104.129.204.0/23  #Atlanta
+                - 104.129.200.0/24  #Denver
+                - 104.129.198.0/23  #LA
+                - 165.225.32.0/23   #Mami
+                - 136.226.80.0/23   #New York
+                - 165.225.38.0/23   #New York
+                - 165.225.220.0/23  #New York
+                - 104.129.192.0/23  #San Francisco
+                - 165.225.242.0/23  #San Francisco
+                - 165.225.50.0/23   #Seattle
+                - 136.226.56.0/23   #Seattle
+                - 136.226.54.0/23   #Seattle
+                - 136.226.70.0/23   #Boston
+                - 136.226.72.0/23   #Boston
+                - 136.226.74.0/23   #Boston
+                - 165.225.36.0/23   #Toronto
+                - 104.129.194.0/23  #Washington DC
+                - 136.226.52.0/23   #Washington DC
+                - 136.226.48.0/23   #Washington DC
+                - 165.225.8.0/23    #Washington DC
+                - 136.226.50.0/23   #Washington DC
+                - 104.129.196.0/23	#Chicago
+                - 165.225.60.0/22   #Chicago
+                - 165.225.56.0/22   #Chicago
+                - 136.226.0.0/23    #Mexico City
+                - 165.225.218.0/23  #Nuevo Laredo
+                - 185.46.212.0/23   #Amsterdam
+                - 165.225.240.0/23  #Amsterdam 
+                - 147.161.172.0/23  #Amsterdam
+                - 165.225.80.0/22   #London
+                - 165.225.16.0/23   #London
+                - 147.161.166.0/23  #London
+                - 165.225.12.0/23   #Brussels
+                - 165.225.72.0/22   #Frankfurt
+                - 165.225.26.0/23   #Frankfurt
+                - 165.225.92.0/23   #Madrid
+                - 165.225.196.0/23  #Manchester
+                - 165.225.198.0/23  #Manchester
+                - 165.225.122.0/23  #Chennai
+                - 165.225.202.0/23   #Milan
+                #- 165.225.66.0/24  #Moscow Removing
+                #- 213.52.102.0/24  #Oslo Removing
+                - 165.225.192.0/23  #Stockholm
+                - 147.161.188.0/23  #Stockholm
+                - 165.225.84.0/23   #Warsaw
+                - 165.225.94.0/23   #Zurich
+                - 165.225.104.0/24  #Chennai
+                - 165.225.116.0/23  #Hong Kong
+                - 165.225.234.0/23  #Hong Kong
+                - 165.225.106.0/23  #Mumbai IV
+                - 165.225.120.0/23  #Mumbai VI
+                - 165.225.124.0/23  #NewDelhi
+                - 165.225.112.0/23  #Singapore
+                - 165.225.230.0/23  #Singapore CIDR2
+                - 136.226.234.0/23  #Singapore
+                - 165.225.110.0/23  #Tokyo
+                - 165.156.39.0/26	  #3PR ? Cincinnati
+                - 165.156.40.0/26   #3PR ? Alpharetta
+                - 165.156.34.0/24	  #Ashburn
+                - 165.156.37.0/24	  #Ashburn
+                - 165.225.76.0/23   #Paris II
+                - 165.225.20.0/23   #Paris II
+                - 147.161.178.0/23  #Marseille
+                - 147.161.180.0/23  #Marseille
+                - 147.161.182.0/23  #Marseille
+                - 165.225.204.0/23  #Rouen
+                - 165.156.29.64/26  #3PR ? Bangalore
+                - 165.156.28.64/26	#3PR ? Singapore
+                - 165.156.31.64/26	#3PR ? Tokyo    
+                - 194.9.244.0/26	  #3PR – London
+                - 194.9.245.0/26	  #3PR – Amsterdam
+                
+  #Default SSM Policy allowing EC2s to be Manaed by SSM.              
+  SSMManagedSessionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Basic managed policy modeled after the AmazonSSMManagedInstanceCore'   
+      ManagedPolicyName: 'ssm-automation-managed-policy'     
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EC2DescribeTags
+            Effect: Allow
+            Action: 
+              - ec2:DescribeTags
+            Resource: '*'
+            
+          - Sid: SSMAccess
+            Effect: Allow
+            Action:
+              - ssm:DescribeAssociation
+              - ssm:GetDeployablePatchSnapshotForInstance
+              - ssm:GetDocument
+              - ssm:DescribeDocument
+              - ssm:ListDocuments*
+              - ssm:GetManifest
+              - ssm:ListAssociations
+              - ssm:ListTagsForResource
+              - ssm:ListInstanceAssociations
+              #- ssm:PutComplianceItems
+              - ssm:PutConfigurePackageResult
+              - ssm:UpdateAssociationStatus
+              - ssm:UpdateInstanceAssociationStatus
+              - ssm:UpdateInstanceInformation
+              - ssm:PutInventory
+            Resource: "*"
+          - Sid: AutomationGetParameters
+            Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource: 
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation/*"
+              - !Sub "arn:aws:ssm:us-east-1:325381443140:parameter/automation/*"
+          - Sid: SSMMessages
+            Effect: Allow
+            Action:
+              - ssmmessages:CreateControlChannel
+              - ssmmessages:CreateDataChannel
+              - ssmmessages:OpenControlChannel
+              - ssmmessages:OpenDataChannel
+            Resource: "*"
+          # Added this access on 03/02/2021
+          - Sid: AutomationGetSecrets
+            Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource: 
+              - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:automation/*"
+              - !Sub "arn:aws:secretsmanager:us-east-1:325381443140:secret:automation/*"
+
+          - Sid: EC2Messages
+            Effect: Allow
+            Action:
+              - ec2messages:AcknowledgeMessage
+              - ec2messages:DeleteMessage
+              - ec2messages:FailMessage
+              - ec2messages:GetEndpoint
+              - ec2messages:GetMessages
+              - ec2messages:SendReply
+            Resource: "*"
+
+          - Sid: S3GetforSSM
+            Effect: Allow
+            Action: 
+              - s3:GetObject
+            Resource: 
+              - !Sub arn:aws:s3:::aws-ssm-${AWS::Region}/*
+              - !Sub arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*
+              - !Sub arn:aws:s3:::amazon-ssm-${AWS::Region}/*
+              - !Sub arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*
+              - !Sub arn:aws:s3:::region-birdwatcher-${AWS::Region}/*
+              - !Sub arn:aws:s3:::patch-baseline-snapshot-${AWS::Region}/*              
+              - 'arn:aws:s3:::gp-us-east-ops-automation-common-tools/*'
+              - 'arn:aws:s3:::uai3027632-pw-sec-automation-gp-ops/*'
+            #Centralized Bucket for SSM Logging.
+            #Need to upate bucket policy.
+          - Sid: S3Logs
+            Effect: Allow
+            Action: 
+              - s3:GetObject*
+              - s3:ListBucket
+              - s3:PutObject*
+            Resource: 
+              - 'arn:aws:s3:::gp-ops-ssm-logs/*'
+              - 'arn:aws:s3:::gp-ops-ssm-logs'
+              - 'arn:aws:s3:::eu-patch-logs/*'
+              - 'arn:aws:s3:::eu-patch-logs'
+              - 'arn:aws:s3:::us-patch-logs/*'
+              - 'arn:aws:s3:::us-patch-logs'
+              - 'arn:aws:s3:::primavera-patch-logs/*'
+              - 'arn:aws:s3:::primavera-patch-logs'
+              - 'arn:aws:s3:::gp-ops-consolidated-common-log-bucket/iam-toolkit/*'
+              - 'arn:aws:s3:::gp-ops-consolidated-common-log-bucket'
+
+          - Sid: Logs
+            Effect: Allow
+            Action:
+              - cloudwatch:PutMetricData
+              - ec2:DescribeInstanceStatus
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:PutLogEvents
+            Resource: '*'
+            
+          - Sid: KmsAccess
+            Effect: Allow
+            Action:
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey
+              - kms:GenerateDataKeyWithoutPlaintext'
+            Resource:
+              - !Sub "arn:aws:kms:us-east-1:325381443140:alias/automation-common-gp-ops"
+              - "arn:aws:kms:us-east-1:325381443140:key/09d54248-165c-4ade-9a92-d16dc319c09f"
+              - "arn:aws:kms:us-east-1:325381443140:key/4ad0574c-05dd-4a7c-afaa-72e79b841223"
+              - "arn:aws:kms:us-east-1:325381443140:key/c01efb8d-05ab-4a8e-af3a-e42302467d49"
+              - "arn:aws:kms:us-east-1:930136447543:key/79ed7e90-724a-4918-aa94-259bec44453e"     #IAMToolkit-SQS-QA
+              - "arn:aws:kms:us-east-1:988201728534:key/97fed274-81ce-43a0-9511-fe06589a610c"     #IAMToolkit-SQS-Prd
+              - "arn:aws:kms:eu-west-1:951854665038:key/1fa75671-605c-4c71-8bd7-2102ed3c3e91"     #IAMToolkit-SQS-Failover
+              
+          - Sid: iamtoolkitsqs
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource:
+              - "arn:aws:sqs:us-east-1:930136447543:uai3024435-iamtoolkit-sqs-qa-fifoqueue.fifo"
+              - "arn:aws:sqs:eu-west-1:951854665038:uai3024435-iamtoolkit-sqs-qa-fifoqueue.fifo"
+              - "arn:aws:sqs:eu-west-1:951854665038:uai3024435-iamtoolkit-sqs-qa-failover-fifoqueue.fifo"
+              - "arn:aws:sqs:us-east-1:988201728534:uai3024435-iamtoolkit-sqs-prd-fifoqueue.fifo"
+
+Outputs:
+  SSMStartSessionDenyPolicy:
+    Value: !Ref SSMStartSessionDenyPolicy
+    Export:
+      Name: "SSMStartSessionPolicyARN"
+  SSMManagedSessionPolicy:
+    Value: !Ref SSMManagedSessionPolicy
+    Export:
+      Name: "SSMManagedSessionPolicyARN"
+      
+      

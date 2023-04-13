@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create S3 bucket and Audit Manager Report
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "uai3037033-${AWS::AccountId}-aws-backup-reports"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "uai"
+          Value: uai3037033
+        - Key: "appname"
+          Value: AWS-Backup
+        - Key: "env"
+          Value: prod
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              KMSMasterKeyID: !ImportValue GP-AWS-Backup-Audit-Manager-KMS-Key
+              SSEAlgorithm: aws:kms
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/reports.backup.amazonaws.com/AWSServiceRoleForBackupReports"
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::uai3037033-${AWS::AccountId}-aws-backup-reports/*"
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  AWSBackupReportPlan:
+    Type: AWS::Backup::ReportPlan
+    Properties: 
+      ReportDeliveryChannel:
+        S3BucketName: !Ref S3Bucket
+      ReportPlanDescription: "This report plan is to get backup reports for the account"
+      ReportPlanName: GP_Backup_Reports
+      ReportPlanTags: 
+        - Key: "uai"
+          Value: uai3037033
+        - Key: "appname"
+          Value: AWS-Backup
+        - Key: "env"
+          Value: prod
+      ReportSetting:
+        ReportTemplate: BACKUP_JOB_REPORT
+
+
+
+
+
+  

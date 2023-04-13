@@ -1,0 +1,652 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+    Template to create a pipeline that uses the SAM CLI to deploy code (CF and Lambda) from Github Enterprise
+Parameters:
+  UAI:
+    Type: String
+    Description: UAI for the pipeline (default GP-OPS)
+    Default: "uai3037033"
+  AppName:
+    Type: String
+    Description: AppName for the pipeline
+    Default: "gp-provisioningremediations"
+  Env:
+    Type: String
+    Description: Environment for the pipeline (default GP-OPS)
+    Default: "prd"
+  ConnectionARN:
+    Type: String
+    Description: The ARN for the Codestar connection that is connected to our github enterprise (default GP-OPS)
+    Default: "arn:aws:codestar-connections:us-east-1:325381443140:connection/c987d9f2-1e0b-441d-979a-ebe30d9bbb0f"
+  RepositoryId:
+    Type: String
+    Description: The ID for the repository the CodeStar connection will use i.e (gp-ops/uai3037033-gp-iamusercleanup)
+    Default: "gp-ops/ProvisioningRemediations"
+  
+Resources:
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        PrivilegedMode: true
+        Type: LINUX_CONTAINER
+      ServiceRole:
+        Fn::GetAtt:
+          - PublishRole
+          - Arn
+      Source:
+        BuildSpec: !Sub |
+          {
+            "version": "0.2",
+            "phases": {
+              "install": {
+                "runtime-versions": {
+                  "python": 3.8
+                },
+                "commands": [
+                  "pip install cfn-lint",
+                  "pip install aws-sam-cli"
+                ]
+              },
+              "build": {
+                "commands": [
+                  "cd ./Remediations",
+                  "sam build",
+                  "cfn-lint -t .aws-sam/build/template.yaml",
+                  "SAM_PARAMETERS=$(cat ./Parameters/${AWS::AccountId}*)",
+                  "sam deploy --stack-name ${UAI}-gp-provisioningremediations-${Env} --s3-bucket ${PipelineArtifactsBucket} --region ${AWS::Region} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides $SAM_PARAMETERS"
+                ]
+              }
+            }
+          }
+        Type: CODEPIPELINE
+      EncryptionKey:
+        Fn::GetAtt:
+          - PipelineArtifactsBucketEncryptionKey
+          - Arn
+
+  PublishRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # RoleName: gp-provisioning-remediations-pipeline-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com, codepipeline.amazonaws.com, codebuild.amazonaws.com, cloudformation.amazonaws.com]
+            Sid: '1'
+        Version: "2012-10-17"
+      Policies:
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: id1
+            Action:
+            - "ec2:CreateNetworkInterface"
+            - "ec2:DescribeSecurityGroup"
+            - "kms:ListKeys"
+            - "ec2:DescribeNetworkInterfaces"
+            - "ec2:CreateNetworkInterfacePermission"
+            - "ec2:DescribeVpcs"
+            - "kms:ListAliases"
+            - "ec2:DescribeDhcpOptions"
+            - "ec2:DescribeSubnets"
+            - "ec2:DescribeSecurityGroups"
+            Effect: Allow
+            Resource: "*"
+        PolicyName: AutomationcustomeEc2access
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: id1
+            Action:
+            - "kinesisanalytics:*"
+            - "cloudwatch:DeleteDashboards"
+            - "cognito-identity:*"
+            - "cloudwatch:*"
+            - "cloudwatch:DeleteAlarms"
+            - "apigateway:*"
+            - "logs:*"
+            - "cloudwatch:DeleteInsightRules"
+            - "kinesis:*"
+            - "cognito-idp:*"
+            - "athena:*"
+            - "states:*"
+            Effect: Allow
+            Resource: "*"
+        PolicyName: bu-pwr-codepipeline-execute-policy1
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: id1
+            Action:
+            - "iam:*"
+            - "sns:*"
+            - "es:*"
+            - "rds:*"
+            - "s3:*"
+            - "firehose:*"
+            - "kms:*"
+            - "lambda:*"
+            - "ec2:*"
+            - "tag:*"
+            - "glue:*"
+            - "sagemaker:*"
+            Effect: Allow
+            Resource: "*"
+        PolicyName: bu-pwr-codepipeline-execute-policy2
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: id1
+            Action:
+            - "es:*"
+            - "secretsmanager:*"
+            - "ssm:*"
+            - "codedeploy:*"
+            - "ecs:*"
+            - "cloudformation:*"
+            - "ecr:*"
+            - "codepipeline:*"
+            - "quicksight:*"
+            - "sts:*"
+            - "elasticloadbalancing:*"
+            - "codebuild:*"
+            Effect: Allow
+            Resource: "*"
+        PolicyName: bu-pwr-codepipeline-execute-policy3
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: id1
+            Action:
+            - "codepipeline:PutJobFailureResult"
+            - "codepipeline:PutJobSuccessResult"
+            Effect: Allow
+            Resource: "*"
+          - Sid: id2
+            Action:
+            - "s3:GetObject"
+            - "s3:GetObjectVersion"
+            Effect: Allow
+            Resource: "*"
+          - Sid: id3
+            Action:
+            - s3:ListBucket
+            Effect: Allow
+            Resource: "*"
+        PolicyName: cicd_s3_access
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: id1
+            Action:
+            - "iam:GetRole"
+            - "iam:GetPolicyVersion"
+            - "cloudformation:DetectStackSetDrift"
+            - "cloudformation:DetectStackDrift"
+            - "iam:GetPolicy"
+            - "cloudformation:DescribeStackResources"
+            - "cloudformation:DescribeStackResource"
+            - "cloudformation:DescribeStacks"
+            - "cloudformation:DetectStackResourceDrift"
+            - "cloudformation:DescribeStackResourceDrifts"
+            - "iam:ListPolicyVersions"
+            - "iam:ListAttachedUserPolicies"
+            - "iam:ListRolePolicies"
+            - "iam:GetRolePolicy"
+            - "cloudformation:ListStackResources"
+            Effect: Allow
+            Resource:
+            - !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
+            - !Sub "arn:aws:iam::${AWS::AccountId}:policy/*"
+            - !Sub "arn:aws:iam::${AWS::AccountId}:user/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/*/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stackset/*:*"
+          - Sid: id2
+            Action:
+            - "iam:ListPolicies"
+            - "iam:ListAttachedRolePolicies"
+            - "cloudformation:DescribeStackDriftDetectionStatus"
+            - "cloudformation:ListStacks"
+            - "cloudformation:DescribeType"
+            - "iam:ListRoles"
+            - "lambda:GetFunction"
+            Effect: Allow
+            Resource: "*"
+        PolicyName: cloudformationcustomeaccess
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: id1
+            Action:
+            - "events:ListReplays"
+            - "lambda:ListFunctions"
+            - "lambda:GetAccountSettings"
+            - "events:ListEventBuses"
+            - "lambda:CreateEventSourceMapping"
+            - "events:ListArchives"
+            - "events:TestEventPattern"
+            - "events:PutPermission"
+            - "events:PutPartnerEvents"
+            - "events:ListRuleNamesByTarget"
+            - "events:ListPartnerEventSources"
+            - "events:ListEventSources"
+            - "lambda:ListEventSourceMappings"
+            - "events:ListRules"
+            - "events:RemovePermission"
+            - "lambda:ListLayerVersions"
+            - "lambda:ListLayers"
+            - "lambda:ListCodeSigningConfigs"
+            Effect: Allow
+            Resource: "*"
+          - Sid: id2
+            Action:
+            - "lambda:*"
+            Effect: Allow
+            Resource: !Sub "arn:aws:lambda:*:${AWS::AccountId}:*"
+          - Sid: id3
+            Action:
+            - "events:*"
+            Effect: Allow
+            Resource: "*"
+        PolicyName: sam-cicd-access
+      Tags:
+        - Key: "uai"
+          Value: !Ref UAI
+        - Key: "appname"
+          Value: !Ref AppName
+        - Key: "env"
+          Value: !Ref Env
+
+
+  PublishRoleDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":logs:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/codebuild/
+                    - Ref: BuildProject
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":logs:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/codebuild/
+                    - Ref: BuildProject
+                    - :*
+          - Action:
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+              - codebuild:UpdateReport
+              - codebuild:BatchPutTestCases
+              - codepipeline:*
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":codebuild:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :report-group/
+                  - Ref: BuildProject
+                  - -*
+          - Action:
+              - s3:GetObject*
+              - s3:GetBucket*
+              - s3:List*
+              - s3:DeleteObject*
+              - s3:PutObject*
+              - s3:Abort*
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucket
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucket
+                        - Arn
+                    - /*
+          - Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - PipelineArtifactsBucketEncryptionKey
+                - Arn
+          - Action:
+              - kms:Decrypt
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - PipelineArtifactsBucketEncryptionKey
+                - Arn
+          - Action:
+              - cloudformation:*
+              - iam:*
+              - lambda:*
+              - events:*
+              - dynamodb:*
+              - sqs:*
+              - ses:*
+              - application-autoscaling:*
+              - ec2:*
+              - kms:*
+            Effect: Allow
+            Resource: '*'
+          - Action:
+              - cloudformation:*
+            Effect: Allow
+            Resource: !Sub arn:aws:cloudformation:${AWS::Region}:aws:transform/*
+          - Action:
+              - iam:GetRole
+            Effect: Allow
+            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/*
+        Version: "2012-10-17"
+      PolicyName: PublishRoleDefaultPolicy
+      Roles:
+        - Ref: PublishRole
+
+  PipelineArtifactsBucketEncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
+        Statement:
+          - Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:GenerateDataKey
+              - kms:TagResource
+              - kms:UntagResource
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":iam::"
+                    - Ref: AWS::AccountId
+                    - :root
+            Resource: "*"
+          - Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PipelineRole
+                  - Arn
+            Resource: "*"
+          - Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PublishRole
+                  - Arn
+            Resource: "*"
+          - Action:
+              - kms:Decrypt
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PublishRole
+                  - Arn
+            Resource: "*"
+        Version: "2012-10-17"
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+
+  PipelineArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              KMSMasterKeyID:
+                Fn::GetAtt:
+                  - PipelineArtifactsBucketEncryptionKey
+                  - Arn
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: "uai"
+          Value: !Ref UAI
+        - Key: "appname"
+          Value: !Ref AppName
+        - Key: "env"
+          Value: !Ref Env
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+
+  PipelineArtifactsBucketEncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/codepipeline-encryption-key-${AppName}'
+      TargetKeyId:
+        Fn::GetAtt:
+          - PipelineArtifactsBucketEncryptionKey
+          - Arn
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+        Version: "2012-10-17"
+
+  PipelineRoleDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetObject*
+              - s3:GetBucket*
+              - s3:List*
+              - s3:DeleteObject*
+              - s3:PutObject*
+              - s3:Abort*
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucket
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucket
+                        - Arn
+                    - /*
+          - Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - PipelineArtifactsBucketEncryptionKey
+                - Arn
+          - Action: codestar-connections:*
+            Effect: Allow
+            Resource: "*"
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - PipelineBuildCodePipelineActionRole
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: PipelineRoleDefaultPolicy
+      Roles:
+        - Ref: PipelineRole
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn:
+        Fn::GetAtt:
+          - PipelineRole
+          - Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GithubSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
+              Configuration:
+                ConnectionArn: !Ref ConnectionARN
+                FullRepositoryId: !Ref RepositoryId
+                BranchName: 'master'
+              Name: Checkout
+              OutputArtifacts:
+                - Name: Artifact_Source_Checkout
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: BuildandDeploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName:
+                  Ref: BuildProject
+              InputArtifacts:
+                - Name: Artifact_Source_Checkout
+              OutputArtifacts:
+                - Name: BuildOutput
+              RoleArn:
+                Fn::GetAtt:
+                  - PipelineBuildCodePipelineActionRole
+                  - Arn
+              RunOrder: 1
+      ArtifactStore:
+        EncryptionKey:
+          Id:
+            Fn::GetAtt:
+              - PipelineArtifactsBucketEncryptionKey
+              - Arn
+          Type: KMS
+        Location:
+          Ref: PipelineArtifactsBucket
+        Type: S3
+    DependsOn:
+      - PipelineRoleDefaultPolicy
+      - PipelineRole
+
+
+  PipelineBuildCodePipelineActionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":iam::"
+                    - Ref: AWS::AccountId
+                    - :root
+        Version: "2012-10-17"
+
+
+  PipelineBuildCodePipelineActionRoleDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+              - codebuild:StopBuild
+              - codepipeline:*
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - BuildProject
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: PipelineBuildCodePipelineActionRoleDefaultPolicy
+      Roles:
+        - Ref: PipelineBuildCodePipelineActionRole

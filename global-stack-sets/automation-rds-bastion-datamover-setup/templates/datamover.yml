@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation To create Volume Asg and Launch Config for Jenkins.
+Parameters:
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: 'uai[0-9]*'
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3026350
+
+  AppName:
+    Type: String
+    MaxLength: 20
+    AllowedPattern: '[a-z0-9\-]*'
+    Description: 'AppName, keep to 15 characters or less.'
+    Default: dba
+
+  AppInstance:
+    Type: String
+    Description: 'App Instance for ex: jenkins, app, web '
+    Default: datamover
+
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    Default: prd
+    AllowedValues:
+      - dev
+      - qa
+      - prd
+
+  ServerAMI:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::image::id>'
+    Description: server ami-id
+    Default: /automation/ami/centos7
+
+  EC2Type:
+    Type: String 
+    AllowedValues:
+      - t3.medium
+      - t3.large
+      - m5.large
+      - m5a.large
+    Default: t3.large
+
+  VolumeSize:
+    Type: Number
+    Default: 20
+  
+  VolumeMount:
+    Type: String 
+    Default: /opt/dba
+
+Resources:
+ 
+  AppServer:
+    Type: 'AWS::EC2::Instance'
+    Metadata:
+      Comment: Registration
+      'AWS::CloudFormation::Init':
+        configSets:
+          default:
+            - volumes  
+            - installPG         
+        volumes:
+          files:
+            /usr/local/bin/volumes.sh:
+              content:
+                'Fn::Join':
+                - "\n"
+                - - "#!/bin/bash"
+                  - ''
+                  - cd /tmp
+                  - ''
+                  - yum install jq -y
+                  - ''
+                  - export Volume=`curl http://169.254.169.254/latest/user-data |grep Volume |head -1 |cut -d '=' -f 2`
+                  - ''
+                  - export InstanceId=`curl http://169.254.169.254/latest/meta-data/instance-id`
+                  - ''
+                  - export region=`curl http://169.254.169.254/latest/user-data |grep awsregion |head -1 |cut -d '=' -f 2`
+                  - ''
+                  - EC2DOCUMENT=$(curl -s -S 'http://169.254.169.254/latest/dynamic/instance-identity/document/')
+                  - ''
+                  - AWS_ACCOUNT_ID=$(echo "${EC2DOCUMENT}" | jq -r '.accountId')
+                  - ''
+                  #- export VolumeState=`aws ec2 describe-volumes --region $region --volume-ids $Volume |jq -r .Volumes[].State`
+                  #- ''
+                  #- export VolumeStatus=`aws ec2 describe-volume-status --region $region --volume-ids $Volume |jq -r .VolumeStatuses[].VolumeStatus.Status`
+                  - ''
+                  - Fn::Sub: "export VolumeMount=${VolumeMount}"  
+                  - ''
+                  #- if [ "$VolumeStatus" == "ok" ];  then                 
+                  #-   for  VolumeState in in-use;
+                  #-     do  
+                  -       mkdir -p $VolumeMount;
+                  -       'file -s /dev/nvme1n1  | grep ''/dev/nvme1n1: data'' &> /dev/null'
+                  -         if [ $? == 0 ]; then
+                  -            mkfs -t ext4 /dev/nvme1n1
+                  -            echo Succesfully Created dir >> /var/log/volume_mount.log;
+                  -            sleep 5;
+                  -         fi
+                  -         mount /dev/nvme1n1 /$VolumeMount;
+                  -         echo Succesfully Mounted dir >> /var/log/volume_mount.log;
+                  -         echo  /dev/nvme1n1     $VolumeMount    ext4    defaults,nofail   0   2 >> /etc/fstab;
+                  #-     done;
+                  #-   done;
+                  #- else
+                  #- echo Nothing here;
+                  #- fi
+                  #- ''                  
+              mode: '000755'
+              owner: root
+              group: root
+          commands:
+            volumemount:
+              command: /usr/local/bin/volumes.sh >> /var/log/volume_mount.log 2>&1
+              ignoreErrors: 'false' 
+        installPG:
+          commands:
+            01_download_install:
+              command: rpm -i https://download.postgresql.org/pub/repos/yum/12/redhat/rhel-6.8-i386/postgresql12-12.1-1PGDG.rhel6.i686.rpm 
+    Properties:
+      SubnetId: !ImportValue igr-az1
+      IamInstanceProfile: !ImportValue default:ssm-managed:instanceprofile
+      KeyName: gp-base-key
+      ImageId: !Ref ServerAMI
+      InstanceType: !Ref EC2Type
+      SecurityGroupIds: 
+        - !ImportValue GP-Immutable-Linux-SG
+        - !ImportValue GP-datamover-sg
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-${AppInstance}-${Env}
+        - Key: associate
+          Value: db
+        - Key: uai
+          Value: !Ref UAI
+        - Key: env
+          Value: !Ref Env
+        - Key: role
+          Value: !Ref AppInstance
+        - Key: confidential
+          Value: true
+
+      Volumes:
+        - Device: /dev/sdg
+          VolumeId: !Ref AppVolume
+      UserData: 
+        'Fn::Base64':
+          'Fn::Join':
+          - "\n"
+          - - "#!/bin/bash"
+            - !Sub "export PYTHONPATH=/usr/local/lib/python2.7/:/usr/local/lib/python2.7/site-packages \n"
+            - !Sub "/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource AppServer --configsets default --region ${AWS::Region} \n"           
+            - Fn::Sub: "/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AppServer --region ${AWS::Region}"
+            - Fn::Sub: "Volume= ${AppVolume}"                        
+            - Fn::Sub: "awsregion=${AWS::Region}"
+            - Fn::Sub: "Name=${AppName}-${AppInstance}-${Env}"
+            - Fn::Sub: "role=${AppInstance}"
+
+  AppVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: !ImportValue AZ1Name
+      Size: !Ref VolumeSize
+      VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-${AppInstance}-${Env}
+        - Key: uai
+          Value: !Ref UAI
+        - Key: role
+          Value: !Ref AppInstance
+        - Key: env
+          Value: !Ref Env
+        - Key: role
+          Value: !Ref AppInstance
+        - Key: confidential
+          Value: true  

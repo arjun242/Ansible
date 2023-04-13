@@ -1,0 +1,7 @@
+---
+- hosts: localhost
+  vars:
+    assume_role_arn: "{{temp_role_arn}}"
+  roles:
+    - assume_role
+  

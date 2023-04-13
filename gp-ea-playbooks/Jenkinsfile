@@ -1,0 +1,2 @@
+@Library('gp-infra-library') _
+AnsibleLintProcessor {}      

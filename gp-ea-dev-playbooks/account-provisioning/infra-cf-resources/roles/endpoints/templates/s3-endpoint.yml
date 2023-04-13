@@ -1,0 +1,28 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CF Template to create the vpc endpoint with custom s3 policy.
+Resources:
+  EndPoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument: '{
+         "Version": "2012-10-17",
+         "Statement": [{
+         "Sid": "Allow-All",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "*",
+            "Resource": "*"
+          }
+          ]}'
+      RouteTableIds:    
+        - !ImportValue {{prefix}}rt-AppId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !ImportValue {{prefix}}vpcid
+Outputs:
+  EndPointExport:
+    Description: Export the EndPoint-s3 for rt-App RouteTable.
+    Export:
+      Name: {{prefix}}VPCEndpointS3
+    Value:
+      Ref: EndPoint

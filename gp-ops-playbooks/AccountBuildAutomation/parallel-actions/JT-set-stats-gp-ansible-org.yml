@@ -1,0 +1,5 @@
+# Description: setup the org to gp-ansible org for placing account ansible-source file.
+---
+- hosts: localhost
+  roles:
+    - set-stats-gp-ansible-org

@@ -1,0 +1,4 @@
+stacks:
+  {{aws_region}}:
+    {{prefix}}codestar-connection:
+      template: codestar-connection-cft.yml 

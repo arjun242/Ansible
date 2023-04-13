@@ -1,0 +1,4 @@
+[{
+    "ParameterKey": "LambdaCodeS3Bucket",
+    "ParameterValue": "gp-ap-southeast-ops-automation-common-artifacts"
+  }]

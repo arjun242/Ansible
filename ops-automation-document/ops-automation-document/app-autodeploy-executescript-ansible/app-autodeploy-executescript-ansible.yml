@@ -1,0 +1,37 @@
+# History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to run chef-zero for execute-script....
+parameters:
+  ScriptName:
+    type: String
+    default: 'deploy-app.sh'
+    description: execute script
+  ArtifactoryUser:
+    type: String
+    description: Add net groups to the server
+    default: '{{ssm:/automation/artifactory_user}}'
+  ArtifactoryPass:
+    type: String
+    description: Add net groups to the server
+    default: '{{ssm:/automation/artifactory_pass}}'
+mainSteps:
+- name: LinuxOSType
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - cd /etc/ansible
+    - aws s3 cp s3://gp-us-east-ops-automation-common-tools/execute_script.yml /etc/ansible/
+    - sleep 5
+    - artifactory_usr="{{ArtifactoryUser}}"
+    - artifactory_pass="{{ArtifactoryPass}}"
+    - script="{{ScriptName}}"
+    - ansible-playbook execute_script.yml -e "artifactory_usr=$artifactory_usr artifactory_pass=$artifactory_pass execute_script=$script"

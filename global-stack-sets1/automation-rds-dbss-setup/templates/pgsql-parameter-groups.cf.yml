@@ -1,0 +1,354 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the parameters groups that are neccessary Postgres RDS instance builds.
+              It must be created prior to any RDS Instances
+              Last version 30-may-2020
+
+ # History:
+  # 14-Apr-2020: Initial version: Created for guardrail accounts
+  #Stack Name: pgsql-parameter-groups
+  # 30-May-2020: Added VPC alias parameter
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+
+Resources:
+
+  rdspsqldefaultparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.6 DEFAULT parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlisoparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.6 ISO parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlsoxparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.6 SOX parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqldodparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.6 DOD parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlgxpparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.6 GXP parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqldefaultparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.10 DEFAULT parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlisoparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.10 ISO parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlsoxparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.10 SOX parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqldodparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.10 DOD parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlgxpparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 10.10 GXP parameter group with audit enabled
+      Family: 'postgres10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+
+
+  rdspsqldefaultparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 11.4 DEFAULT parameter group with audit enabled
+      Family: 'postgres11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlisoparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 11.4 ISO parameter group with audit enabled
+      Family: 'postgres11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlsoxparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 11.4 SOX parameter group with audit enabled
+      Family: 'postgres11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqldodparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 11.4 DOD parameter group with audit enabled
+      Family: 'postgres11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+  rdspsqlgxpparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: postgresql 11.4 GXP parameter group with audit enabled
+      Family: 'postgres11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1048576"
+        log_connections: "1"
+        log_disconnections: "1"
+        rds.force_ssl: "1"
+        rds.restrict_password_commands: "1"
+
+Outputs:
+
+  rdspsqldefaultparamgroup106:
+    Description: "RDS Parameter Group that stores default parameters with audit enabled for PostgreSQL 10.6"
+    Value: !Ref rdspsqldefaultparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:default:106'
+      
+  rdspsqlisoparamgroup106:
+    Description: "RDS Parameter Group that stores ISO parameters with audit enabled for PostgreSQL 10.6"
+    Value: !Ref rdspsqlisoparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:iso:106'
+      
+  rdspsqldodparamgroup106:
+    Description: "RDS Parameter Group that stores DoD parameters with audit enabled for PostgreSQL 10.6"
+    Value: !Ref rdspsqldodparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:dod:106'
+      
+  rdspsqlgxpparamgroup106:
+    Description: "RDS Parameter Group that stores GxP parameters with audit enabled for PostgreSQL 10.6"
+    Value: !Ref rdspsqlgxpparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:gxp:106'
+     
+  rdspsqlsoxparamgroup106:
+    Description: "RDS Parameter Group that stores SOx parameters with audit enabled for PostgreSQL 10.6"
+    Value: !Ref rdspsqlsoxparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:sox:106'
+
+
+  rdspsqldefaultparamgroup1010:
+    Description: "RDS Parameter Group that stores default parameters with audit enabled for PostgreSQL 10.10"
+    Value: !Ref rdspsqldefaultparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:default:1010'
+      
+  rdspsqlisoparamgroup1010:
+    Description: "RDS Parameter Group that stores ISO parameters with audit enabled for PostgreSQL 10.10"
+    Value: !Ref rdspsqlisoparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:iso:1010'
+      
+  rdspsqldodparamgroup1010:
+    Description: "RDS Parameter Group that stores DoD parameters with audit enabled for PostgreSQL 10.10"
+    Value: !Ref rdspsqldodparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:dod:1010'
+      
+  rdspsqlgxpparamgroup1010:
+    Description: "RDS Parameter Group that stores GxP parameters with audit enabled for PostgreSQL 10.10"
+    Value: !Ref rdspsqlgxpparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:gxp:1010'
+     
+  rdspsqlsoxparamgroup1010:
+    Description: "RDS Parameter Group that stores SOx parameters with audit enabled for PostgreSQL 10.10"
+    Value: !Ref rdspsqlsoxparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:sox:1010'
+
+  
+  rdspsqldefaultparamgroup114:
+    Description: "RDS Parameter Group that stores default parameters with audit enabled for PostgreSQL 11.4"
+    Value: !Ref rdspsqldefaultparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:default:114'
+      
+  rdspsqlisoparamgroup114:
+    Description: "RDS Parameter Group that stores ISO parameters with audit enabled for PostgreSQL 11.4"
+    Value: !Ref rdspsqlisoparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:iso:114'
+      
+  rdspsqldodparamgroup114:
+    Description: "RDS Parameter Group that stores DoD parameters with audit enabled for PostgreSQL 11.4"
+    Value: !Ref rdspsqldodparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:dod:114'
+      
+  rdspsqlgxpparamgroup114:
+    Description: "RDS Parameter Group that stores GxP parameters with audit enabled for PostgreSQL 11.4"
+    Value: !Ref rdspsqlgxpparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:gxp:114'
+     
+  rdspsqlsoxparamgroup114:
+    Description: "RDS Parameter Group that stores SOx parameters with audit enabled for PostgreSQL 11.4"
+    Value: !Ref rdspsqlsoxparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:postgres:sox:114'

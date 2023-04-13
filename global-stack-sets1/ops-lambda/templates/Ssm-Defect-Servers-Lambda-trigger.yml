@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation template to create Cloud watch event for aws SSM-Defect-Lambda
+Resources:
+  ScheduledRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: cloudwatch-schedule-rule-for-Ssm-Defect-Servers
+      Description: This rule will run every 30 minutes and trigger the mentioned lambda function
+      ScheduleExpression: "cron(0 10 * * ? *)"
+      State: ENABLED
+      Targets:
+        - Arn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:Ssm-Defect-Servers-Lambda'
+          Id: 'Ssm-Defect-Servers-Lambda'

@@ -1,0 +1,11 @@
+{
+    "Content": "file://ExistingLatestWindowsAmiSharing.yml", 
+    "Name": "ExistingLatestWindowsAmiSharing", 
+    "VersionName": "1.0",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

@@ -1,0 +1,63 @@
+---
+- name: Get app-az1 subnet ID
+  ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{{codestar_vpc_id}}"
+      "tag:Name": app-az1
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+    region: "{{ aws_region }}"
+  register: "codestarAppSubnet1"
+
+- name: Get app-azz subnet ID
+  ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{{codestar_vpc_id}}"
+      "tag:Name": app-az2
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+    region: "{{ aws_region }}"
+  register: "codestarAppSubnet2"
+
+- ec2_group_info:
+    filters:
+      vpc-id: "{{codestar_vpc_id}}"
+      "tag:Name": GP-Immutable-Linux-SG
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+    region: "{{ aws_region }}"
+  register: "codestarSG"
+
+- name: Generate the python file
+  template:
+    src: "{{role_path}}/files/host.py"
+    dest: "/tmp/account-automation-folder/codestar-check/"
+  vars:
+    codestar_subnet1: "{{codestarAppSubnet1.subnets[0].id}}"
+    codestar_subnet2: "{{codestarAppSubnet2.subnets[0].id}}"
+    codestar_sgID: "{{codestarSG.security_groups[0].group_id}}"
+
+- name: Run a script using an executable in a system path
+  script: /tmp/account-automation-folder/codestar-check/host.py
+  args:
+    executable: python3
+  register: "py_output"
+
+- set_fact:
+    CodeStarHost: "{{py_output.stdout}}"
+
+- name: Create CodeStar Connection CFT
+  include_tasks: codestar-connection-cft.yml
+
+# - name: Render CodeStar Connection CFT
+#   include_tasks: codestar-connection-cft-render.yml
+
+# - name: Call Git role
+#   include_role:
+#     name: git-push
+#   vars:
+#     github_enterprise_repo: cft-infra-templates
+#     message: "Ansible is creating export-defaults"

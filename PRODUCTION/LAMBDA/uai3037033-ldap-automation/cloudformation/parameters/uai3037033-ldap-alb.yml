@@ -1,0 +1,4 @@
+AppName: ldap
+UAI: uai3037033
+Env: prd
+ALBTimeout: 600

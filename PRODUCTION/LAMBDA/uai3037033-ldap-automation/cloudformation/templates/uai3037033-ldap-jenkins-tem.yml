@@ -1,0 +1,377 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to create Volume for Jenkins
+
+Parameters:
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: "uai[0-9]*"
+    MinLength: 10
+    MaxLength: 10
+
+  AppName:
+    Type: String
+    MaxLength: 20
+    AllowedPattern: "[a-z0-9\\-]*"
+    Description: AppName, keep to 15 characters or less.
+
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    Default: prd
+    AllowedValues:
+    - nonprd
+    - prd
+
+  AvailabilityZone:
+    Type: String
+    AllowedValues: [ us-east-1a, us-east-1b, eu-west-1a , eu-west-1b]
+    Description: Which Availability Zone to deploy this instance into?
+
+  EC2Type:
+    Type: String
+    Description: Instance type to build
+    Default: m5.large
+    AllowedValues:
+      - t3.medium
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - t2.xlarge
+
+  ServerAMI:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Description: server ami-id
+    Default: /automation/ami/centos7
+
+  AppInstance:
+    Type: String
+    Description: App Instance
+    Default: jenkins
+
+  VolumeSize:
+    Type: String
+    Default: '200'
+
+  VolumeMount:
+    Type: String
+    Description: Mount path of the disk
+    Default: /gpcloud
+
+  LoadBalancerCertificateArn:
+    Type: String
+    Default: ''
+
+Resources:
+  JenkinsVolume:
+    Type: 'AWS::EC2::Volume'
+    Properties:
+      Size: !Ref VolumeSize
+      Encrypted: true
+      KmsKeyId: !ImportValue ldapcommonkmskeyarn
+      AvailabilityZone: !Ref AvailabilityZone
+      VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: !Sub '${UAI}-${AppName}-${AppInstance}-vol'
+        - Key: uai
+          Value: !Ref UAI
+        - Key: appname
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+        - Key: role
+          Value: AppInstance
+        - Key: confidential
+          Value: 'yes'
+        - Key: IsJenkins
+          Value: 'true'
+        - Key: associate
+          Value: sa
+
+  JenkinsEC2:
+    Type: 'AWS::EC2::Instance'
+    Metadata:
+      Comment: Registration
+      'AWS::CloudFormation::Init':
+        configSets:
+          default:
+            - volumes
+            - installjenkins
+        installjenkins:
+          commands:
+            downloadfile:
+              command: "aws s3 cp s3://gp-us-east-ops-automation-common-tools/Jenkins.sh /tmp/jenkins.sh"
+              ignoreErrors: 'false'
+            executefilepermission:
+              command: "chmod 755 /tmp/jenkins.sh"
+              ignoreErrors: 'false'
+            runjenkinsinstallation:
+              command: /tmp/jenkins.sh >> /var/log/jenkins_install.log 2>&1
+              ignoreErrors: 'false'
+
+        volumes:
+          files:
+            /usr/local/bin/volumes.sh:
+              content:
+                'Fn::Join':
+                - "\n"
+                - - "#!/bin/bash"
+                  - ''
+                  - cd /tmp
+                  - ''
+                  - yum install jq -y
+                  - ''
+                  - export Volume=`curl http://169.254.169.254/latest/user-data |grep Volume |head -1 |cut -d '=' -f 2`
+                  - ''
+                  - export InstanceId=`curl http://169.254.169.254/latest/meta-data/instance-id`
+                  - ''
+                  - export region=`curl http://169.254.169.254/latest/user-data |grep awsregion |head -1 |cut -d '=' -f 2`
+                  - ''
+                  - EC2DOCUMENT=$(curl -s -S 'http://169.254.169.254/latest/dynamic/instance-identity/document/')
+                  - ''
+                  - AWS_ACCOUNT_ID=$(echo "${EC2DOCUMENT}" | jq -r '.accountId')
+                  - ''
+                  #- export VolumeState=`aws ec2 describe-volumes --region $region --volume-ids $Volume |jq -r .Volumes[].State`
+                  #- ''
+                  #- export VolumeStatus=`aws ec2 describe-volume-status --region $region --volume-ids $Volume |jq -r .VolumeStatuses[].VolumeStatus.Status`
+                  - ''
+                  - Fn::Sub: "export VolumeMount=${VolumeMount}"
+                  - ''
+                  #- if [ "$VolumeStatus" == "ok" ];  then
+                  #-   for  VolumeState in in-use;
+                  #-     do
+                  -       mkdir -p $VolumeMount;
+                  -       'file -s /dev/nvme1n1  | grep ''/dev/nvme1n1: data'' &> /dev/null'
+                  -         if [ $? == 0 ]; then
+                  -            mkfs -t ext4 /dev/nvme1n1
+                  -            echo Succesfully Created dir >> /var/log/volume_mount.log;
+                  -            sleep 5;
+                  -         fi
+                  -         mount /dev/nvme1n1 /$VolumeMount;
+                  -         echo Succesfully Mounted dir >> /var/log/volume_mount.log;
+                  -         echo  /dev/nvme1n1     $VolumeMount    ext4    defaults,nofail   0   2 >> /etc/fstab;
+                  #-     done;
+                  #-   done;
+                  #- else
+                  #- echo Nothing here;
+                  #- fi
+                  #- ''
+              mode: '000755'
+              owner: root
+              group: root
+          commands:
+            volumemount:
+              command: /usr/local/bin/volumes.sh >> /var/log/volume_mount.log 2>&1
+              ignoreErrors: 'false'
+
+    Properties:
+      Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: Name
+          Value: !Sub ${AppName}-${Env}-${AppInstance}
+        - Key: associate
+          Value: sa
+        - Key: Patch
+          Value: Yes
+        - Key: env
+          Value: !Ref Env
+      SubnetId: !ImportValue app-az1
+      IamInstanceProfile: !ImportValue ldapappjenkinsprofile
+      ImageId: !Ref ServerAMI
+      InstanceType: !Ref EC2Type
+      BlockDeviceMappings:
+      - DeviceName: /dev/sda1
+        Ebs:
+          VolumeSize: 30
+      SecurityGroupIds:
+        - !ImportValue GP-Immutable-Linux-SG
+        - !Ref SecurityGroup  
+      Volumes:
+        - Device: /dev/sdb
+          VolumeId: !Ref JenkinsVolume
+      UserData:
+        'Fn::Base64':
+          'Fn::Join':
+          - "\n"
+          - - "#!/bin/bash"
+            - "yum update -y \n"
+            - "yum install epel-release \n"
+            - "yum intsall -y awscli \n"
+            - "yum install -y python-pip \n"
+            - "ln -s /usr/local/lib/python2.7/site-packages/cfnbootstrap /usr/lib/python2.7/site-packages/cfnbootstrap \n"
+            - "ln -s /usr/local/bin/aws /usr/bin/aws \n"
+            - "export PYTHONPATH=/usr/local/lib/python2.7/:/usr/local/lib/python2.7/site-packages \n"
+            - !Sub "/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource JenkinsEC2 --configsets default --region ${AWS::Region} \n"
+            - "YOURPORT=8080"
+            - "PERM=\"--permanent\""
+            - "SERV=\"$PERM --service=jenkins\""
+            - "firewall-cmd $PERM --new-service=jenkins"
+            - "firewall-cmd $SERV --set-short=\"Jenkins ports\""
+            - "firewall-cmd $SERV --set-description=\"Jenkins port exceptions\""
+            - "firewall-cmd $SERV --add-port=$YOURPORT/tcp"
+            - "firewall-cmd $PERM --add-service=jenkins"
+            - "firewall-cmd --zone=public --add-service=http --permanent"
+            - "firewall-cmd --reload"
+            - Fn::Sub: "/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource JenkinsEC2 --region ${AWS::Region} \n"
+            - Fn::Sub: "Volume= ${JenkinsVolume} \n"
+            - Fn::Sub: "awsregion=${AWS::Region} \n"
+            - Fn::Sub: "Name= ${AppName}-${AppInstance} \n"
+            - Fn::Sub: "uai=${UAI} \n"
+            - Fn::Sub: "role=${AppInstance} \n"
+
+  SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security Group of App Jenkins'
+      VpcId: !ImportValue vpcid
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !GetAtt LbStdSG.GroupId
+          FromPort: 8080
+          ToPort: 8080
+          IpProtocol: tcp
+        - IpProtocol: 'tcp'
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !ImportValue GP-bastion-SG
+         
+      Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: Name
+          Value: !Sub '${UAI}-${AppName}-${Env}-${AppInstance}-SG'
+        - Key: role
+          Value: JenkinsServer
+        - Key: env
+          Value: !Ref Env
+
+  TargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      HealthCheckIntervalSeconds: 15
+      HealthCheckPath: '/login'
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200-299'
+      Port: 8080
+      Protocol: HTTP
+      TargetType: instance
+      Targets:
+        - Id: !Ref JenkinsEC2
+      VpcId: !ImportValue vpcid
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: "60"
+      Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: "AppName"
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+
+  JenkinsALB:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Name: !Sub "${UAI}-${AppInstance}-${Env}"
+      LoadBalancerAttributes:
+        - Key: 'idle_timeout.timeout_seconds'
+          Value: "60"
+        - Key: 'routing.http2.enabled'
+          Value: 'true'
+        - Key: 'access_logs.s3.enabled'
+          Value: 'false'
+      Scheme: "internal"
+      SecurityGroups:
+        - !Ref LbStdSG
+      Subnets:
+       - !ImportValue app-az1   
+       - !ImportValue app-az2
+      Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: "AppName"
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+
+  LbStdSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue vpcid
+      GroupDescription: !Sub "Standard SG for ${UAI}-${AppName}-${AppInstance}-SG"
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${AppInstance}-SG"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: "AppName"
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+        - Key: role
+          Value: alb
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 3.0.0.0/8
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 3.0.0.0/8
+
+  HttpListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Host: '#{host}'
+            Path: '/#{path}'
+            Port: '80'
+            Protocol: 'HTTPS'
+            Query: '#{query}'
+            StatusCode: 'HTTP_301'
+      LoadBalancerArn: !Ref JenkinsALB
+      Port: 80
+      Protocol: HTTP
+
+  HttpsListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      Certificates:
+      - CertificateArn: !Ref LoadBalancerCertificateArn
+      DefaultActions:
+      - TargetGroupArn: !Ref TargetGroup
+        Type: forward
+      LoadBalancerArn: !Ref JenkinsALB
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: "ELBSecurityPolicy-TLS-1-2-2017-01"
+
+Outputs:
+  InstanceId:
+    Description: Insance ID of the EC2 created
+    Value: !Ref JenkinsEC2
+
+  VolumeId:
+    Description: VolumeId
+    Value: !Ref JenkinsVolume
+
+  ALBArn:
+    Description: Jenkins ALB ARN
+    Value: !Ref JenkinsALB

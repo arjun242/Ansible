@@ -1,0 +1,151 @@
+---
+#Gathering metadata facts of the host
+- name: Gathering metadata facts
+  ec2_metadata_facts:
+
+#Fetch key name and vpc_id from ec2_instance_info
+- name: Set variables for instance id, acc_id and private_ip of the target server
+  set_fact:
+    id: "{{ ansible_ec2_instance_id }}"
+#    vpcid: "{{ ansible_ec2_network_interfaces_macs_0e_b1_ca_82_f2_43_vpc_id }}"
+    accid: "{{ ansible_ec2_identity_credentials_ec2_info_accountid }}"
+    private_ip: "{{ansible_ec2_instance_identity_document_privateip}}"
+
+#- name: Gather information of target server by instance id
+#  ec2_instance_info:
+#    instance_ids: "{{id}}"
+#    region: "{{region}}"
+#  register: curentins
+
+#Setting the variables for os , keyname of current ec2 instance
+#- name: Setting variables for os, keyname and vpcid of the target instance
+#  set_fact:
+ #   os: "{{ curentins | json_query('instances[*].platform_details')}}"
+ #   keyname: "{{ curentins | json_query('instances[*].key_name')}}"
+ #   vpcid: "{{ curentins | json_query('instances[*].vpc_id')}}"
+ #   tags_info: "{{ curentins.instances[0].tags }}"
+
+- name: Setting variable for the vpcid and keyname to gather facts of target server
+  shell: mac=$(curl http://169.254.169.254/latest/meta-data/network/interfaces/macs); echo $mac;
+         mac2=$(echo $mac | cut -f1 -d" "); echo $mac2;
+         vpc=$(curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/$mac2/vpc-id); echo $vpc;
+         keyname=$(curl http://169.254.169.254/latest/meta-data/public-keys); echo $keyname;
+  register: metafacts
+ 
+ #Gather etadata facts for setting the variables for vpcid and keyname
+- name: Set vars for vpcid and keyname
+  set_fact:
+    vpcid: "{{ metafacts.stdout_lines[2] }}"
+    keyname: "{{ metafacts.stdout_lines[3] }}"
+    
+- name: Check keyname is associated with server or not, if not set keyname with empty string
+  shell: |
+    if [ "$(curl http://169.254.169.254/latest/meta-data/public-keys | grep -c '404 - Not Found')" -ne 0  ]; then
+      keyname="blank"; echo $keyname;
+    else
+      keyname=$(curl http://169.254.169.254/latest/meta-data/public-keys); keyname=$(sed $'s/0=/\\\n/g' <<< $keyname | tail -1); echo $keyname;
+    fi
+  register: key_check
+  
+- name: Setting variable for the key pair associated with target server
+  set_fact:
+    keyname: "{{ key_check.stdout }}"
+
+- name: Name of the key pair associated with the target server
+  debug:
+    msg: "{{ keyname }}"  
+    
+- name: Setting the variables for fetching old key of corresponding VPC of the target server
+  set_fact:
+    oldkey: "{{item.oldkey}}"
+  with_items:
+    "{{vpc_keys}}"
+  when: (item.vpc_id in vpcid ) and (item.acc_id in accid)
+#  register: oldkey
+
+# Taking backup of old authorized_keys
+- name: Taking backup of old authorized_keys of target host
+  become: yes
+  shell: cp /home/gecloud/.ssh/authorized_keys /home/gecloud/.ssh/oldauthorized_keys_{{ ansible_date_time.date }}
+  become_user: gecloud
+  register: oldauth
+
+#- debug:
+#    msg: "{{ oldauth }}"
+
+#This will be executed to rotate the key pairs if the condition satisfies
+- block:
+   - name: Fetching new key and .pub file of the vpc
+     set_fact:
+       srcfile: "{{item.pub_secret}}"
+       newkey: "{{item.key}}"
+     with_items:
+       "{{vpc_keys}}"
+     when: (item.vpc_id in vpcid ) and (item.acc_id in accid)
+     register: file_check
+
+   #Including corresponding pub vault secret of corresponding VPC
+   - name: Reading {{srcfile}} pub file
+     include_vars: "{{srcfile}}"
+
+   - name: Fetching new public key
+     set_fact:
+       pubkey: "{{secret.pub_key}}"
+
+   #Copying the public key contents of the new key on the server
+   - name: Copying the public key contents of the new key {{newkey}} to authorized_keys
+     become: yes
+     copy:
+       content: "{{pubkey}}"
+       dest: /home/gecloud/.ssh/authorized_keys
+     become_user: gecloud
+     register: newauth
+
+   - name: Check if new keys are updated successfully on the server
+     debug: msg='Successfully updated public key of the new key to the authorized_keys of the target server'
+     when: newauth is changed
+
+  when: ansible_os_family != 'windows' and (keyname in oldkey or keyname == "blank")
+  
+# Revert back the changes in case of unsuccessfull rotation for the target server
+- block:
+
+    # Printing a debug msg
+    - debug: 
+        msg: "New keys have not updated"
+
+    - name: Reverting back changes, updating oldauthorized_keys if unsuccessfull rotation
+      become: yes
+      copy:
+        src: /home/gecloud/.ssh/oldauthorized_keys_{{ ansible_date_time.date }}
+        dest: /home/gecloud/.ssh/authorized_keys
+      become_user: gecloud
+      register: oldauth
+
+  when: newauth is failed
+
+#This block will execute when new keys are updated successfully on the server
+#- block:
+#   - name: Creating SSH Connection Command to check connectivity
+#     set_fact:
+#       ssh_connection: "ssh -o StrictHostKeyChecking=no -i {{ newkey }} gecloud@{{ private_ip }} -p {{ ansible_port }}"
+       
+#   - name: Checking Connectivity to the target server from control node with new key
+#     delegate_to: localhost
+#     shell: "{{ ssh_connection }}"
+#     register: connection_check
+
+#   - name: Connection with new key is successfull
+#     debug:
+#       msg: "Connection to the target server is successfull with the new key"
+#     when: connection_check is not failed
+#  when: newauth is not failed 
+
+#Deleting the backup of oldauthorized_keys from server
+#- name: Deleting the oldauthorized_keys backup file from target server
+#  become: yes
+#  file:
+#    path: /home/gecloud/.ssh/oldauthorized_keys_{{ ansible_date_time.date }}
+#    state: absent
+#  become_user: gecloud
+

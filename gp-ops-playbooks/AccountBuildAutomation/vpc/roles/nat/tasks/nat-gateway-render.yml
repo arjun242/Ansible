@@ -1,0 +1,21 @@
+---
+- name: Include vars file
+  include_vars: nat-gateway-vars.yml
+
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Create a new directory for stack_master templates
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Copy stack-master.yml
+  template:
+    src: "stack_master.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/stack_master.yml"
+
+- name: Copy eip-nat-cf.yml to templates
+  template:
+    src: "{{role_path}}/templates/eip-nat-cf.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"

@@ -1,0 +1,11 @@
+# Description: rendering global stacksets files 26-compliance-framework-iam.yml, 27-compliance-framework-config.yml
+# Requirements: Stackset Execution role CFT
+# Steps to followed: 
+# - update account_list.json in auto-remediation repo https://github.build.ge.com/power-cloud-assurance/auto-remediation/blob/master/config/account_list.json
+# - auto-remediation deploy
+# - update env_var.properties and account_list.json in compliance-framework https://github.build.ge.com/power-cloud-assurance/compliance-framework/blob/master/rulesets-build/config/account_list.json
+# - redeploy compliance framework in pwr-itsecops account
+---
+- hosts: localhost
+  roles:
+    - compliance-framework

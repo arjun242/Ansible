@@ -1,0 +1,75 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description:  Create lambda function for finding Windows-R2-Standard servers
+Resources:
+  LambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: 'Windows-R2-Standard-Lambda'
+      Description: 'Find Windows-R2-Standard servers'
+      Handler: "index.handler"
+      Role: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/inf/OpsLambdaAutomationRole'
+      Runtime: 'python3.8'
+      Code: 
+        S3Bucket: 'gp-us-east-ops-automation-common-tools'
+        S3Key: 'Ops-Lambda-Functions/Windows-R2-Standard/index.zip'
+      Layers: 
+        - 'arn:aws:lambda:us-east-1:325381443140:layer:Ops-Common-Lambda-Layer:1'
+      MemorySize: 256
+      Timeout: 120
+      Tags:
+        - Key: uai
+          Value: 'uai2000020'
+        - Key: env
+          Value: 'dev'       
+      VpcConfig:
+        SecurityGroupIds:
+        - !GetAtt LambdaSecurityGroup.GroupId
+        SubnetIds:
+        - !ImportValue app-az1
+        - !ImportValue app-az2        
+        
+  CloudWatchEventsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/cloudwatch-Schedule-Rule-For-Windows-R2-Standard-Servers' 
+        
+  LambdaLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: '/aws/lambda/Windows-R2-Standard-Servers-Status'
+      RetentionInDays: 7
+      Tags:
+        - Key: uai
+          Value: 'uai2000020'
+        - Key: name
+          Value: 'Windows-R2-Standard-Servers-Lambda-Log'
+        - Key: env
+          Value: 'dev'  
+ 
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'SG for Lambda Function Windows-R2-Standard-Servers-Lambda'
+      GroupName: 'Windows-R2-Standard-Servers-Lambda-SG'
+      VpcId: !ImportValue vpcid
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: uai
+          Value: 'uai2000020'
+        - Key: name
+          Value: 'Windows-R2-Standard-Servers-Lambda-SG'   
+        - Key: env
+          Value: 'dev'
+          
+Outputs:
+  LambdaFunctionArn:
+    Description: "Resource Arn of the Lambda function"
+    Value: !GetAtt 'LambdaFunction.Arn'
+    Export:
+      Name: "WindowsR2StandardLambdaArn"

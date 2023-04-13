@@ -1,0 +1,38 @@
+---
+- name: Include vars file
+  include_vars: route-table-vars.yml
+
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Create a new directory for stack_master templates
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Create a new directory for parameters
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/parameters"
+
+- name: Copy stack-master.yml
+  template:
+    src: "stack_master.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/stack_master.yml"
+
+- name: Copy gp-route-table-public-vgw.yml to templates
+  template:
+    src: "{{role_path}}/templates/gp-route-table-public-vgw.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/templates/gp-route-table-public.yml"
+  when: "{{ vpcGatewayId != 'NA' }}"
+
+- name: Copy gp-route-table-public-tgw.yml to templates
+  template:
+    src: "{{role_path}}/templates/gp-route-table-public-tgw.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/templates/gp-route-table-public.yml"
+  when: "{{ transitGatewayId != 'NA' }}"
+
+- name: Copy app_route_table.yml to parmeters
+  template:
+    src: "{{role_path}}/templates/app_route_table.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{prefix | replace('-','_')}}app_route_table.yml"

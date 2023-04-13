@@ -1,0 +1,36 @@
+---
+- name: Include vars file
+  include_vars: main.yml
+
+- name: "Create IAM role for Ansible account automation"
+  iam_role:
+    name: "{{automation_role}}"
+    assume_role_policy_document: "{{ lookup('file','ansible-service-assumerolepolicy.json') }}"
+    path: "/inf/"
+    description: This Role is used by ansible account provision automation
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+  register: account_temp_role
+
+- name: Set the role arn globally
+  set_stats:
+    data:
+      temp_role_arn: "{{account_temp_role.iam_role.arn}}"
+
+- name: Set GitHub Org
+  set_stats:
+    data:
+      github_org: "{{org}}"
+
+# Create a policy to ansible automation role
+- name: Assign policy ansible automation service role
+  iam_policy:
+    iam_type: role
+    iam_name: "{{automation_role}}"
+    policy_name: ansible-account-automation-policy
+    state: present
+    policy_json: "{{ lookup( 'file', 'ansible-service-policy.json') }} "
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}" 

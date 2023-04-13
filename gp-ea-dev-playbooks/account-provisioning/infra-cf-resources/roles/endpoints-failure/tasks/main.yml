@@ -1,0 +1,26 @@
+---
+- name: Create endpoints stack
+  cloudformation:
+    stack_name: "{{prefix}}{{item.stackName}}"
+    state: "absent"
+    region: "{{ region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  loop:
+    - { stackName: "s3-endpoint"}
+    - { stackName: "sqs-endpoint"}
+    - { stackName: "ecr-dkr-endpoint"}
+    - { stackName: "ecr-api-endpoint"}
+    - { stackName: "execute-api-endpoint"}
+    - { stackName: "kinesis-streams-endpoint"}
+    - { stackName: "secretsmanager-endpoint"}
+
+- name: Call Git role
+  include_role:
+    name: git-delete
+  vars:
+    github_enterprise_org: gp-ops-non-prod
+    github_enterprise_repo: cft-infra-templates
+    message: "Ansible deleting vpc-endpoint"
+    folder_name: "vpc-endpoint"

@@ -1,0 +1,6 @@
+---
+account: '{{ aws_account_id }}'
+region: "us-east-1"
+terminate: {{ terminate }}
+stacksets:
+  - name: compliance-framework-iam

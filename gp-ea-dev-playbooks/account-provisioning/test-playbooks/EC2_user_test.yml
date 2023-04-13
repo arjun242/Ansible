@@ -1,0 +1,4 @@
+---
+- hosts: all
+  roles:
+    - EC2_user_test

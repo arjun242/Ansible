@@ -1,0 +1,33 @@
+Description:  OPS SNS Topic, Cloudwatc automations, Cloudwatch metrics
+DeployTo: https://github.build.ge.com/gp-ops/gr-accounts-setup
+custom_resources:
+  - custom_stackset_name: gp-ops-notify-snstopic
+    template_file: templates/ops-notify-snstopic.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: ops-cloudwatch-notify-automation
+    template_file: templates/ec2-alert-resources.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: ops-dlm-cloudwatch-event
+    template_file: templates/dlm-event.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: ops-cloudwatchmetric-sns
+    template_file: templates/ops-cloudwatchmetrics-sns-topic.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+
+  - custom_stackset_name: cloudwatch-phd-health-event
+    template_file: templates/health-event.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+
+  - custom_stackset_name: cloudwatch-configuration-file-ssm-parameter
+    template_file: templates/ssm-parameters-cloudwatch-config-file.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    

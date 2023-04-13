@@ -1,0 +1,167 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the option groups that are necessary for builds of RDS oracle instances.
+              It must be created prior to any RDS Instances
+              Last version 15-May-2020
+
+ # History:
+  # 02-Dec-2019: Add 18c and 19c groups
+  # 29-Nov-2018: Separated options and parameter groups
+  # 05-Nov-2018: F1322.US7170: Updated to include multi-vpc support based on VPCAlias parameter
+  #              Naming convention: https://github.build.ge.com/Cloud/ManagedComponents/blob/master/CFEXPORTS.md
+  # 20-Aug-2018: Add SSL parameter
+  
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+Resources: 
+  rdsoracleeessloptiongroup: 
+    Type: 'AWS::RDS::OptionGroup'
+    Properties: 
+      EngineName: 'oracle-ee'
+      MajorEngineVersion: '12.1'
+      OptionGroupDescription: 'Oracle EE v12.1 SSL enable option group'
+      OptionConfigurations: 
+        - 
+          OptionName: 'SSL'
+          VpcSecurityGroupMemberships:
+          # all RDS instances must be assigned the common RDS SG
+            - Fn::ImportValue: !Sub 'rds:${VPCAlias}:base-rds-sg:id'
+          Port: '2484'
+          OptionSettings:
+            - Name: SQLNET.SSL_VERSION
+              Value: '1.2 or 1.0'
+
+  rdsoracleeessloptiongroup18: 
+    Type: 'AWS::RDS::OptionGroup'
+    Properties: 
+      EngineName: 'oracle-ee'
+      MajorEngineVersion: '18'
+      OptionGroupDescription: 'Oracle EE v18 SSL enable option group'
+      OptionConfigurations: 
+        - 
+          OptionName: 'SSL'
+          VpcSecurityGroupMemberships:
+          # all RDS instances must be assigned the common RDS SG
+            - Fn::ImportValue: !Sub 'rds:${VPCAlias}:base-rds-sg:id'
+          Port: '2484'
+          OptionSettings:
+            - Name: SQLNET.SSL_VERSION
+              Value: '1.2'
+            - Name: SQLNET.CIPHER_SUITE
+              Value: SSL_RSA_WITH_AES_256_CBC_SHA256
+
+  rdsoracleeessloptiongroup19: 
+    Type: 'AWS::RDS::OptionGroup'
+    Properties: 
+      EngineName: 'oracle-ee'
+      MajorEngineVersion: '19'
+      OptionGroupDescription: 'Oracle EE v19 SSL enable option group'
+      OptionConfigurations: 
+        - 
+          OptionName: 'SSL'
+          VpcSecurityGroupMemberships:
+          # all RDS instances must be assigned the common RDS SG
+            - Fn::ImportValue: !Sub 'rds:${VPCAlias}:base-rds-sg:id'
+          Port: '2484'
+          OptionSettings:
+            - Name: SQLNET.SSL_VERSION
+              Value: '1.2'
+            - Name: SQLNET.CIPHER_SUITE
+              Value: SSL_RSA_WITH_AES_256_CBC_SHA256
+
+  rdsoraclese2ssloptiongroup: 
+    Type: 'AWS::RDS::OptionGroup'
+    Properties: 
+      EngineName: 'oracle-se2'
+      MajorEngineVersion: '12.1'
+      OptionGroupDescription: 'Oracle SE v12.1 (se2) SSL enable option group'
+      OptionConfigurations: 
+        - 
+          OptionName: 'SSL'
+          VpcSecurityGroupMemberships:
+          # all RDS instances must be assigned the common RDS SG
+            - Fn::ImportValue: !Sub 'rds:${VPCAlias}:base-rds-sg:id'
+          Port: '2484'
+          OptionSettings:
+            - Name: SQLNET.SSL_VERSION
+              Value: '1.2 or 1.0'
+
+  rdsoraclese2ssloptiongroup18: 
+    Type: 'AWS::RDS::OptionGroup'
+    Properties: 
+      EngineName: 'oracle-se2'
+      MajorEngineVersion: '18'
+      OptionGroupDescription: 'Oracle SE v18 (se2) SSL enable option group'
+      OptionConfigurations: 
+        - 
+          OptionName: 'SSL'
+          VpcSecurityGroupMemberships:
+          # all RDS instances must be assigned the common RDS SG
+            - Fn::ImportValue: !Sub 'rds:${VPCAlias}:base-rds-sg:id'
+          Port: '2484'
+          OptionSettings:
+            - Name: SQLNET.SSL_VERSION
+              Value: '1.2'
+            - Name: SQLNET.CIPHER_SUITE
+              Value: SSL_RSA_WITH_AES_256_CBC_SHA256
+
+  rdsoraclese2ssloptiongroup19: 
+    Type: 'AWS::RDS::OptionGroup'
+    Properties: 
+      EngineName: 'oracle-se2'
+      MajorEngineVersion: '19'
+      OptionGroupDescription: 'Oracle SE v19 (se2) SSL enable option group'
+      OptionConfigurations: 
+        - 
+          OptionName: 'SSL'
+          VpcSecurityGroupMemberships:
+          # all RDS instances must be assigned the common RDS SG
+            - Fn::ImportValue: !Sub 'rds:${VPCAlias}:base-rds-sg:id'
+          Port: '2484'
+          OptionSettings:
+            - Name: SQLNET.SSL_VERSION
+              Value: '1.2'
+            - Name: SQLNET.CIPHER_SUITE
+              Value: SSL_RSA_WITH_AES_256_CBC_SHA256
+
+Outputs:
+ ## OPTION GROUPS
+ #  Note: Option groups are VPC-bound
+  rdsoracleeessloptiongroup:
+    Description: "Oracle EE v12.1 SSL enable option group"
+    Value: !Ref rdsoracleeessloptiongroup
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:oracle-ee:ssl:121'
+
+  rdsoracleeessloptiongroup18:
+    Description: "Oracle EE v18 SSL enable option group"
+    Value: !Ref rdsoracleeessloptiongroup18
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:oracle-ee:ssl:18'
+
+  rdsoracleeessloptiongroup19:
+    Description: "Oracle EE v19 SSL enable option group"
+    Value: !Ref rdsoracleeessloptiongroup19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:oracle-ee:ssl:19'
+
+  rdsoraclese2ssloptiongroup:
+    Description: "Oracle SE v12.1 (se2) SSL enable option group"
+    Value: !Ref rdsoraclese2ssloptiongroup
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:oracle-se2:ssl:121'
+
+  rdsoraclese2ssloptiongroup18:
+    Description: "Oracle SE v18 (se2) SSL enable option group"
+    Value: !Ref rdsoraclese2ssloptiongroup18
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:oracle-se2:ssl:18'
+
+  rdsoraclese2ssloptiongroup19:
+    Description: "Oracle SE v19 (se2) SSL enable option group"
+    Value: !Ref rdsoraclese2ssloptiongroup19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:oracle-se2:ssl:19'

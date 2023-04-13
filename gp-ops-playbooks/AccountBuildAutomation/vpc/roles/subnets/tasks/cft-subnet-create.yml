@@ -1,0 +1,233 @@
+---
+- name: Include app-subnet-vars file
+  include_vars: subnet-vars.yml
+
+- name: Include directory vars file
+  include_vars: templates-directory.yml
+
+- name: Include cft-subnet-cidr-calculation.yml
+  include_tasks: cft-subnet-cidr-calculation.yml
+
+# Az1 Subnet CF
+- name: Creating app Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.appAz1 }}"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/files/gp-subnet.yml"
+    template_parameters:
+      AzName: AZ1
+      SubnetName: "{{prefix}}{{ subnet.subnetNames.appAz1 }}"
+      SubnetCidrBlock: "{{appAz1Subnet}}"
+      NaclExportName: "{{prefix}}{{subnet.AppNaclExportName}}"
+      RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+      SubnetType: application
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Creating app Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.appAz2 }}"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/files/gp-subnet.yml"
+    template_parameters:
+      AzName: AZ2
+      SubnetName: "{{prefix}}{{ subnet.subnetNames.appAz2 }}"
+      SubnetCidrBlock: "{{appAz2Subnet}}"
+      NaclExportName: "{{prefix}}{{subnet.AppNaclExportName}}"
+      RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+      SubnetType: application
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az1 Subnet CF
+- name: Creating DB Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.db1 }}"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/files/gp-subnet.yml"
+    template_parameters:
+      AzName: AZ1
+      SubnetName: "{{prefix}}{{ subnet.subnetNames.db1 }}"
+      SubnetCidrBlock: "{{dbSubnet1}}"
+      NaclExportName: "{{prefix}}{{subnet.DBNaclExportName}}"
+      RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+      SubnetType: database
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Creating DB Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.db2 }}"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/files/gp-subnet.yml"
+    template_parameters:
+      AzName: AZ2
+      SubnetName: "{{prefix}}{{ subnet.subnetNames.db2 }}"
+      SubnetCidrBlock: "{{dbSubnet2}}"
+      NaclExportName: "{{prefix}}{{subnet.DBNaclExportName}}"
+      RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+      SubnetType: database
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az1 Subnet CF
+- name: Creating EP Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.ep1 }}"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/files/gp-subnet.yml"
+    template_parameters:
+      AzName: AZ1
+      SubnetName: "{{prefix}}{{ subnet.subnetNames.ep1 }}"
+      SubnetCidrBlock: "{{epSubnet1}}"
+      NaclExportName: "{{prefix}}{{subnet.EpNaclExportName}}"
+      RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+      SubnetType: endpoint
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Creating EP Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.ep2 }}"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/files/gp-subnet.yml"
+    template_parameters:
+      AzName: AZ2
+      SubnetName: "{{prefix}}{{ subnet.subnetNames.ep2 }}"
+      SubnetCidrBlock: "{{epSubnet2}}"
+      NaclExportName: "{{prefix}}{{subnet.EpNaclExportName}}"
+      RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+      SubnetType: endpoint
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Creating EXT and RB AZ1 and AZ2 subnets, if required
+  block:
+    # Az1 Subnet CF
+    - name: Creating EXT Az1 Subnet CFT
+      cloudformation:
+        stack_name: "{{prefix}}{{ subnet.stackNames.ext1 }}"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "{{role_path}}/files/gp-subnet.yml"
+        template_parameters:
+          AzName: AZ1
+          SubnetName: "{{prefix}}{{ subnet.subnetNames.ext1 }}"
+          SubnetCidrBlock: "{{extSubnet1}}"
+          NaclExportName: "{{prefix}}{{subnet.ExtNaclExportName}}"
+          RouteTableExportName: "{{prefix}}{{ subnet.InternetRouteTableExportName }}"
+          SubnetType: external
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+
+    # Az2 subnet CF
+    - name: Creating EXT Az2 Subnet CFT
+      cloudformation:
+        stack_name: "{{prefix}}{{ subnet.stackNames.ext2 }}"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "{{role_path}}/files/gp-subnet.yml"
+        template_parameters:
+          AzName: AZ2
+          SubnetName: "{{prefix}}{{ subnet.subnetNames.ext2 }}"
+          SubnetCidrBlock: "{{extSubnet2}}"
+          NaclExportName: "{{prefix}}{{subnet.ExtNaclExportName}}"
+          RouteTableExportName: "{{prefix}}{{ subnet.InternetRouteTableExportName }}"
+          SubnetType: external
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+    
+    # Az1 Subnet CF
+    - name: Creating RB Az1 Subnet CFT
+      cloudformation:
+        stack_name: "{{prefix}}{{ subnet.stackNames.rb1 }}"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "{{role_path}}/files/gp-subnet.yml"
+        template_parameters:
+          AzName: AZ1
+          SubnetName: "{{prefix}}{{ subnet.subnetNames.rb1 }}"
+          SubnetCidrBlock: "{{rbSubnet1}}"
+          NaclExportName: "{{prefix}}{{subnet.RbNaclExportName}}"
+          RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+          SubnetType: reachback
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+
+    # Az2 subnet CF
+    - name: Creating RB Az2 Subnet CFT
+      cloudformation:
+        stack_name: "{{prefix}}{{ subnet.stackNames.rb2 }}"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "{{role_path}}/files/gp-subnet.yml"
+        template_parameters:
+          AzName: AZ2
+          SubnetName: "{{prefix}}{{ subnet.subnetNames.rb2 }}"
+          SubnetCidrBlock: "{{rbSubnet2}}"
+          NaclExportName: "{{prefix}}{{subnet.RbNaclExportName}}"
+          RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+          SubnetType: reachback
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+  when: lookup('vars', 'extSubnetCIDR') != "NA" and lookup('vars','rbSubnetCIDR') != "NA"
+
+- name: Creating IGR AZ1 and AZ2 subnets, if required
+  block:
+    # Az1 Subnet CF
+    - name: Creating IGR Az1 Subnet CFT
+      cloudformation:
+        stack_name: "{{prefix}}{{ subnet.stackNames.igr1 }}"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "{{role_path}}/files/gp-subnet.yml"
+        template_parameters:
+          AzName: AZ1
+          SubnetName: "{{prefix}}{{ subnet.subnetNames.igr1 }}"
+          SubnetCidrBlock: "{{igrSubnet1}}"
+          NaclExportName: "{{prefix}}{{subnet.IgrNaclExportName}}"
+          RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+          SubnetType: integration
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+
+    # Az2 subnet CF
+    - name: Creating IGR Az2 Subnet CFT
+      cloudformation:
+        stack_name: "{{prefix}}{{ subnet.stackNames.igr2 }}"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "{{role_path}}/files/gp-subnet.yml"
+        template_parameters:
+          AzName: AZ2
+          SubnetName: "{{prefix}}{{ subnet.subnetNames.igr2 }}"
+          SubnetCidrBlock: "{{igrSubnet2}}"
+          NaclExportName: "{{prefix}}{{subnet.IgrNaclExportName}}"
+          RouteTableExportName: "{{prefix}}{{ subnet.AppRouteTableExportName }}"
+          SubnetType: integration
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+  when: igrSubnetCIDR != "NA"
+
+

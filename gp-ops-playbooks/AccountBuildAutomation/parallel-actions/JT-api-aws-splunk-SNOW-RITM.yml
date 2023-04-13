@@ -1,0 +1,4 @@
+---
+- hosts: localhost
+  roles:
+    - api-aws-splunk-SNOW-RITM

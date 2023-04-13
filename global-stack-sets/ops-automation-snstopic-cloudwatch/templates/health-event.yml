@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation template to create Cloud watch event for aws services health
+Resources:
+  ScheduledRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: services-health-event-notification-rule
+      Description: Run every time when there is any notification on health of all AWS services
+      EventPattern:
+        source:
+          - "aws.health"
+        detail-type:
+          - "AWS Health Event"
+      State: ENABLED
+      Targets:
+        - Arn: !ImportValue ops-notify-sns-topic
+          Id: OpsCloudWatch
+        - Arn: !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:BigPanda_Topic'
+          Id: BigPanda_Topic

@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Eventbus Spoke Account Role
+Parameters:
+  UAI:
+    Type: String
+    Description: >-
+      Universal Application Identifier(lowercase). Found at
+      https://applications.ge.com
+    AllowedPattern: 'uai[0-9]*'
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3037033
+  
+  AppName:
+    Type: String
+    MaxLength: 20
+    AllowedPattern: '[a-z0-9\-]*'
+    Description: 'AppName, keep to 15 characters or less.'
+    Default: ldap
+
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    Default: prd
+    AllowedValues:
+    - nonprd
+    - prd
+
+Resources:
+  SpokeAccountServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: !Sub '/app/${UAI}/'
+      RoleName: !Sub "${UAI}-${AppName}-eventrule-${Env}"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Tags:
+        - Key: uai
+          Value: uai3037033
+        - Key: associate
+          Value: sa
+        - Key: Env
+          Value: prd
+  ServicePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${UAI}-${AppName}-eventrule-${Env}-policy"
+      Roles:
+        - !Ref SpokeAccountServiceRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: CentralEventHub          
+            Action: 
+              - events:PutEvents
+            Resource: 'arn:aws:events:us-east-1:325381443140:event-bus/uai3037033-ldap-prd'
+            Effect: Allow
+
+Outputs:
+  RoleName:
+    Description: Spoke Account Event Rule Role Name
+    Value: !Ref SpokeAccountServiceRole
+  RoleArn:
+    Description: Spoke Account Event Rule Role Arn
+    Value: !GetAtt SpokeAccountServiceRole.Arn

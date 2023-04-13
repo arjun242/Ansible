@@ -1,0 +1,12 @@
+[{
+  "ParameterKey": "RoleName",
+  "ParameterValue": "maintenance-window-role"
+},
+{
+  "ParameterKey": "RolePath",
+  "ParameterValue": "/inf/"
+},
+{
+  "ParameterKey": "SSMLogBucket",
+  "ParameterValue": "gp-us-east-ops-mw-patch-logs"
+}]

@@ -1,0 +1,22 @@
+---
+- hosts: all
+  tasks:
+  # - name: ldap_search query
+  #   shell: | 
+  #      ldapsearch -x -D "cn=CA_AWSENTC_NC_PW_EUPreProd,ou=profile,dc=nixauth" -w "PFx9J9deez3N7DEF"  -H "{{ item }}" -b "ou=netgroup,dc=nixauth"  "genisnetgroupname=CA_NRG_AWS_GPOPS_BASTION"|grep "genisnetgroupname: CA_NRG_AWS_GPOPS_BASTION" 
+  #   register: ldapsearch
+  #   with_items:
+  #   - ldap://ghisrvdsrwp01.corporate.ge.com:8389
+    - name: fetch remote files for backup to s3
+      become: yes
+      shell: |
+        cat "{{ item }}" 
+      register: sssdldap
+      with_items:
+      - /etc/sssd/sssd.conf
+      - /etc/openldap/ldap.conf
+    - name: debug above variable
+      debug:
+        msg: "{{ sssdldap }}"  
+
+

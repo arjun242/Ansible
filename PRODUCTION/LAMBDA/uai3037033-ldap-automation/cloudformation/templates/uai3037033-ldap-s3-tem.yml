@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  UAI:
+    Type: String
+    Default: uai3037033
+  AppName:
+    Type: String
+    Default: ldap
+  Env:
+    Type: String
+    Default: prd
+
+Resources:
+  LDAPS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${UAI}-${AppName}-${Env}
+      VersioningConfiguration:
+        Status: Enabled
+      AccessControl: LogDeliveryWrite
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !ImportValue ldapcommonkmskeyarn
+      LoggingConfiguration:
+        LogFilePrefix: self-logs
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls : true
+        BlockPublicPolicy : true
+        IgnorePublicAcls : true
+        RestrictPublicBuckets : true
+      Tags:
+        - Key: appname
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+        - Key: uai
+          Value: !Ref UAI
+      
+Outputs:
+  LDAPS3Bucket:
+    Value: !GetAtt LDAPS3Bucket.Arn
+    Description: S3 bucket output
+    Export:
+      Name: ldapS3Bucket

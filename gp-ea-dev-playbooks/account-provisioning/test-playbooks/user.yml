@@ -1,0 +1,58 @@
+---
+- name: This is the playbook
+  hosts: localhost
+  vars:
+    access_key: "ASIAZVXGPZVNF4KACAWD"
+    secret_key: "mrRDRgvHbVypK0/w5BQ8Zg8nHINChYEIm4pGuXfk"
+    session_token: "FwoGZXIvYXdzEBkaDDnFzAUTioj0kX0OYiKVArEG4EGqT0pORC/NIHFnKzPI3ryNZWYEOhPiaCRBu76wsdZYrXga7RgtJWnNubFSbXISg6oRtWeuIlESaPR5YlyLaM4E32ZB2v+sUEieBQVIdJMZYg1uGi9aAPh5eJMmYwIv/Zo7fv39U+5FdnWyoOf+4JD6xIBdbniqUHBf6xgbtTFUclU77cyJy54F+POEzh53cq4R+MFJ9fe+iv7Rb680VdnC0S8YJgUwwigpmiacL/pTcdUcskRzsymSGZ+ikncGm4wCKwq1FDI8WEtohdUHPUM09LppCvgzEgZose7J3uNg/UGnotCo16xMNtGyKYulVfvvpe+fNQtBdyFTBlWzue1duQzzMLgfmUaI3HVO2lOb/24o+L3jjwYyKmiAjDLb/8HoeNT5yKIs5dxWQ9EDt/DrAZz1Ni8gDEx1Ldp0VuAbjFOQjw=="
+  tasks:
+    - name: Create users
+      iam:
+        iam_type: user  #to mention iam resousrces to be used (users,group,roles)
+        name: vaishnavi
+        state: present    # Whether to create, delete or update the IAM resource.
+        access_key_state: create    # to create access key
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+        
+
+    #creating group
+    - name: Create a group
+      iam_group:
+        #iam_type: group
+        name: test_group1
+        users: 
+          - vaishnavi
+        state: present  #Whether to create, delete or update the IAM resource. Note, roles cannot be updated.
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+
+    - name: delay
+      pause:
+        minutes: 5
+    - iam_group:
+        name: test_group1
+        state: absent
+        purge_users: true #to detatch users   
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}" 
+
+      #delete the user
+    - iam:
+        iam_type: user
+        name: vaishnavi
+        state: absent
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+      
+    - iam:
+        iam_type: group
+        name: test_group1
+        state: absent
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"

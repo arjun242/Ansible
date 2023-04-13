@@ -1,0 +1,86 @@
+---
+- name: Create user
+  iam:
+    iam_type: user
+    name: "{{ user }}"
+    state: present
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+    region: "{{ region }}"
+    access_key_state: create
+  tags: usercreation
+  register: user1
+
+- name: Print access creds
+  debug:
+    var: user1
+
+- name: Create group and add user to the new group
+  iam_group:
+    name: temp-acct-init
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+    region: "{{ region }}"
+    state: present
+    users:
+      - "{{ user }}"
+    managed_policy:
+      - arn:aws:iam::aws:policy/IAMFullAccess
+      - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+
+- name: Print creds
+  debug:
+    msg: "Access key : {{ user1.user_meta.access_keys[0].access_key_id }} and Secret : {{ user1.user_meta.access_keys[0].secret_access_key }}"
+
+- name: Setting variables
+  set_fact:
+    aws_akey: "{{ user1.user_meta.access_keys[0].access_key_id }}"
+    aws_skey: "{{ user1.user_meta.access_keys[0].secret_access_key }}"
+
+- pause:
+    seconds: 20
+
+- name: Entering block
+  block:
+    - name: Create or update stack
+      cloudformation:
+        stack_name: gp-stackset-execution
+        state: present
+        capabilities:
+          - "CAPABILITY_NAMED_IAM"
+        region: "{{ region }}"
+        aws_access_key: "{{ aws_akey }}"
+        aws_secret_key: "{{ aws_skey }}"
+        on_create_failure: ROLLBACK
+        template_body: "{{ lookup('file','stackset-execution.yml') }}"
+      tags: stackcreation
+
+  #rescue:
+  #  - name: Debug stack creation
+  #    debug:
+  #      msg: "Access Key: {{ aws_akey }} and Secret Key: {{ aws_skey }}"
+
+- name: Delete temp-acct-init group and attached policies
+  iam_group:
+    name: temp-acct-init
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+    region: "{{ region }}"
+    state: absent
+    managed_policy:
+      - arn:aws:iam::aws:policy/IAMFullAccess
+      - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+
+- name: Delete user
+  iam:
+    iam_type: user
+    name: "{{ user }}"
+    state: absent
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+    region: "{{ region }}"
+    access_key_state: remove

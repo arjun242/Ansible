@@ -1,0 +1,754 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to create SNS Topics for database instances.
+             Last version from 13-Nov-2020
+
+ # History:
+  # 07-May-2020: Initial version
+  # Added encryption key for SNS Topics
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Details
+        Parameters:
+          - VPCAlias
+          - UAI
+          - KmsKeyId
+      - Label:
+          default: MySQL notifications
+        Parameters:
+          - MySQLTopicName
+          - MySQLSubscriptionEmail
+      - Label:
+          default: MSSQL notifications
+        Parameters:
+          - MSSQLTopicName
+          - MSSQLSubscriptionEmail
+      - Label:
+          default: Postgresql notifications
+        Parameters:
+          - PostgresTopicName
+          - PostgresSubscriptionEmail
+      - Label:
+          default: Oracle notifications
+        Parameters:
+          - OracleTopicName
+          - OracleSubscriptionEmail
+      - Label:
+          default: Aurora MySQL notifications
+        Parameters:
+          - AuroraMySQLTopicName
+          - AuroraMySQLSubscriptionEmail
+      - Label:
+          default: Aurora Postgresql notifications
+        Parameters:
+          - AuroraPostgresTopicName
+          - AuroraPostgresSubscriptionEmail
+
+Parameters:
+  VPCAlias:
+    Type: String
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Default: ''
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' or 'uai' followed by 7 digits
+    AllowedPattern: '^(UAI|uai)[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'UAI3036792'
+  KmsKeyId:
+    Type: String
+    Default: ''
+    Description: Optional. If you provide a kms key, SNS Topic will be encrypted using that key else common key for the VPC will be used to Encrypt the SNS Topic.
+
+  MySQLTopicName:
+    Type: String
+    Default: 'DB-MYSQL-SNS'
+    Description: Name of SNS topic for MySQL databases
+  MySQLSubscriptionEmail:
+    Type: String
+    Default: ''
+    AllowedValues:
+      - ''
+      - pwawsmysql@ge.com
+      - hcawsmysql@ge.com
+      - corpawsmysql@ge.com
+      - aviawsmysql@ge.com
+      - emawsmysql@ge.com
+    #AllowedPattern: '^$|^[a-zA-Z0-9-.]*@ge.com$'
+    Description: Optional. GE email address for MySQL notifications.
+
+  MSSQLTopicName:
+    Type: String
+    Default: 'DB-MSSQL-SNS'
+    Description: Name of SNS topic for MSSQL databases
+  MSSQLSubscriptionEmail:
+    Type: String
+    Default: ''
+    AllowedValues:
+      - ''
+      - pwawsmssql@ge.com
+      - hcawsmssql@ge.com
+      - corpawsmssql@ge.com
+      - aviawsmssql@ge.com
+      - emawsmssql@ge.com
+    #AllowedPattern: '^$|^[a-zA-Z0-9-.]*@ge.com$'
+    Description: Optional. GE email address for MSSQL notifications.
+
+  PostgresTopicName:
+    Type: String
+    Default: 'DB-POSTGRES-SNS'
+    Description: Name of SNS topic for Postgres databases
+  PostgresSubscriptionEmail:
+    Type: String
+    Default: ''
+    AllowedValues:
+      - ''
+      - pwawspostgres@ge.com
+      - hcawspostgres@ge.com
+      - corpawspostgres@ge.com
+      - aviawspostgres@ge.com
+      - emawspostgres@ge.com
+    #AllowedPattern: '^$|^[a-zA-Z0-9-.]*@ge.com$'
+    Description: Optional. GE email address for Postgres notifications.
+
+  OracleTopicName:
+    Type: String
+    Default: 'DB-ORACLE-SNS'
+    Description: Name of SNS topic for Oracle databases
+  OracleSubscriptionEmail:
+    Type: String
+    Default: ''
+    AllowedValues:
+      - ''
+      - pwawsoracle@ge.com
+      - hcawsoracle@ge.com
+      - corpawsoracle@ge.com
+      - aviawsoraclenonec@ge.com
+      - emawsoracle@ge.com
+    #AllowedPattern: '^$|^[a-zA-Z0-9-.]*@ge.com$'
+    Description: Optional. GE email address for Oracle notifications.
+
+  AuroraMySQLTopicName:
+    Type: String
+    Default: 'DB-AURORA-MYSQL-SNS'
+    Description: Name of SNS topic for Aurora MySQL databases
+  AuroraMySQLSubscriptionEmail:
+    Type: String
+    Default: ''
+    AllowedValues:
+      - ''
+      - pwawsmysql@ge.com
+      - hcawsmysql@ge.com
+      - corpawsmysql@ge.com
+      - aviawsmysql@ge.com
+      - emawsmysql@ge.com
+    #AllowedPattern: '^$|^[a-zA-Z0-9-.]*@ge.com$'
+    Description: Optional. GE email address for Aurora MySQL notifications.
+
+  AuroraPostgresTopicName:
+    Type: String
+    Default: 'DB-AURORA-POSTGRESQL-SNS'
+    Description: Name of SNS topic for Aurora Postgres databases
+  AuroraPostgresSubscriptionEmail:
+    Type: String
+    Default: ''
+    AllowedValues:
+      - ''
+      - pwawspostgres@ge.com
+      - hcawspostgres@ge.com
+      - corpawspostgres@ge.com
+      - aviawspostgres@ge.com
+      - emawspostgres@ge.com
+    #AllowedPattern: '^$|^[a-zA-Z0-9-.]*@ge.com$'
+    Description: Optional. GE email address for Aurora Postgres notifications.
+
+Conditions:
+  HasMySQLEmail: !Not [!Equals [ !Ref MySQLSubscriptionEmail, '' ]]
+  HasMSSQLEmail: !Not [!Equals [ !Ref MSSQLSubscriptionEmail, '' ]]
+  HasPgSQLEmail: !Not [!Equals [ !Ref PostgresSubscriptionEmail, '' ]]
+  HasOracleEmail: !Not [!Equals [ !Ref OracleSubscriptionEmail, '' ]]
+  HasAuroraMySQLEmail: !Not [!Equals [ !Ref AuroraMySQLSubscriptionEmail, '' ]]
+  HasAuroraPgSQLEmail: !Not [!Equals [ !Ref AuroraPostgresSubscriptionEmail, '' ]]
+  ConditionKmsKeyId: !Not [!Equals [!Ref 'KmsKeyId', '']]
+
+Resources:
+ # mysql
+  DBSNSTopicMySQL:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'MySQL SNS Topic for Alarm Notifications'
+      TopicName: !Ref MySQLTopicName
+      # KmsMasterKeyId: !If [ConditionKmsKeyId, !Ref 'KmsKeyId', { "Fn::ImportValue" : !Sub "kms:base:${VPCAlias}-default-sns:arn" }]
+      KmsMasterKeyId: !Ref KMSKey
+      Tags:
+        - Key: 'Name'
+          Value: !Ref MySQLTopicName
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'SNS topic used by MySQL databases'
+
+  MySQLSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasMySQLEmail
+    Properties:
+      TopicArn: !Ref DBSNSTopicMySQL
+      Protocol: email
+      Endpoint: !Ref MySQLSubscriptionEmail
+
+
+ # MS SQL Server
+  DBSNSTopicMSSQL:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'MSSQL SNS Topic for Alarm Notifications'
+      TopicName: !Ref MSSQLTopicName
+      # KmsMasterKeyId: !If [ConditionKmsKeyId, !Ref 'KmsKeyId', { "Fn::ImportValue" : !Sub "kms:base:${VPCAlias}-default-sns:arn" }]
+      KmsMasterKeyId: !Ref KMSKey
+      Tags:
+        - Key: 'Name'
+          Value: !Ref MSSQLTopicName
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'SNS topic used by MSSQL databases'
+
+  MSSQLSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasMSSQLEmail
+    Properties:
+      TopicArn: !Ref DBSNSTopicMSSQL
+      Protocol: email
+      Endpoint: !Ref MSSQLSubscriptionEmail
+
+ # postgres
+  DBSNSTopicPostgreSQL:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'Postgresql SNS Topic for Alarm Notifications'
+      TopicName: !Ref PostgresTopicName
+      # KmsMasterKeyId: !If [ConditionKmsKeyId, !Ref 'KmsKeyId', { "Fn::ImportValue" : !Sub "kms:base:${VPCAlias}-default-sns:arn" }]
+      KmsMasterKeyId: !Ref KMSKey
+      Tags:
+        - Key: 'Name'
+          Value: !Ref PostgresTopicName
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'SNS topic used by Postgres databases'
+
+  PostgreSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasPgSQLEmail
+    Properties:
+      TopicArn: !Ref DBSNSTopicPostgreSQL
+      Protocol: email
+      Endpoint: !Ref PostgresSubscriptionEmail
+
+ # oracle
+  DBSNSTopicOracle:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'Oracle SNS Topic for Alarm Notifications'
+      TopicName: !Ref OracleTopicName
+      # KmsMasterKeyId: !If [ConditionKmsKeyId, !Ref 'KmsKeyId', { "Fn::ImportValue" : !Sub "kms:base:${VPCAlias}-default-sns:arn" }]
+      KmsMasterKeyId: !Ref KMSKey
+      Tags:
+        - Key: 'Name'
+          Value: !Ref OracleTopicName
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'SNS topic used by Oracle databases'
+
+  OracleSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasOracleEmail
+    Properties:
+      TopicArn: !Ref DBSNSTopicOracle
+      Protocol: email
+      Endpoint: !Ref OracleSubscriptionEmail
+
+  # aurora mysql
+  DBSNSTopicAuroraMySQL:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'Aurora MySQL SNS Topic for Alarm Notifications'
+      TopicName: !Ref AuroraMySQLTopicName
+      # KmsMasterKeyId: !If [ConditionKmsKeyId, !Ref 'KmsKeyId', { "Fn::ImportValue" : !Sub "kms:base:${VPCAlias}-default-sns:arn" }]
+      KmsMasterKeyId: !Ref KMSKey
+      Tags:
+        - Key: 'Name'
+          Value: !Ref AuroraMySQLTopicName
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'SNS topic used by Aurora MySQL databases'
+
+  AuroraMySQLSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAuroraMySQLEmail
+    Properties:
+      TopicArn: !Ref DBSNSTopicAuroraMySQL
+      Protocol: email
+      Endpoint: !Ref AuroraMySQLSubscriptionEmail
+
+  # aurora postgres
+  DBSNSTopicAuroraPostgreSQL:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'Aurora Postgresql SNS Topic for Alarm Notifications'
+      TopicName: !Ref AuroraPostgresTopicName
+      # KmsMasterKeyId: !If [ConditionKmsKeyId, !Ref 'KmsKeyId', { "Fn::ImportValue" : !Sub "kms:base:${VPCAlias}-default-sns:arn" }]
+      KmsMasterKeyId: !Ref KMSKey
+      Tags:
+        - Key: 'Name'
+          Value: !Ref AuroraPostgresTopicName
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'SNS topic used by Aurora Postgres databases'
+
+  AuroraPostgreSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAuroraPgSQLEmail
+    Properties:
+      TopicArn: !Ref DBSNSTopicAuroraPostgreSQL
+      Protocol: email
+      Endpoint: !Ref AuroraPostgresSubscriptionEmail
+
+  DBEventsNotifyAccessMySQL:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Id": "DBAMySQLTopicPolicy",
+          "Statement": [
+            {
+              "Sid": "__default_statement_ID",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": [
+                "SNS:GetTopicAttributes",
+                "SNS:SetTopicAttributes",
+                "SNS:AddPermission",
+                "SNS:RemovePermission",
+                "SNS:DeleteTopic",
+                "SNS:Subscribe",
+                "SNS:ListSubscriptionsByTopic",
+                "SNS:Publish",
+                "SNS:Receive"
+              ],
+              "Resource": "${DBSNSTopicMySQL}",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceOwner": "${AWS::AccountId}"
+                }
+              }
+            },
+            {
+              "Sid": "AWSEventsNotify",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": "${DBSNSTopicMySQL}"
+            }
+          ]
+        }
+      Topics:
+        - !Ref DBSNSTopicMySQL
+
+  DBEventsNotifyAccessMSSQL:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Id": "DBAMSSQLTopicPolicy",
+          "Statement": [
+            {
+              "Sid": "__default_statement_ID",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": [
+                "SNS:GetTopicAttributes",
+                "SNS:SetTopicAttributes",
+                "SNS:AddPermission",
+                "SNS:RemovePermission",
+                "SNS:DeleteTopic",
+                "SNS:Subscribe",
+                "SNS:ListSubscriptionsByTopic",
+                "SNS:Publish",
+                "SNS:Receive"
+              ],
+              "Resource": "${DBSNSTopicMSSQL}",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceOwner": "${AWS::AccountId}"
+                }
+              }
+            },
+            {
+              "Sid": "AWSEventsNotify",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": "${DBSNSTopicMSSQL}"
+            }
+          ]
+        }
+      Topics:
+        - !Ref DBSNSTopicMSSQL
+
+  DBEventsNotifyAccessPostgreSQL:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Id": "DBAPostgreSQLTopicPolicy",
+          "Statement": [
+            {
+              "Sid": "__default_statement_ID",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": [
+                "SNS:GetTopicAttributes",
+                "SNS:SetTopicAttributes",
+                "SNS:AddPermission",
+                "SNS:RemovePermission",
+                "SNS:DeleteTopic",
+                "SNS:Subscribe",
+                "SNS:ListSubscriptionsByTopic",
+                "SNS:Publish",
+                "SNS:Receive"
+              ],
+              "Resource": "${DBSNSTopicPostgreSQL}",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceOwner": "${AWS::AccountId}"
+                }
+              }
+            },
+            {
+              "Sid": "AWSEventsNotify",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": "${DBSNSTopicPostgreSQL}"
+            }
+          ]
+        }
+      Topics:
+        - !Ref DBSNSTopicPostgreSQL
+
+  DBEventsNotifyAccessOracle:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Id": "DBAOracleTopicPolicy",
+          "Statement": [
+            {
+              "Sid": "__default_statement_ID",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": [
+                "SNS:GetTopicAttributes",
+                "SNS:SetTopicAttributes",
+                "SNS:AddPermission",
+                "SNS:RemovePermission",
+                "SNS:DeleteTopic",
+                "SNS:Subscribe",
+                "SNS:ListSubscriptionsByTopic",
+                "SNS:Publish",
+                "SNS:Receive"
+              ],
+              "Resource": "${DBSNSTopicOracle}",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceOwner": "${AWS::AccountId}"
+                }
+              }
+            },
+            {
+              "Sid": "AWSEventsNotify",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": "${DBSNSTopicOracle}"
+            }
+          ]
+        }
+      Topics:
+        - !Ref DBSNSTopicOracle
+
+  DBEventsNotifyAccessAuroraMySQL:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Id": "DBAAuroraMySQLTopicPolicy",
+          "Statement": [
+            {
+              "Sid": "__default_statement_ID",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": [
+                "SNS:GetTopicAttributes",
+                "SNS:SetTopicAttributes",
+                "SNS:AddPermission",
+                "SNS:RemovePermission",
+                "SNS:DeleteTopic",
+                "SNS:Subscribe",
+                "SNS:ListSubscriptionsByTopic",
+                "SNS:Publish",
+                "SNS:Receive"
+              ],
+              "Resource": "${DBSNSTopicAuroraMySQL}",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceOwner": "${AWS::AccountId}"
+                }
+              }
+            },
+            {
+              "Sid": "AWSEventsNotify",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": "${DBSNSTopicAuroraMySQL}"
+            }
+          ]
+        }
+      Topics:
+        - !Ref DBSNSTopicAuroraMySQL
+
+  DBEventsNotifyAccessAuroraPostgreSQL:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Id": "DBAAuroraPostgreSQLTopicPolicy",
+          "Statement": [
+            {
+              "Sid": "__default_statement_ID",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": [
+                "SNS:GetTopicAttributes",
+                "SNS:SetTopicAttributes",
+                "SNS:AddPermission",
+                "SNS:RemovePermission",
+                "SNS:DeleteTopic",
+                "SNS:Subscribe",
+                "SNS:ListSubscriptionsByTopic",
+                "SNS:Publish",
+                "SNS:Receive"
+              ],
+              "Resource": "${DBSNSTopicAuroraPostgreSQL}",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceOwner": "${AWS::AccountId}"
+                }
+              }
+            },
+            {
+              "Sid": "AWSEventsNotify",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": "${DBSNSTopicAuroraPostgreSQL}"
+            }
+          ]
+        }
+      Topics:
+        - !Ref DBSNSTopicAuroraPostgreSQL
+
+  KMSKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: Default Kms Key For RDS SNS Topics
+      Enabled: true
+      EnableKeyRotation: true
+      Tags: 
+        - Key: Name
+          Value: 'rds-sns'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: automation-key
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+          - Sid: Enable Key Access for Admins
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed'
+            Action:
+              - 'kms:Create*'
+              - 'kms:Describe*'
+              - 'kms:Enable*'
+              - 'kms:List*'
+              - 'kms:Put*'
+              - 'kms:Update*'
+              - 'kms:Revoke*'
+              - 'kms:Disable*'
+              - 'kms:Get*'
+              - 'kms:Delete*'
+              - 'kms:TagResource'
+              - 'kms:UntagResource'
+              - 'kms:ScheduleKeyDeletion'
+              - 'kms:CancelKeyDeletion"'
+            Resource: '*'
+
+          - Sid: Enable Key Access
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/ops-jenkins-execution"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/cldarch-jenkins-execution"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldarch-fed"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/dbss/db-devops"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/dbss/dba"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-secops-fed"
+            Action:
+              - 'kms:CreateGrant'
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+            Resource: '*'
+
+  KMSAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/rds-sns'
+      TargetKeyId: !Ref KMSKey
+
+
+Outputs:
+ # MySQL
+  DBSNSTopicMySQL:
+    Description: 'MySQL SNS Topic for DB Instances'
+    Value: !Ref DBSNSTopicMySQL
+    Export:
+      Name: !Sub "rds:${VPCAlias}:snstopic:mysql"
+
+ # MS SQL Server
+  DBSNSTopicMSSQL:
+    Description: 'MSSQL SNS Topic for DB Instances'
+    Value: !Ref DBSNSTopicMSSQL
+    Export:
+      Name: !Sub "rds:${VPCAlias}:snstopic:mssql"
+
+ # Postgres
+  DBSNSTopicPostgreSQL:
+    Description: 'Postgresql SNS Topic for DB Instances'
+    Value: !Ref DBSNSTopicPostgreSQL
+    Export:
+      Name: !Sub "rds:${VPCAlias}:snstopic:postgresql"
+
+ # Oracle
+  DBSNSTopicOracle:
+    Description: 'Oracle SNS Topic for DB Instances'
+    Value: !Ref DBSNSTopicOracle
+    Export:
+      Name: !Sub "rds:${VPCAlias}:snstopic:oracle"
+
+  # Aurora MySQL
+  DBSNSTopicAuroraMySQL:
+    Description: 'Aurora MySQL SNS Topic for DB Instances'
+    Value: !Ref DBSNSTopicAuroraMySQL
+    Export:
+      Name: !Sub "rds:${VPCAlias}:snstopic:aurora-mysql"
+
+  # Aurora Postgres
+  DBSNSTopicAuroraPostgreSQL:
+    Description: 'Aurora Postgresql SNS Topic for DB Instances'
+    Value: !Ref DBSNSTopicAuroraPostgreSQL
+    Export:
+      Name: !Sub "rds:${VPCAlias}:snstopic:aurora-postgresql"
+
+  KMSID:
+    Description: Default master key that protects RDS SNS Topics
+    Value: !Ref KMSKey
+    Export:
+      Name: !Sub "kms:base:${VPCAlias}-default-rds-sns:id"
+
+  KMSArn:
+    Description: Default master key that protects RDS SNS Topics
+    Value: !GetAtt KMSKey.Arn
+    Export:
+      Name: !Sub "kms:base:${VPCAlias}-default-rds-sns:arn"
+
+  KMSAlias:
+    Description: Default master key that protects RDS SNS Topics
+    Value: !Ref KMSAlias
+    Export:
+      Name: !Sub "kms:base:${VPCAlias}-default-rds-sns:alias"

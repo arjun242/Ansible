@@ -1,0 +1,9 @@
+---
+# Description: To create new credentials, by assumption of temporary IAM role for Ansible for provisioning resources in the newly created VPC
+# Requirements: IAM Role ARN of service role
+- hosts: localhost
+  vars:
+    assume_role_arn: "{{temp_role_arn}}"
+  roles:
+    - assume_role
+  

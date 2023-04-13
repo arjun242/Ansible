@@ -1,0 +1,11 @@
+{
+    "Content": "file://webhost-ami.yml", 
+    "Name": "webhost-ami", 
+    "VersionName": "1.0",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

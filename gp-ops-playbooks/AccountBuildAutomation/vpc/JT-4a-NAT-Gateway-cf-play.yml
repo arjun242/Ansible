@@ -1,0 +1,6 @@
+---
+# Description: To create a NAT Gateway in the VPC using Cloudformation
+# Requirements: IAM Admin role access key, secret key and security token
+- hosts: localhost
+  roles:
+    - nat

@@ -1,0 +1,40 @@
+---
+- name: Installing Ldap and configuration
+  hosts: all
+  ignore_unreachable: true 
+  environment:
+    PATH: "{{ lookup('env', 'PATH') }}: /usr/local/bin/aws"
+  tasks:
+   #Ping remote instances with Ansible ping module
+   - include_vars: static_vars.yml
+   - name: ping the instance_ids
+     ping:
+     register: ping_out  
+   #define variable for playhosts 
+   - name: update playhosts in variable
+     debug:
+       var: ansible_play_hosts
+     run_once: true
+     ignore_unreachable: false
+   #send host ip addresses to SQS queue for LDAP installation  
+   - name: send connecting to sqs queue
+     shell: |
+       aws sqs send-message --queue-url "{{ sqs_url }}" --message-body '{{ ansible_play_hosts }}' --endpoint-url "https://sqs.us-east-1.amazonaws.com" --region {{ region }}
+     delegate_to: localhost
+     run_once: true
+     ignore_errors: true        
+   #Update Connectivity status in DynamoDB table as Ok,if Ansible Ping working and got output as PONG       
+   - name: updating status as ok
+     shell: |
+       aws dynamodb update-item --table-name "{{ ddb_table_name }}" --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"Connectivity": {"Value": {"S": "OK"}}}' --region {{ region }}
+     when: ping_out.ping is defined or ping_out.ping == 'pong'
+     delegate_to: localhost
+     ignore_errors: true
+     
+   # run only when instnace is unreachable to troubleshoot issues     
+   - name: update status as temperory when UNREACHABLE 
+     shell: |
+       aws dynamodb update-item --table-name "{{ ddb_table_name }}" --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"Connectivity": {"Value": {"S": "Temperory"}}}' --region {{ region }}
+     when: ping_out.unreachable is defined
+     delegate_to: localhost
+     ignore_errors: true 

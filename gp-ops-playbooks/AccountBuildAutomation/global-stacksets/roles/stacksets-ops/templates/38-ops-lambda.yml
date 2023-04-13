@@ -1,0 +1,11 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: OpsLambdaAutomationRole
+  - name: dlm-policy-state-check-lambda
+  - name: dlm-lambda-trigger
+  - name: ec2-upgrade-lambda
+  - name: Ssm-Defect-Servers-Lambda
+  - name: Ssm-Defect-Server-Lambda-Trigger

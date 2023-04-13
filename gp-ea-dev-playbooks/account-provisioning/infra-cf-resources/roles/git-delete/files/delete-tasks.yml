@@ -1,0 +1,81 @@
+- name: Delete the stacks
+  cloudformation:
+    stack_name: "{{prefix}}{{item}}"
+    state: "absent"
+    region: "{{ region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  with_items: "{{item.stackNames}}"
+
+- name: Create empty directory
+  file:
+    path: "{{source_directory}}"
+    state: directory
+
+- name: Create empty directory
+  file:
+    path: "{{dest_directory}}"
+    state: directory
+
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{item.repo}}"
+    dest: "{{dest_directory}}"
+    clone: yes
+    recursive: yes
+
+- name: Synchronize source and destination directories
+  synchronize:
+    src: "{{source_directory}}/"
+    dest: "{{dest_directory}}/{{item.folder_name}}"
+    delete: yes
+    recursive: yes
+  delegate_to: localhost
+
+- name: Reinitialize existing repo
+  shell:
+    cmd: "cd {{dest_directory}} && git init"
+
+- name: Add remote
+  shell:
+    cmd: "cd {{dest_directory}} && git remote add checkGit \"https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{item.repo}}\" "
+
+- name: Add identity
+  shell:
+    cmd: "cd {{dest_directory}} && git config user.name \"Vikram\" && git config user.email vikram.chandrasekaran@ge.com"
+
+- name: Pull the latest revision of repo
+  shell:
+    cmd: "cd {{dest_directory}} && git pull checkGit master"
+
+- name: Add the modified files using git add
+  shell:
+    cmd: "cd {{dest_directory}} && git add --all"
+
+- name: Block for commit
+  block:
+    - name: Commit the changes
+      shell:
+        cmd: "cd {{dest_directory}} && git commit -a -m \"{{item.message}}\" "
+
+    - name: Push the changes
+      shell:
+        cmd: "cd {{dest_directory}} && git push checkGit master"
+  rescue:
+    - debug:
+        msg: "Task- {{ ansible_failed_task }} failed with error {{ ansible_failed_result }}"
+
+- name: Remove remote
+  shell:
+    cmd: " cd {{dest_directory}} && git remote rm checkGit"
+
+- name: Delete destination directory
+  file:
+    path: "{{dest_directory}}"
+    state: absent
+
+- name: Delete Source directory
+  file:
+    path: "{{source_directory}}"
+    state: absent

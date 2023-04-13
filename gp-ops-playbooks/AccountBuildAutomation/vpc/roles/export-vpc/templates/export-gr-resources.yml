@@ -1,0 +1,161 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Export of GR created resources accounts.
+# Created by s.border 
+# export resources provisioned though the GR build process
+# so they can be imported into subsequent stack runs.
+# History : 
+  # 03-10: added exports on subnets for app , igr and db
+Parameters:
+  VpcID:
+    Description: specify the vpc id that was provisioned in guard rails.
+    Type: String
+
+  AZ1Name:
+    Description: AZ1 Name
+    Type: String
+
+  AZ2Name:
+    Description: AZ2 Name
+    Type: String
+
+  AZ1ID:
+    Description: AZ1 Use ID
+    Type: String
+   
+  AZ2ID:
+    Description: AZ2 Use ID
+    Type: String
+
+  VPCCidr:
+    Description: VPC CIDR 
+    Type: String
+    
+  VPCName:
+    Description: VPC Name
+    Type: String
+    
+  VPCAlias:
+    Description: VPC Alias Name
+    Type: String
+    
+  {% if vpcGatewayID != "NA" -%}
+  VPCGatewayId:
+    Description: VPC Gateway Id
+    Type: String
+  {% endif -%}
+  
+  {% if transitGatewayID != "NA" -%}
+  TransitGatewayId:
+    Description: Transit Gateway Id
+    Type: String
+  {% endif -%}
+   
+  SubnetInternetAZ1:
+    Description: Subnet internet AZ1 Id
+    Type: String
+    
+  SubnetInternetAZ2:
+    Description: Subnet internet AZ2 Id
+    Type: String
+  
+  NATEniId:
+    Description: Eni Id of the NAT instance. 
+    Type: String
+
+  VPCResolverSG:
+    Description: SG for DNS Resolver
+    Type: String
+  
+  InternetRouteTableID:
+    Description: Internet route table Id
+    Type: String
+
+Conditions:
+  HasNot: !Equals [ 'true', 'false' ]
+ 
+# dummy (null) resource, never created
+Resources:
+  NullResource:
+    Type: 'Custom::NullResource'
+    Condition: HasNot
+
+Outputs:
+  ExportVPCID:
+    Value: !Ref VpcID
+    Export:
+      Name: "{{prefix}}vpcid"
+  
+  ExportVPCAlias:
+    Value: !Ref VPCAlias
+    Export:
+      Name: "{{prefix}}VPCAlias"
+
+  ExportAZ1Name:
+    Value: !Ref AZ1Name
+    Export:
+      Name: "{{prefix}}AZ1Name"
+
+  ExportAZ2Name:
+    Value: !Ref AZ2Name
+    Export:
+      Name: "{{prefix}}AZ2Name"
+
+  ExportVPCCIDR:
+    Value: !Ref VPCCidr
+    Export:
+      Name: "{{prefix}}VPCCidr"  
+
+  ExportVPCName:
+    Value: !Ref VPCName
+    Export:
+      Name: "{{prefix}}VPCName"
+  
+  {% if vpcGatewayID != "NA" -%}
+  ExportVPCGatewayId:
+    Value: !Ref VPCGatewayId
+    Export:
+      Name: "{{prefix}}VgwID"
+  {% endif -%}
+  
+  {% if transitGatewayID != "NA" -%}
+  ExportTransitGatewayId:
+    Value: !Ref TransitGatewayId
+    Export:
+      Name: "{{prefix}}TgwID"
+  {% endif -%}
+      
+  ExportSnInternetAZ1:
+    Value: !Ref SubnetInternetAZ1
+    Export:
+      Name: "{{prefix}}SnInternetAZ1"
+      
+  ExportSnInternetAZ2:
+    Value: !Ref SubnetInternetAZ2
+    Export:
+      Name: "{{prefix}}SnInternetAZ2"
+  
+  ExportNATEniId:
+    Value: !Ref NATEniId
+    Export:
+      Name: "{{prefix}}NATEniId" 
+  
+  ExportAZ1ID:
+    Value: !Ref AZ1ID
+    Export:
+      Name: "{{prefix}}AZ1ID"  
+  
+  ExportAZ2ID:
+    Value: !Ref AZ2ID
+    Export:
+      Name: "{{prefix}}AZ2ID"  
+  
+  ExportDNSResolver:
+    Value: !Ref "VPCResolverSG"
+    Export: 
+      Name: "{{prefix}}VPCResolverSG"
+
+  ExportInternetRouteTableId:
+    Value: !Ref "InternetRouteTableID"
+    Export: 
+      Name: "{{prefix}}rt-InternetId"

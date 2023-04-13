@@ -1,0 +1,34 @@
+---
+- name: Include vars file
+  include_vars: endpoints-vars.yml
+
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Create a new directory for stack_master templates
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Create a new directory for stack_master parameters
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/parameters"
+
+- name: Copy stack-master.yml
+  template:
+    src: "stack_master.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/stack_master.yml"
+
+- name: Copy endpoints templates to templates folder
+  template:
+    src: "{{role_path}}/templates/{{item}}"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"
+  loop:
+    - ecr-api-endpoint.yml
+    - ecr-dkr-endpoint.yml
+    - execute-api-endpoint.yml
+    - kinesis-streams-endpoint.yml
+    - s3-endpoint.yml
+    - secretsmanager-endpoint.yml
+    - sqs-endpoint.yml

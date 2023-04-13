@@ -1,0 +1,12 @@
+- name: Creating a NACL CFT
+  cloudformation:
+    stack_name: "test-nacl-cft"
+    state: "present"
+    region: "us-east-1"
+    template: "./cft/nacls/templates/gp-nacl-application.yml"
+    template_parameters:
+      NaclName: test-nacl
+    role_arn: 'arn:aws:iam::665129569626:role/inf/ops-jenkins-execution'
+
+this taks failed because role arn cannot be assumed or invalid.
+it should have trust access to cft.

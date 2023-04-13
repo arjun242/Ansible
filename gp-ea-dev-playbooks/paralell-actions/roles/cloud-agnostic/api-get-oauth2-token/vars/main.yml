@@ -1,0 +1,3 @@
+access_token_url: https://fssfed.ge.com/fss/as/token.oauth2?grant_type=client_credentials&scope=api
+scope: api
+grant_type: client_credentials

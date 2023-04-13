@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation template to create Cloud watch event for Windows-R2-Standard-Lambda
+Resources:
+  ScheduledRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: cloudwatch-Schedule-Rule-For-Windows-R2-Standard-Servers
+      Description: This rule will run on every single day and trigger the mentioned lambda function
+      ScheduleExpression: "cron(30 7 * * ? *)"
+      State: ENABLED
+      Targets:
+        - Arn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:Windows-R2-Standard-Lambda'
+          Id: 'Windows-R2-Standard-Lambda'

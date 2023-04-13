@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create an access for the functional user
+Parameters:
+  AppName:
+    Type: String
+    Default: "inf-ssm"
+  FunctionalSSO:
+    Type: String
+    Description: Functional SSO
+    Default: "502813500"
+Resources:
+  Group:
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName: !Sub "${AppName}-group"
+      Path: /svc/
+      ManagedPolicyArns:
+        - !Sub >-
+          arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy
+  User:
+    Type: "AWS::IAM::User"
+    Properties:
+      UserName: !Ref FunctionalSSO
+      Tags:
+        - Key: Jenkins
+          Value: qa-jenkins.pw.ge.com
+      Groups:
+        - !Ref Group
+  UserPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: SSM-Execution-Policy
+      Groups:
+        - !Ref Group
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AssumeRole
+            Effect: Allow
+            Action: "sts:AssumeRole"
+            Resource:
+              - "arn:aws:iam::*:role/inf/iam-ssm-execution-role"
+          - Sid: AllowManageOwnUserDetails
+            Effect: Allow
+            Action:
+              - "iam:CreateAccessKey"
+              - "iam:DeleteAccessKey"
+              - "iam:ListAccessKeys"
+              - "iam:UpdateAccessKey"
+              - "iam:PassRole"
+              - "iam:ListRoles"
+            Resource:
+              - !GetAtt
+                - User
+                - Arn
+Outputs:
+  FunctionalUser:
+    Value: !GetAtt
+      - User
+      - Arn

@@ -1,0 +1,35 @@
+---
+# Shaun 02/05/2020 - Added Qualys Connector Role.
+#                    
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Qualys Connector role
+
+Parameters:
+  BaseAccountID:
+    Default: 805950163170
+    Type: Number
+    Description: Provide name of the role to be created in current account
+  ExternalId:
+    Default: 1577911250717
+    Type: Number
+    Description: Provide name of the role to be created in current account
+Resources:
+
+#Adding Qualys connector Role.      
+  QualysConnectorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'QualysCloudViewRole'
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/SecurityAudit"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${BaseAccountID}:root"
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref ExternalId

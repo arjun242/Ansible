@@ -1,0 +1,12 @@
+assume_all_roles: false
+account_region_map:
+  {{ aws_account_id }}: {{ aws_region }}
+
+roles:
+  - primary_role_arn: arn:aws:iam::{{ aws_account_id }}:role/hq/audit-fed
+    profile: {{ aws_account_id }}_hq/audit-fed
+    region: {{ aws_region }}
+    name: {{ aws_account_name }}
+    customConfig:
+      vpc:
+        expectedSubnets: !!set {application, database, endpoint}

@@ -1,0 +1,58 @@
+---
+schemaVersion: '2.2'
+description: executes the document on windows server
+parameters: 
+  SplunkPassKey:
+    type: String
+    description: splunk pass key
+    default: "{{ssm:/automation/ami/splunkpasskey}}"
+mainSteps:
+- action: aws:runDocument
+  name: AgentUpdate
+  inputs:
+    documentType: SSMDocument
+    documentPath: AWS-UpdateSSMAgent
+- name: WindowsCustomConfig
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+    - platformType
+    - Windows
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - uninstall-package UniversalForwarder
+    - Invoke-WebRequest https://download.splunk.com/products/universalforwarder/releases/7.1.1/windows/splunkforwarder-7.1.1-8f0ead9ec3db-x64-release.msi -OutFile C:\splunkforwarder-7.1.1-8f0ead9ec3db-x64-release.msi
+    - sleep 45
+    - msiexec.exe /i C:\splunkforwarder-7.1.1-8f0ead9ec3db-x64-release.msi AGREETOLICENSE=Yes /quiet
+    - sleep 200
+    - mkdir 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client'
+    - mkdir 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client\default'
+    - remove-item -path 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client\default\server.conf'
+    - remove-item -path 'C:\Program Files\SplunkUniversalForwarder\etc\auth\server.pem'
+    - remove-item -path 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client\default\deploymentclient.conf'
+    - Set-Variable -Name "hostnm" -Value (Invoke-RestMethod -uri http://169.254.169.254/latest/meta-data/hostname)
+    - Set-Variable -Name "instanceid" -Value (Invoke-RestMethod -uri http://169.254.169.254/latest/meta-data/instance-id)
+    - Set-Variable -Name "ip" -Value (Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/local-ipv4)
+    - Set-Variable -Name "macid" -Value (Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/network/interfaces/macs/)
+    - Set-Variable -Name "vpc" -Value (Invoke-RestMethod -uri http://169.254.169.254/latest/meta-data/network/interfaces/macs/${macid}/vpc-id)
+    - Set-Variable -Name "account" -Value $(Invoke-RestMethod http://169.254.169.254/latest/dynamic/instance-identity/document).accountId
+    - Set-Variable -Name "region" -Value $(Invoke-RestMethod http://169.254.169.254/latest/dynamic/instance-identity/document).region
+    - Set-Variable -Name "demo" -Value  "host = ${hostnm}:${instanceid}:${ip}:${region}:${vpc}:${account}"
+    - Set-Variable -Name "instancetype" -Value $(Invoke-RestMethod http://169.254.169.254/latest/meta-data/instance-type)
+    - echo $demo
+    - echo $instanceid
+    - echo $ip
+    - echo $region
+    - echo $vpc
+    - echo $account
+    - echo $instancetype
+    - cd 'C:\Program Files\SplunkUniversalForwarder\etc\system\local'
+    - Set-Content -Path  '.\inputs.conf' -Value "[default] `r`n${demo}"
+    - cd 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client\default'
+    - Set-Content -Path '.\server.conf' -Value "[deployment] `r`n{{SplunkPassKey}}"
+    - Set-Content -Path  '.\deploymentclient.conf' -Value "[deployment-client] `r`nclientName=${region}:${vpc}:${account}:${instancetype} `r`ndisabled=false  `r`n[target-broker:deploymentServer] `r`ntargetUri=ds-useast.gelogging.com:443"
+    - sleep 5
+    - restart-service -name SplunkForwarder

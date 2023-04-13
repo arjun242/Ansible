@@ -1,0 +1,23 @@
+- hosts: all
+  tasks:
+   - name: Check for security compliance status
+     service_facts:
+
+   - name: check for Qualys status
+     vars:
+      msg: |
+       Qualys service is {{ ansible_facts.services['qualys-cloud-agent.service'].state }}
+       CrowdStrike service is {{  ansible_facts.services['falcon-sensor.service'].state }}
+       SplunkForwarder service is {{ ansible_facts.services['SplunkForwarder.service'].state }}
+     debug:
+      msg: "{{ msg.split('\n') }}"
+
+   - name: Start compliance service which are stopped
+     service:
+      name: "{{ item.name }}"
+      state: started
+     when: item.state == "stopped"
+     with_items:
+      - "{{ ansible_facts.services['qualys-cloud-agent.service'] }}"
+      - "{{ ansible_facts.services['falcon-sensor.service'] }}"
+      - "{{ ansible_facts.services['SplunkForwarder.service'] }}"

@@ -1,0 +1,3 @@
+# this is for only testing, following parameter values should be obtained from survey
+aws_account_name: "TestAccount"
+aws_account_id: "12345677890"

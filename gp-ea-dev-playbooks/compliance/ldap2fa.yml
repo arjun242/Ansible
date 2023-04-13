@@ -1,0 +1,38 @@
+---
+- hosts: all
+  tasks:
+   - block:
+      
+      # Gathering the EC2 metadata facts
+      - ec2_metadata_facts:
+ 
+     # Fetching the tags on the target EC2 host by passing the region and instance id of the target instance
+      - ec2_instance_info:
+          region: "{{ ansible_ec2_placement_region }}"
+          instance_ids: "{{ ansible_ec2_instance_id }}"
+        register: tag   
+     
+      - name: Setting the tag value to lower case 
+        set_fact:
+          mfa_tag_value: "{{ tag.instances[0].tags.MFA | lower }}"
+        when: tag.instances[0].tags.MFA is defined 
+        
+     # If the above task of fetching tags fails due to any reason, this rescue block will get executed.
+     rescue: 
+       # Printing a debug msg 
+       - debug: 
+           msg: "This instance does not have either boto, boto3, botocore or python >= 2.6 installed to execute the ec2_instance_facts module, calling the role anyways"
+
+       # Calling the role 
+       - name: Including the role
+         include_role:
+           name: LDAP 2FA
+           
+       - set_fact: 
+           tag: ""
+               
+   # Calling the role to execute if the instance does not have 'bastion' tag on it.            
+   - name: Including the role 
+     include_role:
+       name: LDAP 2FA
+     when: tag != "" and (tag.instances[0].tags.MFA is not defined or mfa_tag_value == 'enabled')

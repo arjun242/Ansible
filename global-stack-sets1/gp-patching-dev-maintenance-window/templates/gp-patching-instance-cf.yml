@@ -1,0 +1,108 @@
+#07-Nov-2019 - Adjusted Env tag to env.
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template to create Maintenance Window and Tasks to trigger security updates for EC2 instances
+
+Parameters:
+  SnsTopic:
+    Type: String
+    Description: >-
+      SNS topic where all alerts regarding this maintenance window will be sent
+    Default: 'GPCloudOpsNotifications'
+    
+  MaintenanceWindowName:
+    Type: String
+    Description: >-
+      Name of the Maintenance Window | ex: prod_systemupdates | DO NOT USE CAPITALIZATION | <description>_<accountname>_systemupdates
+    Default: 'gp-dev-patchging-mw'
+    
+  PatchLogsBucket:
+    Description: >-
+      Name of s3 bucket to store logs related to patching
+    Type: String
+    Default: 'gp-us-east-ops-mw-patch-logs'
+    
+  ServiceRole:
+    Type: String
+    Description: >-
+      ARN for service role used for executions and notifcations associated with this Maintenance Window tasks
+    Default: 'arn:aws:iam::325381443140:role/inf/ssm-maintenance-window-role'
+    
+  CronDef:
+    Type: String
+    Description: >-
+      Cron spec for the Maintenance Window to trigger security updates for EC2 instances
+    Default: 'cron(0 5 ? * SAT#1 *)'  
+      
+  UAI:
+    Type: String
+    Description: UAI owner to tag the resources created with this CFT
+    Default: 'uai3026350'
+    
+  Env:
+    Type: String
+    Description: Environment to tag the resources created with this CFT
+    AllowedValues:
+     - lab
+     - dev
+     - qa
+     - stg
+     - prd
+    Default: 'dev'
+#
+Resources:
+
+# Maintenance Window
+  MW:
+    Type: AWS::SSM::MaintenanceWindow
+    Properties: 
+      AllowUnassociatedTargets: false
+      Cutoff: 1
+      Description: "Maintenance Window to trigger security updates for EC2 instances"
+      Duration: 4
+      Name: !Ref MaintenanceWindowName
+      Schedule: !Ref CronDef
+      Tags:
+        - Key: env
+          Value: !Ref Env
+        - Key: uai
+          Value: !Ref UAI
+# Target for the Maintenenace Window
+  MwTarget:
+    Type: 'AWS::SSM::MaintenanceWindowTarget'
+    Properties:
+      WindowId: !Ref MW
+      ResourceType: 'INSTANCE'
+      Targets:
+        - Key: 'tag:env'
+          Values: 
+            - !Ref Env
+      Name: !Sub target01-${MW}
+# Maintenenance 
+  MwTask:
+    Type: 'AWS::SSM::MaintenanceWindowTask'
+    Properties:
+      WindowId: !Ref MW
+      Targets:
+        - Key: 'WindowTargetIds'
+          Values:
+            - Ref: MwTarget
+      TaskArn: AWS-RunPatchBaseline
+      ServiceRoleArn: !Ref ServiceRole
+      TaskType: 'RUN_COMMAND'
+      TaskInvocationParameters:
+        MaintenanceWindowRunCommandParameters:
+          NotificationConfig:
+            NotificationArn: !Ref SnsTopic
+            NotificationEvents: 
+              - All
+            NotificationType: Command
+          ServiceRoleArn: !Ref ServiceRole
+          Parameters:
+            Operation: 
+              - Scan
+          OutputS3BucketName: !Ref PatchLogsBucket
+          OutputS3KeyPrefix: !Ref MwTarget
+      Priority: 1
+      MaxConcurrency: '25%'
+      MaxErrors: '75%'
+      Name: !Sub task01-${MW}

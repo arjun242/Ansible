@@ -1,0 +1,6 @@
+AzName: AZ2
+subnetName: "{{prefix}}{{ subnet.subnetNames.rb2 }}"
+subnetCidrBlock: "{{ rbSubnet2 }}"
+NaclExportName: "{{ subnet.RbNaclExportName }}"
+RouteTableExportName: "{{ subnet.AppRouteTableExportName }}"
+SubnetType: reachback

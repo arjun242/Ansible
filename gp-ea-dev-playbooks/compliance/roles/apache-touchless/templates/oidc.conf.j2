@@ -1,0 +1,56 @@
+#GE OpenID Connect configuration
+#Provided by Web Access Management Team
+
+LoadModule auth_openidc_module modules/mod_auth_openidc.so
+
+# Path which should be protected by this module. Default is "/" (everything.)
+# Attribute based authorization rules can be added. for more info: sc.ge.com/*oidc
+
+<Location /unprotected/>
+  Satisfy Any
+  Allow from all
+</Location>
+
+<Location />
+   AuthType openid-connect
+   Require valid-user
+</Location>
+
+<Location /server-status>
+  AuthType None
+  Require all granted
+</Location>
+
+#Ping OpenID Connect Configuration URL 
+OIDCProviderMetadataURL {{ oid_sso_url | replace('"','') | replace('"','') | trim }}
+
+# Client ID. Obtain from sc.ge.com/*oidc
+# Should be in the form GEOG_<app ci>_<app env>_oidc
+OIDCClientID {{ clientId | replace('"','') | replace('"','') | trim }}
+
+# Client secret. Must keep secret. Obtain from sc.ge.com/*oidc
+OIDCClientSecret {{ clientSecret | replace('"','') | replace('"','') | trim }}
+OIDCProviderTokenEndpointAuth client_secret_post
+
+# Redirect URI. Empty location where mod_auth_openidc can accept tokens from Ping.
+# IMPORTANT: must be inside of "protected resource" path above.
+# IMPORTANT: must be registered exactly with Ping. To change, please visit sc.ge.com/*oidc
+OIDCRedirectURI {{ redirect_url | replace('"','') | replace('"','') | trim }}
+
+# Scopes
+# include "openid" and "profile" for SSO, Fname, Lname, role, email, business, sub-business
+# additional scopes: register your client at sc.ge.com/*apidev to be authorized for additional API services
+OIDCScope "{{ oidc_policies | replace('"','') | replace('"','') | trim }} profile"
+
+# Set a password for crypto purposes. Used in httpd module only.
+# Should be unique for each install, but does not need to be shared with Ping
+# Could use a command like this to generate random passphrase: openssl rand -base64 16
+OIDCCryptoPassphrase {{ crypto_from_os | replace('"','') | replace('"','') | trim }}
+
+# variable where SSO is passed
+OIDCAuthNHeader {{ SSO_header }}
+OIDCRemoteUserClaim sub
+
+#prefix for all attributes
+OIDCClaimPrefix ge_
+#this is updated thru ansible

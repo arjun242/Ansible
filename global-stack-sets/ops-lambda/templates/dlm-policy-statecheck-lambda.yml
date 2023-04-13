@@ -1,0 +1,89 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create IAM role, lambda function for DLM policies status checks 
+Resources:
+  LambdaFunction: 
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: 'dlm-policy-state-check'
+      Description: 'Check DLM policies in Error or disabled state'
+      Handler: "index.handler"
+      Role: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/inf/OpsLambdaAutomationRole'
+      Runtime: 'python3.8'
+      Code: 
+        S3Bucket: 'gp-us-east-ops-automation-common-tools'
+        S3Key: 'Ops-Lambda-Functions/DLM/index.zip'
+      MemorySize: 256 
+      Timeout: 120
+      Tags:
+        - Key: uai
+          Value: 'uai2000020'
+        - Key: env
+          Value: 'dev'          
+      Layers:
+        - !Ref MyLayer
+      VpcConfig:
+        SecurityGroupIds:
+        - !GetAtt LambdaSecurityGroup.GroupId
+        SubnetIds:
+        - !ImportValue app-az1
+        - !ImportValue app-az2
+        
+  CloudWatchEventsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/cloudwatch-schedule-rule-for-dlm-lambda'
+ 
+ 
+  LambdaLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: '/aws/lambda/ops-dlm-state-check'
+      RetentionInDays: 7
+      Tags:
+        - Key: uai
+          Value: 'uai2000020'
+        - Key: name
+          Value: 'ops-dlm-state-check-log'   
+        - Key: env
+          Value: 'dev'
+  
+  MyLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.6
+        - python3.7
+        - python3.8
+      Content:
+        S3Bucket: 'gp-us-east-ops-automation-common-tools'
+        S3Key: 'Ops-Lambda-Functions/Layers/ops-dlm-policy-state-check-layer.zip'
+      Description: Ops-Lambda-Functions/Layers/ops-dlm-policy-state-check-layer
+      LayerName: ops-test-dlm-state-check-layer
+    
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'SG for Lambda Function ops-test-dlm-state-check'
+      GroupName: 'ops-dlm-state-check-lambda-SG'
+      VpcId: !ImportValue vpcid
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: uai
+          Value: 'uai2000020'
+        - Key: name
+          Value: 'ops-dlm-state-check-lambda-SG'   
+        - Key: env
+          Value: 'dev'
+          
+Outputs:
+  LambdaFunctionArn:
+    Description: "Resource Arn of the Lambda function"
+    Value: !GetAtt 'LambdaFunction.Arn'
+    Export:
+      Name: "DLMStatecheckLambdaArn"

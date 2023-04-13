@@ -1,0 +1,9 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: iam-stackset-execution-policy
+  - name: iam-read-only
+  - name: iam-jenkins-execution
+  - name: iam-cldarch-jenkins-exe-role

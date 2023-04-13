@@ -1,0 +1,75 @@
+custom_resources:
+  - name: ecr-postgresql
+    custom_stackset_name: dbss-rds-hardening-ecr-postgresql
+    description: DB automation for hardening setup ecr-postgresql
+    template_file: templates/ecr.yml
+    parameter_file: parameters/ecr-postgresql.json
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+
+  - name: ecr-oracle
+    custom_stackset_name: dbss-rds-hardening-ecr-oracle
+    description: DB automation for hardening setup ecr-oracle
+    template_file: templates/ecr.yml
+    parameter_file: parameters/ecr-oracle.json
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+
+  - name: ecr-mysql
+    custom_stackset_name: dbss-rds-hardening-ecr-mysql
+    description: DB automation for hardening setup ecr-mysql
+    template_file: templates/ecr.yml
+    parameter_file: parameters/ecr-mysql.json
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+
+  - name: ecr-aurora-postgresql
+    custom_stackset_name: dbss-rds-hardening-ecr-aurora-postgresql
+    description: DB automation for hardening setup ecr-aurora-postgresql
+    template_file: templates/ecr.yml
+    parameter_file: parameters/ecr-aurora-postgresql.json
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+
+  - name: ecr-aurora-mysql
+    custom_stackset_name: dbss-rds-hardening-ecr-aurora-mysql
+    description: DB automation for hardening setup ecr-aurora-mysql
+    template_file: templates/ecr.yml
+    parameter_file: parameters/ecr-aurora-mysql.json
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1

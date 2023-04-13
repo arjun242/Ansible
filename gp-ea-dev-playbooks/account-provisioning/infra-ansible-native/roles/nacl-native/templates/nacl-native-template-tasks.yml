@@ -1,0 +1,51 @@
+---
+- name: Create a NACL with no associated subnets
+  ec2_vpc_nacl:
+    name: "{{ nacl_name }}"
+    region: "{{ region }}"
+    vpc_id: "{{ vpc_id }}"
+    {% raw %}
+    aws_access_key: "{{ acct_auto_aws_access_key }}"
+    aws_secret_key: "{{ acct_auto_aws_secret_key }}"
+    security_token: "{{ acct_auto_aws_session_token }}"
+  {% endraw %}
+
+    tags:
+      Name: "{{application_name}}"
+      app: "{{app_tag}}"
+      uai: "{{uai}}"
+      VpcId: "{{vpc_id}}"
+    ingress:
+      # rule no, protocol, allow/deny, cidr, icmp_type, icmp_code,
+      #                                             port from, port to
+      - [1100, 'tcp', 'allow', '10.0.0.0/8', null, null, 80, 80]
+      - [1150, 'tcp', 'allow', '10.0.0.0/8', null, null, 443, 443]
+      - [1200, 'tcp', 'allow', '3.0.0.0/8', null, null, 80, 80]
+      - [1250, 'tcp', 'allow', '3.0.0.0/8', null, null, 443, 443]
+      - [1400, 'tcp', 'allow', '8.22.209.141/32', null, null, 1024, 65535]
+      - [1420, 'tcp', 'allow', '8.23.90.173/32', null, null, 1024, 65535]
+      - [1440, 'tcp', 'allow', '12.155.41.141/32', null, null, 1024, 65535]
+      - [1460, 'tcp', 'allow', '12.229.99.173/32', null, null, 1024, 65535]
+      - [1500, 'tcp', 'allow', '0.0.0.0/0', null, null, 32768, 65535]
+      - [1550, 'udp', 'allow', '0.0.0.0/0', null, null, 32768, 65535]
+      - [1201, 'all', 'allow', '10.231.48.0/24', null, null, 32768, 65535]
+      - [1204, 'all', 'deny', '0.0.0.0/0', null, null, -1, -1]
+
+
+    egress:
+      - [1100, 'tcp', 'allow', '0.0.0.0/0', null, null, 80, 80]
+      - [1200, 'tcp', 'allow', '0.0.0.0/0', null, null, 443, 443]
+      - [1300, 'tcp', 'allow', '3.159.17.48/32', null, null, 25, 25]
+      - [1310, 'tcp', 'allow', '3.159.213.48/32', null, null, 25, 25]
+      - [1320, 'tcp', 'allow', '3.159.19.78/32', null, null, 25, 25]
+      - [1330, 'tcp', 'allow', '3.159.212.78/32', null, null, 25, 25]
+      - [1350, 'tcp', 'allow', '10.38.9.235/32', null, null, 25, 25]
+      - [1400, 'tcp', 'allow', '0.0.0.0/0', null, null, 1024, 65535]
+      - [1410, 'udp', 'allow', '0.0.0.0/0', null, null, 1024, 65535]
+      - [1500, 'all', 'allow', '10.231.48.0/24', null, null, null, null]
+      - [1600, 'tcp', 'allow', '10.231.49.0/26', null, null, 1433, 5432]
+      - [1700, 'tcp', 'allow', '10.242.160.96/32', null, null, 389, 389]
+      - [1710, 'tcp', 'allow', '10.38.9.237/32', null, null, 389, 389]
+      - [1720, 'tcp', 'allow', '10.73.56.153/32', null, null, 389, 389]
+
+    state: present

@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create 2 backup vaults
+Resources:
+  NonProdBackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties: 
+      AccessPolicy: 
+        Version: 2012-10-17
+        Statement:
+          - Sid: CloudOpsTeamAccessOnly
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - backup:DeleteBackupVault
+              - backup:PutBackupVaultAccessPolicy
+              - backup:DeleteBackupVaultAccessPolicy
+              - backup:GetBackupVaultAccessPolicy
+              - backup:StartBackupJob
+              - backup:StartCopyJob
+              - backup:StartRestoreJob
+              - backup:GetBackupVaultNotifications
+              - backup:PutBackupVaultNotifications
+              - backup:DeleteBackupVaultNotifications
+            Resource: "*"
+            Condition:
+              ArnNotEquals:
+                aws:PrincipalArn:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldgpops-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/gp-stackset-execution"
+      BackupVaultName: GP-Non-Prod-Backup-Vault
+      BackupVaultTags: 
+        env : dev
+      EncryptionKeyArn: !ImportValue GP-Common-Backup-Non-Prod-KMS-Key
+      Notifications:
+        BackupVaultEvents:
+          - BACKUP_JOB_COMPLETED
+          - COPY_JOB_FAILED
+          - RESTORE_JOB_COMPLETED
+          - COPY_JOB_FAILED
+          - RECOVERY_POINT_MODIFIED
+          - S3_BACKUP_OBJECT_FAILED
+          - S3_RESTORE_OBJECT_FAILED
+        SNSTopicArn: !ImportValue GP-Backup-Failure-SNS-Topic
+
+  ProdBackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties: 
+      AccessPolicy: 
+        Version: 2012-10-17
+        Statement:
+          - Sid: CloudOpsTeamAccessOnly
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - backup:DeleteBackupVault
+              - backup:PutBackupVaultAccessPolicy
+              - backup:DeleteBackupVaultAccessPolicy
+              - backup:GetBackupVaultAccessPolicy
+              - backup:StartBackupJob
+              - backup:StartCopyJob
+              - backup:StartRestoreJob
+              - backup:GetBackupVaultNotifications
+              - backup:PutBackupVaultNotifications
+              - backup:DeleteBackupVaultNotifications
+            Resource: "*"
+            Condition:
+              ArnNotEquals:
+                aws:PrincipalArn:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldgpops-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/gp-stackset-execution"
+      BackupVaultName: GP-Prod-Backup-Vault
+      BackupVaultTags: 
+        env : prod
+      EncryptionKeyArn: !ImportValue GP-Common-Backup-Prod-KMS-Key
+      Notifications:
+        BackupVaultEvents:
+          - BACKUP_JOB_COMPLETED
+          - COPY_JOB_FAILED
+          - RESTORE_JOB_COMPLETED
+          - COPY_JOB_FAILED
+          - RECOVERY_POINT_MODIFIED
+          - S3_BACKUP_OBJECT_FAILED
+          - S3_RESTORE_OBJECT_FAILED
+        SNSTopicArn: !ImportValue GP-Backup-Failure-SNS-Topic
+
+Outputs:
+  NonProdVaultExport:
+    Description: GP-Non-Prod vault name
+    Value: !Ref NonProdBackupVault
+    Export:
+      Name: GP-Non-Prod-Vault-Name
+  ProdVaultExport:
+    Description: GP-Non-Prod vault name
+    Value: !Ref ProdBackupVault
+    Export:
+      Name: GP-Prod-Vault-Name
+
+  
+        

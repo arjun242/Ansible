@@ -1,0 +1,9 @@
+#The main.yml file executes the imported tasks depending the OS distribution condition
+---
+- name: Installation and Configuration for Windows
+  import_tasks: qualys-windows.yml
+  when: ansible_os_family == "Windows"  
+
+- name: Installation and Configuration for Redhat
+  import_tasks: qualys-linux.yml
+  when: ansible_os_family != "Windows" 	

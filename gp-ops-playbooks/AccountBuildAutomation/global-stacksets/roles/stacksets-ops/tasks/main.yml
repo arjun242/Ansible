@@ -1,0 +1,59 @@
+---
+- name: Include vars file
+  include_vars: main.yml
+
+- set_fact:
+    region_split: "{{ aws_region.split('-') }}"
+
+- set_fact:
+    region_prefix: "{{region_split[0]}}-{{region_split[1]}}"
+
+- name: Create a new directory <account-name>-<account-id>
+  file:
+    state: directory
+    path: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 12-gr-account-support-resources.yml
+  template:
+    src: "12-gr-account-support-resources.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 20-automation-components.yml
+  template: 
+    src: "20-automation-components.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 23-ops-cloudwatch.yml
+  template:
+    src: "23-ops-cloudwatch.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 25-ops-patching.yml
+  template:
+    src: "25-ops-patching.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 38-ops-lambda.yml
+  template:
+    src: "38-ops-lambda.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+    
+- debug: var=ansible_date_time
+
+- name: Copy Ansible Metadata file
+  template:
+    src: "{{role_path}}/files/ansible_metadata.txt"
+    dest: "{{source_directory}}/ansible_metadata.txt"
+  vars:
+    current_date_jinja: "{{ ansible_date_time.date }} {{ansible_date_time.time}} UTC"
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_repo: gr-accounts-setup
+    message: "Ansible rendered stackset files"
+
+# Pause for 10 minutes to build stackset cache.
+- pause:
+    minutes: 10

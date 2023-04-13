@@ -1,0 +1,28 @@
+[{
+  "ParameterKey": "CronDef",
+  "ParameterValue": "cron(0 5 ? * SAT#1 *)"
+},
+{
+  "ParameterKey": "ServiceRole",
+  "ParameterValue": "arn:aws:iam::325381443140:role/inf/ssm-maintenance-window-role"
+},
+{
+  "ParameterKey": "PatchLogsBucket",
+  "ParameterValue": "gp-us-east-ops-mw-patch-logs"
+},
+{
+  "ParameterKey": "MaintenanceWindowName",
+  "ParameterValue": "gp-dev-patchging-mw"
+},
+{
+  "ParameterKey": "SnsTopic",
+  "ParameterValue": "GPCloudOpsNotifications"
+},
+{
+  "ParameterKey": "Env",
+  "ParameterValue": "dev"
+},
+{
+  "ParameterKey": "UAI",
+  "ParameterValue": "uai3026350"
+}]

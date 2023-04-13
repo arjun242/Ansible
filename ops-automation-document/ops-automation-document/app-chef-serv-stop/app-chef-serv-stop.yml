@@ -1,0 +1,32 @@
+# History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to remove chef-client from EC2 instances....
+
+mainSteps:
+
+- name: WindowsSetup
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Windows 
+  inputs:
+    runCommand:
+    - $serv_chef=Get-Service | where-object {$_.name -like '*chef*'} | Select-Object -ExpandProperty Name
+    - stop-service "$serv_chef"
+    - Set-Service -Name "$serv_chef" -StartupType Disabled
+
+
+
+- name: LinuxOSType
+  action: aws:runShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - service chef-client stop
+    - chkconfig chef-client off

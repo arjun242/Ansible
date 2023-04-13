@@ -1,0 +1,8 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+stacksets:
+  - name: iam-common-managed-policy-deploy-role
+  - name: iam-common-managed-policy-fed-role
+  - name: iam-ssm-common-managed-policies
+  - name: iam-gesos-ecr-access-policy

@@ -1,0 +1,276 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Task for creating ECS Task Role used with dbss Task Definitions
+
+# History:
+# 5-oct-2018: Initial commit
+# 23-jan-2019: Added Permissions for the RDS self service Start,Stop,Reboot,Snapshot,Tag RDS
+
+Parameters:
+  ArnStart:
+    Type: String
+    Description: "The start of an ARN. 'arn:aws-us-gov' for GovCloud, 'arn:aws' otherwise"
+    Default: 'arn:aws'
+  VPCAlias:
+    Type: String
+    Description: VPC alias or logical label for automation environment
+    Default: 'gr-db'
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' or 'uai' followed by 7 digits
+    AllowedPattern: '^(UAI|uai)[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'uai3036792'
+
+Resources:
+  ECSTaskDefinitionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      #RoleName: !Sub 'ecs-taskrole-${VPCAlias}'
+      Path: '/svc/'
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+                - ec2.amazonaws.com
+            Action: sts:AssumeRole
+# commented out by 212390867
+#      ManagedPolicyArns:
+#        # attaching the 'corp mandated' policy is required
+#        # otherwise they are attached automatically and you cannot delete the stack until you unattach them manually
+#        - !ImportValue 'iam:mc:default-deny-policy:arn'     # -- currently explictly denies 's3:GetObject'
+#        - !ImportValue 'iam:mc:iam-deny-policy:arn'
+#        - !Sub 
+#          - '${ArnStart}:iam::${accountid}:policy/mc/Protect_Guardrails'
+#          - { accountid: !Ref 'AWS::AccountId' }
+      Policies:
+        - PolicyName: ecs_enablement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CreateAWSServiceRoleForECS 
+                Action: 
+                - iam:CreateServiceLinkedRole
+                - iam:PutRolePolicy
+                Effect: Allow
+                Resource: 'arn:aws:iam::*:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS*'
+                Condition:
+                  StringLike:
+                    iam:AWSServiceName: ecs.amazonaws.com
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-s3'
+          PolicyDocument:
+            Statement:
+              # because secrets are not well named/tagged with dbss having to use a fairly generic limitor
+              - Sid: AllowReadBuckets
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectTagging
+                  - s3:ListBucket
+                Resource:
+                  - Fn::ImportValue: !Sub "s3:${VPCAlias}:code:arn" 
+                  - !Join
+                    - ''                  
+                    - - Fn::ImportValue: !Sub "s3:${VPCAlias}:code:arn"
+                      - '/*'
+                  - Fn::ImportValue: !Sub "s3:${VPCAlias}:artifacts:arn" 
+                  - !Join
+                    - ''
+                    - - Fn::ImportValue: !Sub "s3:${VPCAlias}:artifacts:arn"
+                      - '/*'
+              - Sid: AllowReadWriteAPPandLogBuckets
+                Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:DeleteObject
+                  - s3:DeleteObjectTagging
+                  - s3:DeleteObjectVersionTagging
+                  - s3:GetObject
+                  - s3:GetObjectTagging
+                  - s3:ListBucket
+                  - s3:ListMultipartUploadParts
+                  - s3:PutBucketTagging
+                  - s3:PutObject
+                  - s3:PutObjectTagging
+                  - s3:PutObjectVersionTagging
+                  - s3:ReplicateTags
+                Resource:
+                  - Fn::ImportValue: !Sub "s3:${VPCAlias}:logs:arn"
+                  - !Join
+                    - ''
+                    - - Fn::ImportValue: !Sub "s3:${VPCAlias}:logs:arn"
+                      - '/*'
+                  - Fn::ImportValue: !Sub "s3:${VPCAlias}:migrations:arn"
+                  - !Join
+                    - ''
+                    - - Fn::ImportValue: !Sub "s3:${VPCAlias}:migrations:arn"
+                      - '/*'
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-others'
+          PolicyDocument:
+            Statement:
+              - Sid: ECRAuthorization
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Sid: AllowReadAllBuckets
+                Effect: Allow
+                Action:
+                  - s3:GetAccountPublicAccessBlock # not supported for resource-level permissions, requires "All Resources" permission
+                  - s3:HeadBucket                  # not supported for resource-level permissions, requires "All Resources" permission
+                  - s3:ListAllMyBuckets            # not supported for resource-level permissions, requires "All Resources" permission
+                Resource: '*'
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-sns'
+          PolicyDocument:
+            Statement:
+              - Sid: AllowPublishToTopic
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - Fn::ImportValue: !Sub "rds:${VPCAlias}:snstopic:oracle"
+                  - Fn::ImportValue: !Sub "rds:${VPCAlias}:snstopic:postgresql"
+                  - Fn::ImportValue: !Sub "rds:${VPCAlias}:snstopic:mssql"
+                  - Fn::ImportValue: !Sub "rds:${VPCAlias}:snstopic:mysql"
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-rds'
+          PolicyDocument:
+            Statement:
+              - Sid: AllowRDSSelfServiceActions
+                Effect: Allow
+                Action:
+                  - rds:AddTagsToResource
+                  - rds:RestoreDBInstanceFromDBSnapshot
+                  - rds:ModifyDBInstance
+                  - rds:ListTagsForResource
+                  - rds:CreateDBSnapshot
+                  - rds:DescribeDBInstances
+                  - rds:DescribeDBSnapshots
+                  - rds:DescribeDBSnapshotAttributes
+                  - rds:RebootDBInstance
+                  - rds:StartDBInstance
+                  - rds:StopDBInstance
+                Resource: '*'
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-cloudformation'
+          PolicyDocument:
+            Statement:
+              - Sid: ReadCWMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricStatistics
+                Resource: '*'
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-ecr1'
+          PolicyDocument:
+            Statement:
+              - Sid: ECRReadAccess
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:DescribeImages
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:GetLifecyclePolicy
+                  - ecr:GetLifecyclePolicyPreview
+                  - ecr:GetRepositoryPolicy
+                  - ecr:ListTagsForResource
+                Resource: !Sub '${ArnStart}:ecr:us-east-1:325381443140:repository/dbss/*'
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-secretmanager'
+          PolicyDocument:
+            Statement:
+              - Sid: ReadSecrets
+                Effect: Allow
+                Action:
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:GetResourcePolicy
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:ListSecretVersionIds
+                Resource: 
+                  - !Sub '${ArnStart}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*'
+                  - !Sub '${ArnStart}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/app/*'
+              - Sid: GeneratePassword
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetRandomPassword
+                  - secretsmanager:ListSecrets
+                Resource: '*'
+              - Sid: ManipulateSecrets
+                Effect: Allow
+                Action:
+                  - secretsmanager:CancelRotateSecret
+                  - secretsmanager:DeleteSecret
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:RestoreSecret
+                  - secretsmanager:RotateSecret
+                  - secretsmanager:UpdateSecretVersionStage
+                  - secretsmanager:UpdateSecret
+                Resource: 
+                  - !Sub '${ArnStart}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*'
+                  - !Sub '${ArnStart}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/app/*'
+
+        - PolicyName: !Sub '${VPCAlias}-ecsrole-task-policy-CWLogs'
+          PolicyDocument:
+            Statement:
+              - Sid: CWLogGroupManagement
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
+                Resource:
+                  - !Sub '${ArnStart}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ecs/${VPCAlias}-db-hardening/*'
+              - Sid: CWLogStreamManagement
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Resource: 
+                 - !Sub '${ArnStart}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ecs/${VPCAlias}-db-hardening/*:log-stream:*'
+              
+# commented out by 212390867; not sure what below KMS key was for, but DBA will need access to encrypted B2C files in "migration" bucket
+#              - Sid: KMSDeployerKeyRead
+#                Effect: Allow
+#                Action:
+#                  - kms:Decrypt
+#                Resource: !ImportValue 'kms:base:mc-deployer-app:arn'
+# per mae-co-lab setup following might be needed for B2C KMS key:
+# - Sid: B2CCreateKey
+#   Effect: Allow
+#   Action:
+#     - kms:ListKeys
+#     - kms:GenerateRandom
+#     - kms:ListAliases
+#     - kms:CreateKey
+#   Resource: '*' 
+# - Sid: B2CAllowKey
+#   Effect: Allow
+#   Action:
+#     - kms:GetParametersForImport
+#     - kms:Decrypt
+#     - kms:Encrypt
+#     - kms:GetKeyPolicy
+#     - kms:GenerateDataKey
+#     - kms:GenerateDataKey
+#   Resource: "arn:aws:kms:us-east-1:521971897958:key/79f4ffd6-adcb-4932-a618-b878fd0439e2" # specific KMS key or pattern
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'ecs-taskrole-${VPCAlias}'
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'Role used by tasks of ECS IGR cluster'
+Outputs:
+    ECSTaskDefinitionRoleARN:
+      Value: !GetAtt ECSTaskDefinitionRole.Arn
+      Export:
+        Name: !Sub 'iam:svc:${VPCAlias}-ecsrole:arn'
+    ECSTaskDefinitionRoleId:
+      Value: !GetAtt ECSTaskDefinitionRole.RoleId
+      Export:
+        Name: !Sub 'iam:svc:${VPCAlias}-ecsrole:id'

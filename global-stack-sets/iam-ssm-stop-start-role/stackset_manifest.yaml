@@ -1,0 +1,12 @@
+custom_resources:
+
+  - name: ScheduleStopStartSSMRole
+    custom_stackset_name: ScheduleStopStartSSMRole
+    description: Custom role for Schedule Stop and Start of servers via SSM
+    template_file: templates/ScheduleStopStartSSMRole.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: pwr-primavera
+        regions:
+          - us-east-1

@@ -1,0 +1,5 @@
+custom_resources:
+  - custom_stackset_name: gp-aws-backup-tag-restore-pipeline  
+    template_file: templates/cf-template.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value 

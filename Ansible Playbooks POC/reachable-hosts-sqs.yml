@@ -1,0 +1,16 @@
+---
+- name: sending reachable to sqs
+  hosts: all
+  tasks:
+  - name: Check reachability of hosts
+    ping:
+    register: ping_result
+  - name: Filter reachable hosts
+    set_fact:
+      sqs_queue: https://sqs.ap-south-1.amazonaws.com/406067944890/eventqueue
+      reachable_hosts: "{{ ping_result.contacted | selectattr('ping', 'defined') | map(attribute='inventory_hostname') | list }}"
+  - name: Send reachable hosts to SQS queue
+    sqs_send_message:
+      queue_url: "{{ sqs_queue }}"
+      message_body: "{{ reachable_hosts }}"
+    when: reachable_hosts | length > 0

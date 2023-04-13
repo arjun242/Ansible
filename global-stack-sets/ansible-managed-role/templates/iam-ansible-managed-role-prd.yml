@@ -1,0 +1,66 @@
+---
+#####
+# IAM role for Ansible dynamic inventory with basic Read-only access and Cloudwatch put metric alarm access.
+#####
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "AWS IAM Role for Ansible Dymanic Inventory for account, configured in Tower"
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the execution Role
+    Default: 'gp-ansible-execution'
+
+  AdminRoleArn:
+    Type: String
+    Description: Name of the Admin Role... 
+    Default: 'arn:aws:iam::325381443140:role/app/uai3047316/gp-ansible-app-prd-ec2'
+
+Resources:
+  SvcRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${RoleName}
+      Path: /app/uai3047316/
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref AdminRoleArn
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"     
+      Tags:
+        - Key: "uai"
+          Value: "UAI3047316"
+        - Key: "env"
+          Value: "prd"
+  RolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: "cloudwatch-alarm-policy"
+      Roles:
+        - !Ref SvcRole
+      PolicyDocument:
+       Version: '2012-10-17'
+       Statement:
+         - Sid: cloudwatchaccess
+           Effect: Allow
+           Action:
+            - cloudwatch:PutMetricAlarm
+            - cloudwatch:DescribeAlarmHistory
+            - cloudwatch:EnableAlarmActions
+            - cloudwatch:DescribeAlarmsForMetric
+            - cloudwatch:DescribeAlarms
+            - cloudwatch:SetAlarmState
+           Resource:
+            - '*' 
+
+Outputs:
+  ServiceRoleName:
+    Description: "Service Role for Ansible Managed IAM Role"
+    Value: !Ref SvcRole
+
+  ServiceRoleNameArn:
+    Description: "Service Role Arn for Ansible Managed IAM Role"
+    Value: !GetAtt SvcRole.Arn

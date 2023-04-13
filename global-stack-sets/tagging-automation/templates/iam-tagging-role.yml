@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'service role for tagging automation'
+Parameters:
+  RoleName:
+    Type: String
+    Description: "Name of the Role"
+    Default: 'tagging-task-assumerole'
+  
+Resources:
+
+  SvcRoleTobeAssumed:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${RoleName}'
+      Path: /inf/
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::325381443140:role/inf/tagging-LambdaSeviceRole"
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: TaggingActionAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Taggingactions
+                Action:
+                  - tag:TagResources
+                  - ec2:CreateTagsole
+                  - rds:AddTagsToResource
+                  - s3:PutBucketTagging
+                  - efs:CreateTags
+                  - lambda:TagResource
+                  - kms:TagResource
+                  - sqs:TagQueue
+                  - sns:TagResource
+                  - secretsmanager:TagResource
+                  - elasticloadbalancing:AddTags
+                Effect: Allow
+                Resource: "*"

@@ -1,0 +1,292 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: 'WebOps Federated or switch role for web ops Team.'
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Description: Name of the  Role... e.g.
+    Default: 'WebOps'
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'hq'
+  AdminAccountId:
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    Default: "325381443140"
+    Description: 12 digit AWS Account Id of the identity/federation account containing the users to which you're granting access. This is a trusted account.
+  MultiFactorAuthRequired:
+    Default: "False"
+    Type: String
+    AllowedValues:
+      - "True"
+      - "False"
+
+Conditions:
+  AdminSetup: !Equals [!Ref AWS::AccountId, '325381443140']
+  SwitchSetup: !Not [!Equals [!Ref AWS::AccountId, '325381443140']]
+
+Resources:
+  AdminFedRole:
+    Type: AWS::IAM::Role
+    Condition: AdminSetup
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - # Allow the role to be assumed from SAML Auth.
+            Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action: 'sts:AssumeRoleWithSAML'
+            Condition:
+              StringEquals:
+                'SAML:aud': 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+      Policies:
+        - PolicyName: AssumeRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+
+              - Sid: AssumeRole
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - !Sub "arn:aws:iam::*:role/hq/bu-pw-${RoleName}-fed"
+                Effect: Allow
+  AdminSwitchFedRole:
+    Type: AWS::IAM::Role
+    Condition: SwitchSetup
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - # Allow the role to be assumed from Admin account.
+            Effect: Allow 
+            Principal:
+              "AWS": !Sub "arn:${AWS::Partition}:iam::${AdminAccountId}:role/hq/bu-pw-${RoleName}-fed"
+            Action:
+              - sts:AssumeRole
+            Condition:
+              Bool:
+                "aws:MultiFactorAuthPresent": !Ref MultiFactorAuthRequired
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+
+  FedRoleDenyPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${RoleName}-deny-access"
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref AdminFedRole
+        - 
+          - !Ref AdminSwitchFedRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyEc2Actions
+            Action:
+              - ec2:AssociateRouteTable
+              - ec2:AssociateSubnetCidrBlock
+              - ec2:AssociateTransitGatewayMulticastDomain
+              - ec2:AssociateTransitGatewayRouteTable
+              - ec2:AssociateVpcCidrBlock
+              - ec2:AttachInternetGateway
+              - ec2:CreateDefaultSubnet
+              - ec2:CreateDefaultVpc
+              - ec2:CreateLocalGatewayRoute
+              - ec2:CreateLocalGatewayRouteTableVpcAssociation
+              - ec2:CreateNatGateway
+              - ec2:CreateNetworkAcl
+              - ec2:CreateNetworkAclEntry
+              - ec2:CreateRoute
+              - ec2:CreateRouteTable
+              - ec2:CreateSubnet
+              - ec2:CreateTransitGateway*
+              - ec2:CreateVpc
+              - ec2:CreateVpcPeeringConnection
+              - ec2:CreateVpn*
+              - ec2:DeleteCarrierGateway
+              - ec2:DeleteClientVpnEndpoint
+              - ec2:DeleteClientVpnRoute
+              - ec2:DeleteCustomerGateway
+              - ec2:DeleteDhcpOptions
+              - ec2:DeleteEgressOnlyInternetGateway
+              - ec2:DeleteFlowLogs
+              - ec2:DeleteKeyPair
+              - ec2:DeleteInternetGateway
+              - ec2:DeleteLocalGatewayRoute
+              - ec2:DeleteLocalGatewayRouteTableVpcAssociation
+              - ec2:DeleteManagedPrefixList
+              - ec2:DeleteNatGateway
+              - ec2:DeleteNetworkAcl
+              - ec2:DeleteNetworkAclEntry
+              - ec2:DeleteRoute
+              - ec2:DeleteRouteTable
+              - ec2:DeleteSubnet
+              - ec2:DeleteTransitGateway*
+              - ec2:DeleteVpc*
+              - ec2:DeleteVpn*
+              - ec2:DeprovisionByoipCidr
+              - ec2:DetachInternetGateway
+              - ec2:DetachVpnGateway
+              - ec2:DisableTransitGatewayRouteTablePropagation
+              - ec2:DisableVpcClassicLinkDnsSupport
+              - ec2:DisableVpcClassicLink
+              - ec2:DisassociateClientVpnTargetNetwork
+              - ec2:DisassociateRouteTable
+              - ec2:DisassociateSubnetCidrBlock
+              - ec2:DisassociateTransitGateway*
+              - ec2:DisassociateVpcCidrBlock
+              - ec2:EnableTransitGatewayRouteTablePropagation
+              - ec2:EnableVgwRoutePropagation
+              - ec2:EnableVpcClassicLink
+              - ec2:EnableVpcClassicLinkDnsSupport
+              - ec2:ModifyClientVpnEndpoint
+              - ec2:ModifySubnetAttribute
+              - ec2:ModifyTransitGateway*
+              - ec2:ModifyVpcAttribute
+              - ec2:ModifyVpc*
+              - ec2:ModifyVpn*
+              - ec2:ProvisionByoipCidr
+              - ec2:PurchaseHostReservation
+              - ec2:ReplaceNetworkAclAssociation
+              - ec2:ReplaceNetworkAclEntry
+              - ec2:ReplaceRoute
+              - ec2:ReplaceRouteTableAssociation
+              - ec2:ReplaceTransitGatewayRoute
+              - ec2:RevokeClientVpnIngress
+              - ec2:TerminateClientVpnConnections
+            Resource: '*'
+            Effect: Deny
+
+  FedrolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${RoleName}-access"
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref AdminFedRole
+        - 
+          - !Ref AdminSwitchFedRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: PassRole
+            Action:
+              - iam:PassRole
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/lam/*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/bu-pw-*-app"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/inf/*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWSDataLifecycleManagerDefaultRole"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/REM-*"
+            Effect: Allow
+
+          - Sid: IAMControlsLimited
+            Effect: Allow
+            Action:
+              - iam:List*
+              - iam:Get*
+              - iam:UpdateServerCertificate
+              - iam:UpdateSigningCertificate
+              - iam:UploadServerCertificate
+              - iam:UploadSigningCertificate
+              - iam:CreateServiceLinkedRole
+              - iam:UpdateAssumeRolePolicy
+            Resource:
+              - "*"
+
+  SSMandSecretPolicy:
+  # Containes access for ssm, SecretMangaer
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub ${RoleName}-ssm-secret-access
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref AdminFedRole
+        - 
+          - !Ref AdminSwitchFedRole
+      PolicyDocument:
+        Statement:
+          - Sid: UnConstrainedAccess
+            Effect: Allow
+            Resource:
+              - '*'
+            Action:
+              - ssm:GetConnectionStatus
+              - ssm:TerminateSession
+              - secretsmanager:CreateSecret
+              - ssm:SendAutomationSignal              
+
+          - Sid: ConstrainedFullAccess
+            Effect: Allow
+            Action:
+              - ssm:*
+              - secretsmanager:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/uai* # SSM Parameters
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/uai*  # SSM Documents
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:uai*" # Secretsmanager
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/cnt-security/login/uai*" #SecretsManager-Prisma
+
+          - Sid: SSMStartSessionAccessInstance
+            Effect: Allow
+            Action:
+              - ssm:StartSession
+              - ssm:SendCommand
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+            Condition:
+              ForAnyValue:StringEquals:
+                ssm:resourceTag/gp-web-services: "SRV0010695"
+
+          # this is required by Fed roles only with mfa Access to connect to Instance 
+          # Access to run port forwarding Session document works with above access restrict to run on instance
+          - Sid: SSMStartSessionAccessDoc # Cannot constrain on resource or tag
+            Effect: Allow
+            Action:
+              - ssm:StartSession
+              - ssm:SendCommand
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/app*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartPortForwardingSession # aws managed document
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartSSHSession  # aws managed document
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunPowerShellScript  # aws managed document
+
+Outputs:
+
+  FederatedRoleName:
+    Condition: AdminSetup
+    Value: !Ref AdminFedRole
+  FederatedRoleArn:
+    Condition: AdminSetup
+    Value: !GetAtt AdminFedRole.Arn
+  SwitchFederatedRoleName:
+    Condition: SwitchSetup
+    Value: !Ref AdminSwitchFedRole
+  SwitchFederatedRoleArn:
+    Condition: SwitchSetup
+    Value: !GetAtt AdminSwitchFedRole.Arn

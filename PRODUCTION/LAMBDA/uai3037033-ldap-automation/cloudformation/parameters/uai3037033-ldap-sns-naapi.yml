@@ -1,0 +1,4 @@
+UAI: uai3037033
+SNSDisplayName: 'LDAP Installation Complete'
+ApiEndpoint: gp-ldap-notifications@ge.com
+Env: prd

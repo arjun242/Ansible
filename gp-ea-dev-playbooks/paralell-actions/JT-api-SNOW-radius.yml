@@ -1,0 +1,4 @@
+---
+- hosts: localhost
+  roles:
+    - cloud-agnostic/radius-SNOW-RITM

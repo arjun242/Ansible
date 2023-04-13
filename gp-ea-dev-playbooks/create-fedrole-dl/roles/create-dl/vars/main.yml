@@ -1,0 +1,10 @@
+api_url_create_DL: https://api.ge.com/digital/idm/group-api/v1/webSsoGroups/
+access_token_url: https://fssfed.ge.com/fss/as/token.oauth2?grant_type=client_credentials&scope=api
+scope: api
+grant_type: client_credentials
+# Parameters Required managed in Surey
+# AwsAccountId: AWS Account Id
+# Manager: DL group manager SSO.
+# Members: members SSO comma seperated values
+# FedRoleName: complete fedrole name
+# DLEmail: Email address of the DL

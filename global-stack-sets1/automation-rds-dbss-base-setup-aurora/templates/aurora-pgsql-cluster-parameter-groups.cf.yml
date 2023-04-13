@@ -1,0 +1,202 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the Aurora Postgresql cluster parameters groups that are neccessary for Aurora Postgresql RDS instance builds.
+              It must be created prior to any Aurora Postgresql RDS Instances
+              Last version 30-May-2020
+
+ # History:
+  # 14-Apr-2020: Initial version
+  #Stack Name: dbss-aurora-pgsql-cluster-parameter-groups
+  # 30-May-2020: Added VPC alias parameter
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+
+Resources:
+
+  rdspsqldefaultclusterparamgroup106:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG Default Cluster Parameter Group for 10.6
+      Family: 'aurora-postgresql10'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+      
+
+  rdspsqlisoclusterparamgroup106:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG ISO Cluster parameter group for 10.6
+      Family: 'aurora-postgresql10'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+  rdspsqlsoxclusterparamgroup106:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG SOX Cluster parameter group for 10.6
+      Family: 'aurora-postgresql10'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+
+  rdspsqldodclusterparamgroup106:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG DOD Cluster parameter group for 10.6
+      Family: 'aurora-postgresql10'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+
+  rdspsqlgxpclusterparamgroup106:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG GxP Cluster parameter group for 10.6
+      Family: 'aurora-postgresql10'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+  rdspsqldefaultclusterparamgroup114:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG Default Cluster Parameter Group for 11.4
+      Family: 'aurora-postgresql11'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+
+  rdspsqlisoclusterparamgroup114:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG ISO Cluster parameter group for 11.4
+      Family: 'aurora-postgresql11'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+  rdspsqlsoxclusterparamgroup114:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG SOX Cluster parameter group for 11.4
+      Family: 'aurora-postgresql11'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+  rdspsqldodclusterparamgroup114:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG DOD Cluster parameter group for 11.4
+      Family: 'aurora-postgresql11'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+  rdspsqlgxpclusterparamgroup114:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Aurora PG GxP Cluster parameter group for 11.4
+      Family: 'aurora-postgresql11'
+      Parameters:
+        pgaudit.role: "rds_pgaudit"
+        pgaudit.log: "ddl"
+        rds.restrict_password_commands: "1"
+        rds.force_ssl: "1"
+
+
+
+
+Outputs:
+
+  rdspsqldefaultclusterparamgroup106:
+    Description: "RDS Cluster Parameter Group with default parameters for PostgreSQL 10.6"
+    Value: !Ref rdspsqldefaultclusterparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:default:106'
+      
+  rdspsqlisoclusterparamgroup106:
+    Description: "RDS Cluster Parameter Group that stores ISO parameters for Aurora postgreSQL 10.6"
+    Value: !Ref rdspsqlisoclusterparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:iso:106'
+
+  rdspsqlsoxclusterparamgroup106:
+    Description: "RDS Cluster Parameter Group that stores SOx parameters for Aurora PostgreSQL 10.6"
+    Value: !Ref rdspsqlsoxclusterparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:sox:106'
+      
+  rdspsqldodclusterparamgroup106:
+    Description: "RDS Cluster Parameter Group that stores DoD parameters for Aurora PostgreSQL 10.6"
+    Value: !Ref rdspsqldodclusterparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:dod:106'
+      
+  rdspsqlgxpclusterparamgroup106:
+    Description: "RDS Cluster Parameter Group that stores GxP parameters for Aurora PostgreSQL 10.6"
+    Value: !Ref rdspsqlgxpclusterparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:gxp:106'
+     
+  
+  rdspsqldefaultclusterparamgroup114:
+    Description: "RDS Cluster Parameter Group that stores default parameters for Aurora PostgreSQL 11.4"
+    Value: !Ref rdspsqldefaultclusterparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:default:114'
+      
+  rdspsqlisoclusterparamgroup114:
+    Description: "RDS Cluster Parameter Group that stores ISO parameters for Aurora PostgreSQL 11.4"
+    Value: !Ref rdspsqlisoclusterparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:iso:114'
+
+  rdspsqlsoxclusterparamgroup114:
+    Description: "RDS Cluster Parameter Group that stores SOx parameters for Aurora PostgreSQL 11.4"
+    Value: !Ref rdspsqlsoxclusterparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:sox:114'
+      
+  rdspsqldodclusterparamgroup114:
+    Description: "RDS Cluster Parameter Group that stores DoD parameters for Aurora PostgreSQL 11.4"
+    Value: !Ref rdspsqldodclusterparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:dod:114'
+      
+  rdspsqlgxpclusterparamgroup114:
+    Description: "RDS Cluster Parameter Group that stores GxP parameters for Aurora PostgreSQL 11.4"
+    Value: !Ref rdspsqlgxpclusterparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:cluster-parametergroups:aurora-postgresql:gxp:114'
+     
+  
+
+  

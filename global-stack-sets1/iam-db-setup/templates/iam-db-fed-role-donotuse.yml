@@ -1,0 +1,274 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "DB Fed role and policy"
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Description: Name of the  Role... e.g. 'cldSAAdmin'
+    Default: 'db'
+
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'hq'
+
+  TagAssociate:
+    Type: CommaDelimitedList
+    Description: "List of all values ex: ops, sa, admin, app "
+    Default: db, app, sa
+
+Resources:
+  FedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+#       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/cloudarch-deny-pb-policy
+      # MaxSessionDuration: 43200
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow # Allow this role to be assumed by a federated entity
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action:
+              - sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+
+  InfraPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub ${RoleName}-infra-access
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+
+          - Sid: IamPassRole
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource:
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/*
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/inf/db/*
+
+          - Sid: AccessSupport
+            Effect: Allow
+            Action:
+              - support:*
+            Resource:
+              - "*"
+
+          # S3Full access on buckets starting with the uai value.
+          #only read and Upload 
+          # create and delete are explicitly denied in Permission Boundary.
+          - Sid: S3Acess
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::*db-common*"
+              - !Sub "arn:${AWS::Partition}:s3:::*dbss*"
+            Action:
+              - s3:*
+
+          - Sid: S3CommonBucketsAccess # resource taging is not accepted
+            Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common*'
+
+          - Sid: LogsConstrained
+            Effect: Allow
+            Action:
+              - logs:FilterLogEvents
+              - logs:Get*
+              - logs:StartQuery
+              - logs:StopQuery
+            Resource:
+              - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*dbss*"
+              - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*db*"
+
+          - Sid: LogsUnConstrained
+            Effect: Allow
+            Action:
+              - logs:GetLogDelivery
+              - logs:ListLogDeliveries
+              - logs:UpdateLogDelivery
+              - logs:TestMetricFilter
+            Resource: 
+              - "*"
+
+          - Sid: CFUnConstrained
+            Effect: Allow
+            Action:
+              - cloudformation:Get*
+              - cloudformation:List*
+              - cloudformation:ListExports
+              - cloudformation:ListImports
+              - cloudformation:ValidateTemplate
+              - cloudformation:CreateUploadBucket
+            Resource:
+              - "*"
+
+          - Sid: CodeBuildConstrained
+            Effect: Allow
+            Action:
+              - codebuild:*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project:*dbss*"
+
+          - Sid: ECRUnconstrainedAccess
+            Effect: Allow
+            Resource:
+              - '*'
+            Action:
+              - ecr:GetAuthorizationToken
+
+          - Sid: ECRconstrainedFullAccess
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/dbss/db-hardening*"
+            Action:
+              - ecr:*
+
+          - Sid: ECRconstrainedAccessBase
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:325381443140:repository/gp-ops-base-cis*" # base repo name in ops account
+            Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+
+          - Sid: EcsUnConstrainedAccess
+            Effect: Allow
+            Resource: 
+              - "*"
+            Action:
+              - ecs:RegisterTaskDefinition
+              - ecs:DeregisterTaskDefinition
+              - appmesh:ListVirtualNodes
+              - appmesh:DescribeVirtualNode
+
+          - Sid: LambdaConstrainedAccess
+            Effect: Allow
+            Action:
+              - lambda:CreateEventSourceMapping
+              - lambda:UpdateEventSourceMapping
+              - lambda:GetEventSourceMapping
+              - lambda:DeleteEventSourceMapping
+            Resource:
+              - '*'
+            Condition:
+              ArnEquals:
+                lambda:FunctionArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:dbss*"
+          
+          - Sid: LambdaConstrained
+            Effect: Allow
+            Action:
+              - lambda:Get*
+              - lambda:InvokeFunction
+              - lambda:InvokeAsync
+              - lambda:Update*
+            Resource:
+              - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:dbss*"
+              
+  DBAdmin:  
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub ${RoleName}-dbadmin
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+          - Sid: RDSFullAccess
+            Effect: Allow
+            Resource:
+              - '*'
+            Action:
+              - rds:*
+               ## DMS_prereq START
+              - dms:*
+              - kms:ListAliases
+              - kms:DescribeKey
+              - iam:GetRole
+              - iam:PassRole
+              - ec2:DescribeVpcs
+              - ec2:DescribeInternetGateways
+              - ec2:DescribeAvailabilityZones
+              - ec2:DescribeSubnets
+              - ec2:DescribeSecurityGroups
+              - ec2:ModifyNetworkInterfaceAttribute
+              - ec2:CreateNetworkInterface
+              - ec2:DeleteNetworkInterface
+              - cloudwatch:Get*
+              - cloudwatch:List*
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:FilterLogEvents
+              - logs:GetLogEvents
+              - redshift:Describe*
+              - redshift:ModifyClusterIamRoles
+              ## DMS_prereq END
+
+  SSMandSecretPolicy:
+  # Containes access for ssm, SecretMangaer
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub ${RoleName}-ssm-secret-access
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+          - Sid: SSmAccess
+            Effect: Allow
+            Resource:
+              - '*'
+            Action:
+              - ssm:GetConnectionStatus
+              - ssm:TerminateSession
+              - ssm:ListCommands
+              - secretsmanager:TagResource
+              - ssm:GetCommandInvocation
+              - ssm:List*
+
+          - Sid: SSMStartSessionAccess
+            Effect: Allow
+            Action:
+              - ssm:StartSession
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+            Condition:
+              StringEquals:
+                ssm:resourceTag/associate: !Ref TagAssociate
+
+          - Sid: SecretsManagerConstrained
+            Effect: Allow
+            Action:
+              - secretsmanager:*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*"  # SecretsManager
+
+          - Sid: SecretsManagerCreate
+            Effect: Allow
+            Action:
+              - secretsmanager:CreateSecret
+            Resource:
+              - '*'
+
+Outputs:
+  
+  FederatedRoleName:
+    Value: !Ref FedRole
+  FederatedRoleArn:
+    Value: !GetAtt FedRole.Arn

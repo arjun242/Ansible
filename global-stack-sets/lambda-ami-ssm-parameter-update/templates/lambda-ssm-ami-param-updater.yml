@@ -1,0 +1,148 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "automation lambda function for ami ssm paramers update. Lambda ARN is exported as automation-ami-ssm-param-updater"
+Parameters:
+  RoleName:
+    Type: String
+    Default: "lamda-ami-ssm-param-updater"
+
+  RolePath:
+    Type: String
+    Default: "/inf/"
+
+  ModuleName:
+    Type: String
+    Default: "index"
+
+  LambdaName:
+    Description: Lambda Name
+    Type: String
+    Default: "automation-ami-ssm-param-updater"
+
+  LambdaCodeS3Bucket:
+    Description: S3 bucket Name of lambda function
+    Type: String
+    Default: "gp-us-east-ops-automation-common-artifacts"
+
+  LambdaCodeZipKey:
+    Description: S3 bucket lambda function object zip key
+    Type: String
+    Default: "lambda/LatestImage.zip"
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+        RoleName: !Ref RoleName
+        Path: !Ref RolePath
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+        Policies:
+          - PolicyName: !Sub ${RoleName}
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+
+                - Sid: CloudWatchAccess
+                  Effect: Allow
+                  Action: cloudwatch:*
+                  Resource: "*"
+
+                - Sid: CloudWatchPermissions
+                  Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - logs:DescribeLogGroups
+                    - logs:CreateExportTask
+                    - logs:DescribeExportTasks
+                  Resource: "*"
+
+                - Sid: AllowAMIAccess
+                  Effect: Allow
+                  Action:
+                    - ec2:DescribeImageAttribute
+                    - ec2:DescribeImages
+                  Resource: "*"
+
+                - Sid: Allows3Access
+                  Effect: Allow
+                  Action:
+                    - s3:Get*
+                    - s3:List*
+                  Resource: "*"
+
+                - Sid: AllowSSMAccess
+                  Effect: Allow
+                  Action:
+                    - ssm:PutParameter
+                  Resource: "*"
+
+  LambdaFunction: 
+    DependsOn:
+      - LambdaRole
+      - LambdaLogGroup
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: !Ref LambdaName
+      Description: "Custom CloudFormation resource for updating automation/ami ssm parameters"
+      Handler: !Sub "${ModuleName}.handler"
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: 'python3.7'
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeZipKey
+      MemorySize: 128
+      Timeout: 600
+      Tags:
+      - Key: Name
+        Value: !Ref LambdaName
+      - Key: LastUpdate
+        Value: '11/10/2020'
+      - Key: uai
+        Value: 'uai3036144'
+      - Key: env
+        Value: 'prd'
+
+  LambdaLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${LambdaName}'
+      RetentionInDays: 7
+
+  # Event rule to trigger the lambda function in every 7 days
+  ScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(7 days)" 
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: !GetAtt LambdaFunction.Arn
+          Id: "TargetFunctionV1"
+
+  # This permission is required for the cloudwatch events to trigger the lambda function.
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !GetAtt 'LambdaFunction.Arn'
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt 'ScheduledRule.Arn'
+
+Outputs:
+  LambdaFunctionArn:
+    Description: "Resource ARN of the Lambda function"
+    Value: !GetAtt 'LambdaFunction.Arn'
+    Export:
+        Name: automation-ami-ssm-param-updater
+  LambdaRoleARN:
+    Value: !GetAtt LambdaRole.Arn
+    Description: "ARN for the lambda svc role"

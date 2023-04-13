@@ -1,0 +1,436 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the parameter groups that are necessary for builds of RDS oracle instances.
+              It must be created prior to any RDS Instances
+              Last version 15-May-2020
+
+ # History:
+  # 03-Dec-2019: Add 18c and 19c groups
+  # 29-Nov-2018: Separated options and parameter groups
+  # 05-Nov-2018: F1322.US7170: Updated to include multi-vpc support based on VPCAlias parameter
+  #              Naming convention: https://github.build.ge.com/Cloud/ManagedComponents/blob/master/CFEXPORTS.md
+  # 20-Aug-2018: Add SSL parameter
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+    
+# SE2 groups  
+Resources: 
+  rdsoraclesoxparamgroupse2121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v12.1 (se2) with SoX audit enabled.
+      Family: 'oracle-se2-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracledodparamgroupse2121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v12.1 (se2) with DoD audit enabled.
+      Family: 'oracle-se2-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclegxpparamgroupse2121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v12.1 (se2) with GxP audit enabled.
+      Family: 'oracle-se2-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracleisoparamgroupse2121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v12.1 (se2) with ISO audit enabled.
+      Family: 'oracle-se2-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclesoxparamgroupse218:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v18 (se2) with SoX audit enabled.
+      Family: 'oracle-se2-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracledodparamgroupse218:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v18 (se2) with DoD audit enabled.
+      Family: 'oracle-se2-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclegxpparamgroupse218:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v18 (se2) with GxP audit enabled.
+      Family: 'oracle-se2-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracleisoparamgroupse218:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v18 (se2) with ISO audit enabled.
+      Family: 'oracle-se2-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclesoxparamgroupse219:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v19 (se2) with SoX audit enabled.
+      Family: 'oracle-se2-19'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracledodparamgroupse219:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v19 (se2) with DoD audit enabled.
+      Family: 'oracle-se2-19'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclegxpparamgroupse219:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v19 (se2) with GxP audit enabled.
+      Family: 'oracle-se2-19'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracleisoparamgroupse219:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v19 (se2) with ISO audit enabled.
+      Family: 'oracle-se2-19'
+      Parameters:
+           audit_trail: "DB"
+
+# EE groups
+  rdsoraclesoxparamgroupee121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v12.1 with SoX audit enabled.
+      Family: 'oracle-ee-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracledodparamgroupee121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v12.1 with DoD audit enabled.
+      Family: 'oracle-ee-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclegxpparamgroupee121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v12.1 with GxP audit enabled.
+      Family: 'oracle-ee-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracleisoparamgroupee121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v12.1 with ISO audit enabled.
+      Family: 'oracle-ee-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclesoxparamgroupee18:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v18 with SoX audit enabled.
+      Family: 'oracle-ee-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracledodparamgroupee18:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v18 with DoD audit enabled.
+      Family: 'oracle-ee-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclegxpparamgroupee18:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v18 with GxP audit enabled.
+      Family: 'oracle-ee-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracleisoparamgroupee18:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v18 with ISO audit enabled.
+      Family: 'oracle-ee-18'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclesoxparamgroupee19:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v19 with SoX audit enabled.
+      Family: 'oracle-ee-19'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracledodparamgroupee19:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v19 with DoD audit enabled.
+      Family: 'oracle-ee-19'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoraclegxpparamgroupee19:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v19 with GxP audit enabled.
+      Family: 'oracle-ee-19'
+      Parameters:
+           audit_trail: "DB"
+
+  rdsoracleisoparamgroupee19:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v19 with ISO audit enabled.
+      Family: 'oracle-ee-19'
+      Parameters:
+           audit_trail: "DB"
+
+# default groups
+  rdsoracledefaultparamgroupse2121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle SE v12.1 (se2)
+      Family: 'oracle-se2-12.1'
+
+  rdsoracledefaultparamgroupse218:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle SE v18 (se2)
+      Family: 'oracle-se2-18'
+
+  rdsoracledefaultparamgroupse219:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle SE v19 (se2)
+      Family: 'oracle-se2-19'
+
+  rdsoracledefaultparamgroupee121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle EE v12.1
+      Family: 'oracle-ee-12.1'
+
+  rdsoracledefaultparamgroupee18:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle EE v18
+      Family: 'oracle-ee-18'
+
+  rdsoracledefaultparamgroupee19:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle EE v19
+      Family: 'oracle-ee-19'
+
+Outputs:
+ ## PARAMETER GROUPS
+ #  Note: Parameter groups are not VPC-bound
+# SE2 groups
+  rdsoraclesoxparamgroupse2121:
+    Description: "This is the parameter group for Oracle SE v12.1 (se2) with SoX audit enabled."
+    Value: !Ref rdsoraclesoxparamgroupse2121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:sox:121'
+
+  rdsoracledodparamgroupse2121:
+    Description: "This is the parameter group for Oracle SE v12.1 (se2) with DoD audit enabled."
+    Value: !Ref rdsoracledodparamgroupse2121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:dod:121'
+
+  rdsoraclegxpparamgroupse2121:
+    Description: "This is the parameter group for Oracle SE v12.1 (se2) with GxP audit enabled."
+    Value: !Ref rdsoraclegxpparamgroupse2121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:gxp:121'
+
+  rdsoracleisoparamgroupse2121:
+    Description: "This is the parameter group for Oracle SE v12.1 (se2) with ISO audit enabled."
+    Value: !Ref rdsoracleisoparamgroupse2121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:iso:121'
+
+  rdsoraclesoxparamgroupse218:
+    Description: "This is the parameter group for Oracle SE v18 (se2) with SoX audit enabled."
+    Value: !Ref rdsoraclesoxparamgroupse218
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:sox:18'
+
+  rdsoracledodparamgroupse218:
+    Description: "This is the parameter group for Oracle SE v18 (se2) with DoD audit enabled."
+    Value: !Ref rdsoracledodparamgroupse218
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:dod:18'
+
+  rdsoraclegxpparamgroupse218:
+    Description: "This is the parameter group for Oracle SE v18 (se2) with GxP audit enabled."
+    Value: !Ref rdsoraclegxpparamgroupse218
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:gxp:18'
+
+  rdsoracleisoparamgroupse218:
+    Description: "This is the parameter group for Oracle SE v18 (se2) with ISO audit enabled."
+    Value: !Ref rdsoracleisoparamgroupse218
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:iso:18'
+
+  rdsoraclesoxparamgroupse219:
+    Description: "This is the parameter group for Oracle SE v19 (se2) with SoX audit enabled."
+    Value: !Ref rdsoraclesoxparamgroupse219
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:sox:19'
+
+  rdsoracledodparamgroupse219:
+    Description: "This is the parameter group for Oracle SE v19 (se2) with DoD audit enabled."
+    Value: !Ref rdsoracledodparamgroupse219
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:dod:19'
+
+  rdsoraclegxpparamgroupse219:
+    Description: "This is the parameter group for Oracle SE v19 (se2) with GxP audit enabled."
+    Value: !Ref rdsoraclegxpparamgroupse219
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:gxp:19'
+
+  rdsoracleisoparamgroupse219:
+    Description: "This is the parameter group for Oracle SE v19 (se2) with ISO audit enabled."
+    Value: !Ref rdsoracleisoparamgroupse219
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:iso:19'
+
+# EE groups
+  rdsoraclesoxparamgroupee121:
+    Description: "This is the parameter group for Oracle EE v12.1 with SoX audit enabled."
+    Value: !Ref rdsoraclesoxparamgroupee121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:sox:121'
+
+  rdsoracledodparamgroupee121:
+    Description: "This is the parameter group for Oracle EE v12.1 with DoD audit enabled."
+    Value: !Ref rdsoracledodparamgroupee121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:dod:121'
+
+  rdsoraclegxpparamgroupee121:
+    Description: "This is the parameter group for Oracle EE v12.1 with GxP audit enabled."
+    Value: !Ref rdsoraclegxpparamgroupee121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:gxp:121'
+
+  rdsoracleisoparamgroupee121:
+    Description: "This is the parameter group for Oracle EE v12.1 with ISO audit enabled."
+    Value: !Ref rdsoracleisoparamgroupee121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:iso:121'
+
+  rdsoraclesoxparamgroupee18:
+    Description: "This is the parameter group for Oracle EE v18 with SoX audit enabled."
+    Value: !Ref rdsoraclesoxparamgroupee18
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:sox:18'
+
+  rdsoracledodparamgroupee18:
+    Description: "This is the parameter group for Oracle EE v18 with DoD audit enabled."
+    Value: !Ref rdsoracledodparamgroupee18
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:dod:18'
+
+  rdsoraclegxpparamgroupee18:
+    Description: "This is the parameter group for Oracle EE v18 with GxP audit enabled."
+    Value: !Ref rdsoraclegxpparamgroupee18
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:gxp:18'
+
+  rdsoracleisoparamgroupee18:
+    Description: "This is the parameter group for Oracle EE v18 with ISO audit enabled."
+    Value: !Ref rdsoracleisoparamgroupee18
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:iso:18'
+
+  rdsoraclesoxparamgroupee19:
+    Description: "This is the parameter group for Oracle EE v19 with SoX audit enabled."
+    Value: !Ref rdsoraclesoxparamgroupee19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:sox:19'
+
+  rdsoracledodparamgroupee19:
+    Description: "This is the parameter group for Oracle EE v19 with DoD audit enabled."
+    Value: !Ref rdsoracledodparamgroupee19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:dod:19'
+
+  rdsoraclegxpparamgroupee19:
+    Description: "This is the parameter group for Oracle EE v19 with GxP audit enabled."
+    Value: !Ref rdsoraclegxpparamgroupee19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:gxp:19'
+
+  rdsoracleisoparamgroupee19:
+    Description: "This is the parameter group for Oracle EE v19 with ISO audit enabled."
+    Value: !Ref rdsoracleisoparamgroupee19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:iso:19'
+
+# default groups
+  rdsoracledefaultparamgroupse2121:
+    Description: "This is the parameter group for Oracle SE v12.1 (se2) with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupse2121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:default:121'
+
+  rdsoracledefaultparamgroupse218:
+    Description: "This is the parameter group for Oracle SE v18 (se2) with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupse218
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:default:18'
+
+  rdsoracledefaultparamgroupse219:
+    Description: "This is the parameter group for Oracle SE v19 (se2) with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupse219
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:default:19'
+
+  rdsoracledefaultparamgroupee121:
+    Description: "This is the parameter group for Oracle EE v12.1 with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupee121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:default:121'
+
+  rdsoracledefaultparamgroupee18:
+    Description: "This is the parameter group for Oracle EE v18 with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupee18
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:default:18'
+
+  rdsoracledefaultparamgroupee19:
+    Description: "This is the parameter group for Oracle EE v19 with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupee19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:default:19'

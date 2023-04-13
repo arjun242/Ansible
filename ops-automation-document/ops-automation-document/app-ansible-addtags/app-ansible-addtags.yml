@@ -1,0 +1,144 @@
+description: Create SSM document to push "ansiblehost" tags to ec2 instances 
+schemaVersion: '0.3'
+#assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  AutomationAssumeRole:
+    type: String
+    default: 'arn:aws:iam::325381443140:role/Add-Ansible-Tags'
+  InstanceId:
+    type: StringList
+    description: (Required) The Instance IDs.
+    default:
+      - ''
+mainSteps:
+  - name: getInstanceDetails
+    action: 'aws:executeAwsApi'
+    onFailure: Abort
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Filters:
+        - Name : 'tag:Patch'
+          Values: 
+            - 'Yes'
+    outputs:
+      - Name: ImageId
+        Selector: '$.Reservations[0].Instances[0].ImageId'
+        Type: String
+      - Name: InstanceId
+        Selector: '$.Reservations[0].Instances[0].InstanceId'
+        Type: String
+  - name: getPlatformFromAMI
+    action: 'aws:executeAwsApi'
+    onFailure: Abort
+    inputs:
+      Service: ec2
+      Api: DescribeImages
+      ImageIds:
+        - '{{getInstanceDetails.ImageId}}'
+    outputs:
+      - Name: PlatformDetails
+        Selector: '$.Images[0].PlatformDetails'
+      - Name: ImageDescription
+        Selector: '$.Images[0].Description'
+  - name: createTagsOS
+    action: aws:branch
+    inputs:
+      Choices:
+        - NextStep : createTagsAMILinux
+          Variable: "{{getPlatformFromAMI.PlatformDetails}}"
+          StringEquals: Red Hat Enterprise Linux
+        - NextStep : createTagsAMILinux
+          Variable: "{{getPlatformFromAMI.PlatformDetails}}"
+          StringEquals: Linux/UNIX
+        - NextStep : createTagsAMIWindows
+          Variable: "{{getPlatformFromAMI.PlatformDetails}}"
+          StringEquals: Windows
+      Default:
+        getInstanceDetailsOSDiskLinux
+  
+  - name: createTagsAMIWindows
+    action: 'aws:createTags'
+    maxAttempts: 1
+    onFailure: Abort
+    inputs:
+      ResourceType: EC2
+      ResourceIds: ['{{getInstanceDetails.InstanceId}}']
+      Tags:
+        - Key: ansiblehost
+          Value: 'Windows'
+    isEnd: true
+  
+  - name: createTagsAMILinux
+    action: 'aws:createTags'
+    maxAttempts: 1
+    onFailure: Abort
+    inputs:
+      ResourceType: EC2
+      ResourceIds: ['{{getInstanceDetails.InstanceId}}']
+      Tags:
+        - Key: ansiblehost
+          Value: 'Linux/UNIX'
+    isEnd: true
+
+  - name: getInstanceDetailsOSDiskLinux
+    action: 'aws:executeAwsApi'
+    onFailure: Continue
+    nextStep: createTagsOSDiskLinux
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Filters:
+        - Name : 'tag:OS-DISK'
+          Values: 
+            - 'Linux'
+    outputs:
+      - Name: InstanceId
+        Selector: '$.Reservations[0].Instances[0].InstanceId'
+        Type: String
+
+  - name: getInstanceDetailsOSDiskWindows
+    action: 'aws:executeAwsApi'
+    onFailure: Continue
+    nextStep : createTagsOSDiskWindows
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Filters:
+        - Name : 'tag:OS-DISK'
+          Values: 
+            - 'Windows'
+    outputs:
+      - Name: InstanceId
+        Selector: '$.Reservations[0].Instances[0].InstanceId'
+        Type: String
+
+  - name: createTagsOSDiskWindows
+    action: 'aws:createTags'
+    maxAttempts: 1
+    onFailure: Abort
+    inputs:
+      ResourceType: EC2
+      ResourceIds: ['{{getInstanceDetailsOSDiskWindows.InstanceId}}']
+      Tags:
+        - Key: ansiblehost
+          Value: 'Windows'
+    isEnd : true
+  
+  - name: createTagsOSDiskLinux
+    action: 'aws:createTags'
+    maxAttempts: 1
+    onFailure: Abort
+    inputs:
+      ResourceType: EC2
+      ResourceIds: ['{{getInstanceDetailsOSDiskLinux.InstanceId}}']
+      Tags:
+        - Key: ansiblehost
+          Value: 'Linux/UNIX'
+    isEnd : true

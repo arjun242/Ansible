@@ -1,0 +1,441 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Lambda role and policy for application Team"
+
+Parameters:
+  AppName: 
+    Type: String
+    Default: pw-sec-automation
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: "uai[0-9]*"
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3027632
+  TagEnv:
+    Type: CommaDelimitedList
+    Description: "List of all env ex: dev, qa, prd"
+    Default: prd
+
+Resources:
+  FedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: !Sub /app/${UAI}/
+      RoleName: !Sub ${AppName}-fed
+      # MaxSessionDuration: 43200
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow # Allow this role to be assumed by a federated entity
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action:
+              - sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: 'https://signin.aws.amazon.com/saml'
+      # PermissionsBoundary: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/permission-boundary-all-roles"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role" 
+        # - !Ref EvmManagedPolicy
+
+  EvmManagedPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: !Sub '${AppName}-FedRole-Update'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowSSMGetandListAccess
+            Effect: Allow
+            Action:
+              - 'ssm:GetMaintenanceWindow*'
+              - 'ssm:List*'
+              - 'ssm:GetInventory*'
+            Resource: '*'
+          - Sid: AllowMaintenanceWindowDeletion
+            Effect: Allow
+            Action:
+              - 'ssm:DeleteMaintenanceWindow'
+            Resource: 
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:maintenancewindow/*"
+            Condition:
+              StringEquals:
+                aws:ResourceTag/test: tag
+          - Sid: AllowMaintenanceWindowTaskUpdates
+            Effect: Allow
+            Action:
+              - 'ssm:UpdateMaintenanceWindowTask'
+            Resource: 
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:windowtask/*"    
+          - Sid: 'iampassrolepolicy'
+            Effect: Allow
+            Action:
+              - 'iam:PassRole'
+            Resource:
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/app/pw-sec-automation-fed*"
+          - Sid: AllowLogsReadAccess
+            Effect: Allow
+            Action:
+              - 'logs:GetLog*'
+            Resource: '*'
+          - Sid: AllowStartSessionAccessOnAllEc2s
+            Effect: Allow
+            Action:
+              - 'ssm:StartSession'
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+      Roles: 
+        - 'pw-sec-automation-fed' 
+
+  FedRolePolicyUnConstrained:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub '${AppName}-Uncons'
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+
+          - Sid: UnconstrainedActions  # required * on all the listed actions
+            Effect: Allow
+            Action:
+              - support:*
+              # cloudformation
+              - cloudformation:ValidateTemplate 
+              - cloudformation:CreateUploadBucket 
+              - cloudformation:EstimateTemplateCost 
+              - cloudformation:PreviewStackUpdate 
+              - cloudformation:List*
+              - cloudformation:Get*
+              - cloudformation:Describe
+              # ecr
+              - ecr:GetAuthorizationToken  
+              - ecr:ListImages
+              # s3
+              - s3:ListAllMyBuckets
+              # ssm
+              - ssm:GetConnectionStatus
+              # secretsmanager
+              - secretsmanager:GetRandomPassword
+              # kms
+              - kms:GenerateRandom 
+              # cloudwatch
+              - cloudwatch:Get*  
+              - cloudwatch:List*
+              # apigateway
+              - apigateway:GET
+              - kinesisvideo:List*
+            Resource:
+              - "*"
+
+  FedRolePolicyConstrained:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub '${AppName}-Constrained'
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+  
+          - Sid: IamPassRole
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/${UAI}/*
+
+          - Sid: S3Constrained
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${UAI}*"
+              - !Sub "arn:${AWS::Partition}:s3:::${UAI}*/*"
+            Action:
+              - s3:Get*
+              - s3:Put*
+              - s3:List*
+              - s3:DeleteObject*
+              - s3:GetObject*
+
+          - Sid: servicediscoveryAndroute53Access
+            Effect: Allow
+            Resource:
+              - "*"
+            Action:
+              - servicediscovery:List* #servicediscovery
+              - servicediscovery:Get*
+              - servicediscovery:CreateService
+              - servicediscovery:CreateHttpNamespace
+              - servicediscovery:RegisterInstance
+              - servicediscovery:DeregisterInstance
+              - servicediscovery:DiscoverInstances
+              - servicediscovery:UpdateInstanceCustomHealthStatus
+              - servicediscovery:UpdateService
+              - servicediscovery:GetNamespace
+              - route53:Get*   # route53
+              - route53:List*
+              - route53:GetHealthCheck
+
+          - Sid: LogsConstrained
+            Effect: Allow
+            Action:
+              - logs:FilterLogEvents
+              - logs:Get*
+              - logs:StartQuery
+              - logs:StopQuery
+            Resource:
+              - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${UAI}*"
+
+          - Sid: ECRconstrainedFullAccess
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/${UAI}*"
+            Action:
+              - ecr:List* #Substitues  ListTagsForResource, ListImages
+              - ecr:Batch* #Substitues BatchCheckLayerAvailability, BatchDeleteImage, BatchGetImage
+              - ecr:Start* #Substitues  StartLifecyclePolicyPreview, StartImageScan
+              - ecr:DescribeImages*  #Substitues  DescribeImages,  DescribeImageScanFindings
+              - ecr:Get*  #Substitues  GetRepositoryPolicy, GetLifecyclePolicyPreview, GetLifecyclePolicy, GetDownloadUrlForLayer, 
+              - ecr:UploadLayerPart
+              - ecr:PutImage
+              - ecr:PutImageScanningConfiguration
+              - ecr:PutImageTagMutability
+              - ecr:InitiateLayerUpload
+              - ecr:CompleteLayerUpload
+
+          - Sid: ECRconstrainedAccessBase
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:325381443140:repository/gp-ops-base-cis*" # base repo name in ops account
+            Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+
+          - Sid: EcsConstrained
+            Effect: Allow
+            Resource: 
+              - "*"
+            Action:
+              - ecs:StopTask
+              - ecs:StartTask
+              - ecs:RunTask
+              - ecs:RegisterTaskDefinition
+              - ecs:DeregisterTaskDefinition
+              - ecs:CreateService
+              - ecs:UpdateService
+              - ecs:DeleteService
+              - ecs:UpdateServicePrimaryTaskSet
+              - ecs:UpdateTaskSet
+              - ecs:SubmitTaskStateChange
+              - ecs:SubmitContainerStateChange
+              - ecs:PutAttributes
+              - ecs:DeleteAttributes
+            Condition:
+              ArnEquals:
+                ecs:cluster: !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${UAI}*"
+
+          - Sid: LambdaConditional
+            Effect: Allow
+            Action:
+              - lambda:CreateEventSourceMapping
+              - lambda:UpdateEventSourceMapping
+              - lambda:GetEventSourceMapping
+              - lambda:DeleteEventSourceMapping
+            Resource:
+              - '*'
+            Condition:
+              ArnEquals:
+                lambda:FunctionArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${UAI}*"
+
+          - Sid: LambdaConstrained
+            Effect: Allow
+            Action:
+              - lambda:Get*
+              - lambda:InvokeFunction
+              - lambda:InvokeAsync
+              - lambda:Update*
+            Resource:
+              - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${UAI}*"
+
+          - Sid: RequestActionsUnCons
+            Effect: Allow
+            Action:
+              - secretsmanager:CreateSecret
+              - ssm:CreateDocument
+              - ssm:AddTagsToResource
+              - secretsmanager:TagResource
+              - ssm:PutParameter
+            Resource:
+              - '*'
+            Condition:
+              ForAnyValue:StringEquals:
+                aws:RequestTag/uai: !Ref UAI
+                aws:RequestTag/env: !Ref TagEnv
+
+          - Sid: kinesisvideoCons
+            Effect: Allow
+            Action:
+              - kinesisvideo:Get*
+              - kinesisvideo:Describe*
+              - kinesisvideo:Connect*
+            Resource:
+              - !Sub "arn:aws:kinesisvideo:${AWS::Region}:${AWS::AccountId}:stream/${UAI}*"
+              - !Sub "arn:aws:kinesisvideo:${AWS::Region}:${AWS::AccountId}:channel/${UAI}*"
+
+  FedRolePolicyModify:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${AppName}-Modify'
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ResourceActionsUnCons
+            Effect: Allow
+            Action:
+              - ssm:GetConnectionStatus
+              - ssm:TerminateSession
+              - ssm:List*
+            Resource:
+              - '*'
+          - Sid: Ec2ResourceActionsUnCons
+            Effect: Allow
+            Action:
+              - ec2:TerminateInstances
+              - ec2:StopInstances
+              - ec2:StartInstances
+              - ec2:RebootInstances
+              - ec2:UpdateSecurityGroupRuleDescriptionsEgress
+              - ec2:UpdateSecurityGroupRuleDescriptionsIngress
+              - ec2:DeleteSnapshot
+              - ec2:CreateSnapshots
+              - ec2:CreateSnapshot
+            Resource:
+            - '*'
+            Condition:
+              ForAnyValue:StringEquals:
+                ec2:resourceTag/uai: !Ref UAI
+                ec2:resourceTag/env: !Ref TagEnv
+
+          - Sid: AwsRequestTagAccess
+            Effect: Allow
+            Resource:
+              - '*'
+            Action:
+              - ec2:RunInstances
+              - ec2:CreateSnapshots
+              - ec2:CreateSnapshot
+            Condition: 
+              ForAnyValue:StringEquals:
+                aws:RequestTag/uai: !Ref UAI
+                aws:RequestTag/env: !Ref TagEnv
+
+          - Sid: ResourceActionsCons
+            Effect: Allow
+            Action:
+              # Cloudformation
+              - cloudformation:DeleteStack
+              - cloudformation:DeleteStackInstances
+              - cloudformation:DetectStackDrift
+              - cloudformation:DetectStackResourceDrift
+              # SSM
+              - ssm:SendCommand
+              - ssm:StartSession
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetDocument
+              - ssm:GetConnectionStatus
+              - ssm:GetParametersByPath
+              - ssm:LabelParameterVersion
+              - ssm:DeleteParameter
+              - ssm:DeleteParameters
+              - ssm:DeleteDocument
+              - ssm:UpdateDocument*
+              # SecretsManager
+              - secretsmanager:UpdateSecret 
+              - secretsmanager:DescribeSecret
+              - secretsmanager:RotateSecret
+              - secretsmanager:CancelRotateSecret
+              - secretsmanager:RestoreSecret
+              - secretsmanager:PutSecretValue
+              - secretsmanager:PutResourcePolicy
+              - secretsmanager:Get* 
+              - secretsmanager:DeleteSecret
+            Resource:
+              - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${UAI}*"  #Cloudformation Stack
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${UAI}*  # SSM Parameter
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${UAI}*  # SSM document
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*    # Ec2 Instance for SSM Doc
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${UAI}*"  #SecretsManager Secret
+            Condition:
+              ForAnyValue:StringEquals:
+                aws:ResourceTag/uai: !Ref UAI
+                aws:ResourceTag/env: !Ref TagEnv
+
+  FedRolePolicyDelete:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${AppName}-Delete'
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: DeleteConditionalAccess
+            Effect: Allow
+            Action:
+              - cloudformation:Delete*
+              - logs:Delete*
+              - ecr:Delete*
+              - ecs:Delete*
+              - kms:Delete*
+              - rds:Delete*
+              - lambda:Delete*
+              - secretsmanager:Delete*
+              - ssm:Delete*
+              - sqs:Delete*
+              - sns:Delete*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${UAI}*" # Cloudformation
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/${UAI}*"  # Kms Key Alias 
+              - !Sub "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:${UAI}*"  # sqs
+              - !Sub "arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:${UAI}*"  # sns
+              - !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${UAI}*"  # ecs
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${UAI}*"   # SSM Parameter
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${UAI}*"    # SSM Document
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${UAI}*"  # RDS Cluster
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:${UAI}*"  # RDS DB Instance
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:${UAI}*"  # RDS DB snapshot
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${UAI}*"  # SecretsManager
+
+  FedRolePolicyDynamoDBRead:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${AppName}-DynamoDBRead'
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: DynamoDBRead
+            Effect: Allow
+            Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:DescribeBackup
+              - dynamodb:GetItem
+              - dynamodb:ListBackups
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource:
+              - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${UAI}*"
+

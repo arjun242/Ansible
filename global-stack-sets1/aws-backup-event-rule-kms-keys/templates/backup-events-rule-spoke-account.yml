@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Event rule in default bus to send to gp-ops event bus
+Resources: 
+  AWSBackupCrossAccountEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: uai3037033-AWSBackup-TagRestore-CrossAccount
+      Description: To send events to gp-ops custom event bus from spoke account default bus
+      Targets:
+        - Arn: arn:aws:events:us-east-1:325381443140:event-bus/uai3037033-AWSBackup-TagRestore-prod-eventbus
+          Id: InvokeTagRestoreLambda
+          RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/inf/uai3037033-AWSBackup-TagRestore-EventBridge-Role
+      EventPattern:
+        detail-type:
+          - Restore Job State Change
+        source:
+          - aws.backup
+        detail:
+          status:
+            - COMPLETED

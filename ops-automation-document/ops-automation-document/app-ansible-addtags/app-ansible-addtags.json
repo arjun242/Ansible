@@ -1,0 +1,11 @@
+{
+    "Content": "file://app-ansible-addtags.yml", 
+    "Name": "app-ansible-addtags", 
+    "VersionName": "1.0",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation template to create Cloud watch event for DLM error detection
+Resources:
+  ScheduledRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: dlm-event-notification-rule
+      Description: Run every time when DLM state changes to Error
+      EventPattern:
+        source:
+          - "aws.dlm"
+        detail-type:
+          - "DLM Policy State Change"
+        detail:
+          state:
+            - "ERROR"
+      State: ENABLED
+      Targets:
+        - Arn: !ImportValue ops-notify-sns-topic
+          Id: gp-ops-alerts-notification

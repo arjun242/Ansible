@@ -1,0 +1,23 @@
+---
+- name: AssumeRole
+  sts_assume_role:
+    role_arn: "{{ assume_role_arn }}"
+    role_session_name: "RoleSession"
+    region: "{{ aws_region }}"
+  register: assumed_role
+
+- name: Setting assumed_role as fact
+  set_fact:
+    ops_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    ops_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    ops_session_token: "{{ assumed_role.sts_creds.session_token }}"
+      
+- name: Generate the python file
+  template:
+    src: "{{role_path}}/files/test.py"
+    dest: "/tmp/account-automation-folder/s3-bucket-policy/"
+
+- name: Run a script using an executable in a system path
+  script: /tmp/account-automation-folder/s3-bucket-policy/test.py
+  args:
+    executable: python3

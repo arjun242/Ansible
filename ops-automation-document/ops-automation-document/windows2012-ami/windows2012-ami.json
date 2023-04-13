@@ -1,0 +1,11 @@
+{
+    "Content": "file://windows2012-ami.yml", 
+    "Name": "windows2012-ami", 
+    "VersionName": "1.0",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

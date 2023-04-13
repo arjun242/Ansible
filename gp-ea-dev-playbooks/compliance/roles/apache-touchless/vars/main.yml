@@ -1,0 +1,29 @@
+---
+
+#directories
+install_directory: /opt/software/apache
+ssl_dir: /opt/software/apache/ssl
+conf_dir: /opt/software/apache/conf
+
+#config files location
+config_json: /usr/local/etc/appConfig.json
+vhost_conf: /opt/software/apache/conf/vhost.conf
+httpd_conf: /opt/software/apache/conf/httpd.conf
+ssl_conf: /opt/software/apache/conf/ssl.conf
+oidc_conf: /opt/software/apache/conf/oidc.conf
+
+#Default setting variables
+user: apache
+user_group: apache
+apache_adminemail: pw.webadmins@ge.com
+security: openId
+SSO_header: SM_USER
+https_port: 443
+httpport: 80
+proxy_protocol: TLSv1.2
+ssl_verify: none
+proxy_check_peer_cn: 'off'
+proxy_check_peer_name: 'off'
+
+#S3 vars
+bucket_name: s3-appconfig-us8p

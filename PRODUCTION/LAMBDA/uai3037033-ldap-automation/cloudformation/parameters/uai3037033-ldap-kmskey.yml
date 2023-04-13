@@ -1,0 +1,4 @@
+UAI: uai3037033
+AppName: ldap
+Env: prd
+Keyname: alias/uai3037033-ldap-kmskey

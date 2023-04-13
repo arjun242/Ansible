@@ -1,0 +1,15 @@
+---
+# vars file for qualys role
+
+#vars for Qualys Linux 
+installer_dir_linux: '/tmp/qaagents'
+version_linux: '1.7.1'
+qualys_package_linux: 'qualys-cloud-agent.x86_64_1.7.1.37.rpm'
+BucketName: 'gp-us-east-ops-automation-common-tools'
+reg: 'us-east-1'
+qualys_download_dir: '/tmp/qualys'
+
+#vars for Qualys Windows 
+qualys_package_windows: 'QualysCloudAgent.exe'
+installer_dir_windows: 'C:\temp\'
+update: 'no'     #update: 'yes' will update the packages, change it to update: 'no' if there are no updates available (USE LOWERCASE VALUES ONLY)

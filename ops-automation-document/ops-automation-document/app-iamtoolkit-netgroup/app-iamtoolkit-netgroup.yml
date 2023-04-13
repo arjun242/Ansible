@@ -1,0 +1,236 @@
+---
+schemaVersion: "2.2"
+description: "os-hpa-audit-nix"
+mainSteps:
+- action: "aws:runShellScript"
+  name: "OSHpaAudit"
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - echo "Validating dependancies..."
+    - CMDS="curl openssl date uname grep awk sed base64 read printf"
+    -  for i in $CMDS
+    -  do
+    -    # command -v will return >0 when the $i is not found
+    -    command -v $i >/dev/null && continue || { echo "$i command not found."; exit 1; }
+    -  done
+
+    - # Make sure metadata is available
+
+    - "command curl -m 5 -sS http://169.254.169.254/latest/user-data >/dev/null || { echo \"Error: user-data not available\"; exit 1; }"
+
+    - "command curl -m 5 -sS http://169.254.169.254/latest/iam/info >/dev/null || { echo \"Error: iam info not available\"; exit 1; }"
+
+    - "command curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam >/dev/null || { echo \"Error: security creds not available\"; exit 1; }"
+
+    - echo "Dependancy check complete...."
+
+    - # date values
+    - y=$(date +%y)
+    - m=$(date +%m)
+    - date_tmp=$(date +%d-%m-%Y | xargs -0)
+    - ip_tmp=$(/sbin/ifconfig | grep -A 1 'eth0' | tail -1 | cut -d ' ' -f 10 | xargs -0)
+
+    - #S3 parameters
+    - S3BUCKET="gp-ops-consolidated-common-log-bucket"
+    - S3BUCKETPATH="/iam-toolkit/"
+    - S3ACL="x-amz-acl:private"
+
+    - name_tmp=$(uname -n | xargs -0)
+
+    - echo "Getting UAI Code..."
+    - instUai_tmp=$(curl -m 5 -sS http://169.254.169.254/latest/user-data | grep uai | awk -F "=" '{print tolower($2)}')
+    - if [[ -z $instUai_tmp ]]
+    - then
+    -   echo "Resource does NOT have a UAI variable in Userdata";
+    -   instUai_tmp="uai0000000"
+    - fi
+    - var=$instUai_tmp
+    - var="${var#"${var%%[![:space:]]*}"}"
+    - var="${var%"${var##*[![:space:]]}"}"
+    - instUai_tmp=$(echo $var | xargs -0)
+    - instEnv_tmp=$(curl -m 5 -sS http://169.254.169.254/latest/user-data | grep -i env | awk -F "=" '{print tolower($2)}')
+    - if [[ -z $instEnv_tmp ]]
+    - then
+    -   echo "Resource does NOT have an env variable in Userdata";
+    -   echo "Using noenv"
+    -   instEnv_tmp="noenv"
+    - fi
+    - var=$instEnv_tmp
+    - var="${var#"${var%%[![:space:]]*}"}"
+    - var="${var%"${var##*[![:space:]]}"}"
+    - instEnv_tmp=$(echo $var | xargs -0)
+    - if [[ $instUai_tmp =~ ^uai[0-9]{7}$ ]]
+    - then
+    -   echo "Resource has valid UAI";
+    -   output_file="/tmp/${instUai_tmp}/access_report_${instEnv_tmp}_${instUai_tmp}_${name_tmp}.csv"
+    -   output_filename="access_report_${instEnv_tmp}_${instUai_tmp}_${name_tmp}.csv"
+    -   mkdir -p /tmp/$instUai_tmp
+    -   #echo "Output file: $output_file"
+    -   if [[ -f "$output_file" ]]; then
+    -     rm "$output_file"
+    -   fi
+    -   touch $output_file
+    -   printf 'UAI,Env,IP,UserType,Source,Username,User,HPA,Root,Date\n' >> $output_file;
+    - else
+    -   "echo \"Error: Resource does NOT have a valid UAI Code\";"
+    -   output_file="/tmp/access_report_${name_tmp}_${date_tmp}.txt"
+    -   touch $output_file
+    - fi
+
+    - echo "Getting Role Arn..."
+    - #roleArn=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/info/ |grep InstanceProfileArn | awk -F "InstanceProfileArn" '{print $2}'|awk -F "," '{print $1}'|sed 's/\"//g'|sed 's/://g'|sed 's/\s//g');
+    - roleArn=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/security-credentials/);
+
+    - if [ -z "$roleArn" ]
+    - then
+    -   "echo \"Error: Could not get role ARN!\";"
+    -   exit 1;
+    - fi
+    - #strip off the arn and just get the roleName
+
+    - roleNam=$(echo $roleArn | awk '{n=split($1,A,"/"); print A[n]}')
+    - "echo \"Role Name: $roleNam\""
+    - echo "Getting access keys..."
+    - accessKey=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/security-credentials/$roleNam | grep "AccessKeyId"|awk -F ":" '{print $2}'|awk -F "," '{print $1}'|sed 's/\"//g' | sed 's/\n//g' | sed 's/\s//g');
+    - if [ -z "$accessKey" ]
+    - then
+    -   "echo \"Error: Could not get access key!\";"
+    -   exit 1;
+    - fi
+    - secretKey=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/security-credentials/$roleNam | grep "SecretAccessKey"|awk -F ":" '{print $2}'|awk -F "," '{print $1}'|sed 's/\"//g' | sed 's/\s//g');
+    - if [ -z "$secretKey" ]
+    - then
+    -   "echo \"Error: Could not get secret key!!\";"
+    -   exit 1;
+    - fi
+
+    - function putS3
+    - "{"
+    -   filename=$2
+    -   filepathname=$1
+
+    -   content_type="application/octet-stream"
+
+    -   date=$(date +"%a, %d %b %Y %T %z")
+
+      aws s3 cp $1 s3://$S3BUCKET$S3BUCKETPATH$filename --acl bucket-owner-full-control
+      #string="PUT\n\n$content_type\n$date\n$S3ACL\n/$S3BUCKET$S3BUCKETPATH$filename"
+      #echo $string
+
+    # signature=$(echo -en "${string}" | openssl sha1 -hmac "${secretKey}" -binary | base64)
+    # curl -X PUT -T "$output_file" \
+    #   -H "Host: s3.amazonaws.com" \
+    #   -H "Date: $date" \
+    #   -H "Content-Type: application/x-www-form-urlencoded" \
+    #   -H "$S3ACL" \
+    #   -H "Authorization: AWS $accessKey:$signature" \
+    #   "https://s3.amazonaws.com/$S3BUCKET$S3BUCKETPATH$filename"
+
+    -   case "$?" in
+    -     0) echo "$base_url$S3BUCKETPATH$filename"
+    -     ;;
+    -     '*) echo "Uh oh. Something went terribly wrong"'
+    -     ;;
+    -   esac
+    - "}"
+
+    - echo "Starting data pull..."
+
+    - FILE="/etc/passwd"
+    - if [[ -f "$FILE" ]]; then
+    -     echo "$FILE exist"
+    -    'while IFS=: read -r f1 f2 f3 f4 f5 f6 f7;'
+    -     do
+    -     username=$(echo $f1 | xargs -0)
+    -     shell=$(echo $f7 | xargs -0)
+    -     root="No"
+    -     hpa=""
+    -    'if grep -q "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers";'
+    -     then
+    -       root="Yes";
+    -     'elif grep -rq "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers.d/";'
+    -       then root="Yes";
+    -     fi
+    -     if [[ ${shell::6} != "/sbin/" ]]; then
+    -       printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$ip_tmp" "User" "$(echo $FILE | xargs -0)" "$username" "" "$hpa" "$root" "$date_tmp" >> $output_file;
+    -     fi
+    -     done < "$FILE"
+    - else
+    -   echo "$FILE does NOT exist"
+    - fi
+
+    - FILE="/etc/security/access.conf"
+    - if [[ -f "$FILE" ]]; then
+    -     'echo "$FILE exist"'
+    -     "while IFS=: read -r f1 f2 f3;"
+    -     do
+    -       if [[ ${f1::1} == "+" ]]
+    -       then
+    -         action='Allow';
+    -         origin=$(echo $f3 | xargs -0)
+    -         hpa="No"
+    -         root="No"
+    -         un=$(echo $f2 | xargs -0)
+    -         'if [[ ${un::1} == "@" ]]; then username=${un:1}; else username=$un; fi'
+    -         if [[ $origin == "ALL" ]]; then
+    -           hpa="Yes"
+    -         fi
+    -         'if grep -q "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers";'
+    -         then
+    -           root="Yes";
+    -         'elif grep -rq "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers.d/";'
+    -           then root="Yes";
+    -         fi
+    -         printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$ip_tmp" "Group" "$(echo $FILE | xargs -0)" "$(echo $f2 | xargs -0)" "" "$hpa" "$root" "$date_tmp" >> $output_file;
+    -       elif [[ ${f1::1} == "-" ]]; then
+    -           action='Deny';
+    -           #"printf '{Source: %s, Users: %s, Permissions: %s, Origin: %s}\n' \"$FILE\", \"$f2\" \"$action\" \"$f3\" >> $output_file;"
+    -           printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$ip_tmp" "Group" "$(echo $FILE | xargs -0)" "$(echo $f2 | xargs -0)" "" "No" "$root" "$date_tmp" >> $output_file;
+    -       # else echo "not found";
+    -       fi
+    -     done < "$FILE"
+    - else
+    -   echo "$FILE does NOT exist"
+    - fi
+
+    - FILE="/etc/security/access.conf"
+    - if [[ -f "$FILE" ]]; then
+    -     'echo "$FILE exist"'
+    -     "while IFS=: read -r f1 f2 f3;"
+    -     do
+    -       if [[ ${f1::1} == "+" ]]
+    -       then
+    -         action='Allow';
+    -         origin=$(echo $f3 | xargs -0)
+    -         un=$(echo $f2 | xargs -0)
+    -         'if [[ ${un::1} == "@" ]]; then'
+    -           groupname=${un:1}
+    -           hpa="No"
+    -           'if [[ $origin == "ALL" ]]; then'
+    -             hpa="Yes"
+    -           fi
+    -           root="No"
+    -         'if grep -q "^\(\%\|\+\)\?$groupname[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers";'
+    -         then
+    -           root="Yes";
+    -         'elif grep -rq "^\(\%\|\+\)\?$groupname[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers.d/";'
+    -           then root="Yes";
+    -         fi
+    -         users=$(getent netgroup $groupname | grep -o '[a-z][a-z0-9][0-9][0-9]\{5\}')
+    -         for user in $users; do
+    -         nixId=$user;
+    -         sso=$(getent passwd $user | cut -d':' -f5 | cut -d' ' -f1);
+    -         name=$(getent passwd $user | cut -d':' -f5 | cut -d' ' -f2-);
+    -         printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$ip_tmp" "NixGroup" "$un" "$nixId" "$sso-$name" "$hpa" "$root" "$date_tmp" >> $output_file;
+    -         done
+    -       fi
+    -     fi
+    -     done < "$FILE"
+    - else
+    -   echo "$FILE does NOT exist"
+    - fi
+    - putS3 $output_file $output_filename

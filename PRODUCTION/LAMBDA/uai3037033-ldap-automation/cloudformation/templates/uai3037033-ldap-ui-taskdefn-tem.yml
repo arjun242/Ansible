@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A stack for provisioning ecs task definition..
+
+Parameters:
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed.
+    ConstraintDescription: The UAI must be valid, but specified as 'uai' followed by 7 digits.
+    AllowedPattern: '^uai[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    Default: prd
+    AllowedValues:
+    - nonprd
+    - prd
+  AppName:
+    Type: String
+    MaxLength: 25
+    MinLength: 3
+    Description: Name of the application, keep to 15 characters or less
+  TaskName:
+    Type: String
+    Description: Name of the Task Definition, the Value should be same as Appinstance provided to while creating a role
+    Default: ps-task
+  ContainerCpu:
+    Type: Number
+    Default: 2048
+    Description: The number of cpu units used by the task. 1024 is 1 CPU
+    AllowedValues: [256, 512, 1024, 2048, 4096]
+  ContainerMemory:
+    Type: Number
+    Default: 4096
+    Description: How much memory in megabytes to give the container
+  ImageURI:
+    Type: String
+    Description: "The image used to start a container.  Ex: repository-url/image"
+  ContainerPort:
+    Type: Number
+    Default: 5001
+    Description: the port number on which application is running in Docker
+
+Resources:
+  LdapAuthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${UAI}/${AppName}/${Env}/${TaskName}"
+      RetentionInDays: 90
+      Tags: 
+        - Key: Name
+          Value: ldap-automation
+        - Key: uai
+          Value: uai3037033
+        - Key: associate
+          Value: sa    
+        - Key: prisma-enabled
+          Value: false 
+        - Key: env
+          Value: !Ref Env 
+      
+  Taskdefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: !Ref ContainerCpu
+      Memory: !Ref ContainerMemory
+      Family: !Sub "${UAI}-${AppName}-${Env}-${TaskName}-baseline"
+      TaskRoleArn: arn:aws:iam::325381443140:role/app/uai3037033/uai3037033-ldap-task-prd
+      NetworkMode: "awsvpc"
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: arn:aws:iam::325381443140:role/app/uai3037033/uai3037033-ldap-task-prd
+      Tags: 
+        - Key: Name
+          Value: ldap-automation
+        - Key: uai
+          Value: uai3037033
+        - Key: associate
+          Value: sa    
+        - Key: prisma-enabled
+          Value: false 
+        - Key: env
+          Value: !Ref Env 
+      ContainerDefinitions:
+        - Name: !Ref TaskName
+          Essential: true
+          Image: !Sub "${ImageURI}"
+          PortMappings:
+            - ContainerPort: !Ref "ContainerPort"
+              Protocol: tcp
+          Environment:
+            - Name: "associate"
+              Value: "sa"          
+            - Name: "uai"
+              Value: !Ref UAI
+            - Name: "app"
+              Value: !Ref AppName
+            - Name: "env"
+              Value: !Ref Env
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LdapAuthLogGroup
+              awslogs-region: !Sub "${AWS::Region}"
+              awslogs-stream-prefix: !Sub "${TaskName}-${ContainerPort}"
+
+Outputs:
+  ECSTaskDefinitionARN:
+    Description: Task Definition ARN
+    Value: !Ref Taskdefinition

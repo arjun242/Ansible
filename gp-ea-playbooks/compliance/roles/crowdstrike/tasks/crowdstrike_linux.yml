@@ -1,0 +1,96 @@
+---
+# This playbook tasks will be executed for linux hosts
+
+#This is included to fetch CID from secret.yml
+- include_vars: secret.yml
+  no_log: true
+  
+# This gathers all ansible package facts
+- name: Gather the package facts
+  become: yes
+  package_facts:
+    manager: auto  
+  
+- name: Get all ansible service facts
+  become: yes
+  service_facts:
+
+- name: Setting the variable for existing version of installed package
+  set_fact:
+    existing_version: "{{ ansible_facts.packages['falcon-sensor'][0].version }}"
+  when: "'falcon-sensor' in ansible_facts.packages"
+
+# This task sets the exeOs facts for RedHat or CentOS
+- name: set crowdstrike custom variable value
+  set_fact:
+      exeOs: 'el7'
+  when:  ansible_distribution ==  "RedHat" or ansible_distribution ==  "CentOS"
+  
+# This task sets the exeOs facts for Amazon OS  
+- name: set crowdstrike custom variable value
+  set_fact:
+    exeOs: 'amzn2'
+  when:  ansible_distribution ==  "Amazon"
+
+- block: 
+
+# This task creates a directory for CrowdStrike installer
+  - name: Create CrowdStrike installer directory in target host
+    become: yes
+    file:
+      path: "{{ installer_dir_linux }}"
+      state: directory
+  
+# This task creates a directory for the downloaded CrowdStrike package
+  - name: Create a directory for downloading CrowdStrike package in Master Node
+    file:
+      path: "{{ crowdstrike_downloaded_dir }}"
+      state: directory
+    delegate_to: localhost
+
+# This task downloads Crowdstrike installer from s3 bucket on Master Node
+  - name: Download CrowdStrike installer
+    aws_s3:
+     bucket: "{{ BucketName }}"
+     object: "{{ crowdstrike_package_linux }}"
+     dest: "{{ crowdstrike_downloaded_dir }}/{{ crowdstrike_package_linux }}"
+     mode: get
+     region: "{{ reg }}"
+     overwrite: different
+    delegate_to: localhost
+
+# This task copies the files from master node to target host
+  - name: Copying the downloaded file from master node to target host
+    become: yes
+    copy:
+     src: "{{ crowdstrike_downloaded_dir }}/{{ crowdstrike_package_linux }}"  # Path of downloaded package in master node
+     dest: "{{ installer_dir_linux }}/{{ crowdstrike_package_linux }}"        # Path of installer directory in targeted host
+     
+# This task installs CrowdStrike on target host     
+  - name: Install crowdStrike service
+    become: yes
+    yum:
+      name: "{{ installer_dir_linux }}/{{ crowdstrike_package_linux }}"
+      state: present
+
+  - name: Deleting the Installer package from Target host
+    become: yes
+    file:
+      path: "{{ installer_dir_linux }}/{{ crowdstrike_package_linux }}"
+      state: absent
+  
+  # This task configures CrowdStrike on target host
+  - name: Configure crowdStrike with CID number
+    become: yes
+    command: "/opt/CrowdStrike/falconctl -s -f --cid={{ cid }}"
+    notify: restart crowdStrike
+
+  when: not 'falcon-sensor' in ansible_facts.packages or not ansible_facts.services['falcon-sensor.service'] is defined or ("'falcon-sensor' in ansible_facts.packages" and existing_version != version_linux)
+  
+# This task starts the CrowdStrike service on target host
+- name: Start the crowdStrike service
+  become: yes
+  service:
+     name: 'falcon-sensor'
+     state: started
+     enabled: yes  

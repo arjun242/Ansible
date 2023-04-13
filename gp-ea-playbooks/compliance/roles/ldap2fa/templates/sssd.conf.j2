@@ -1,0 +1,98 @@
+[sssd]
+config_file_version = 2
+domains = LDAP
+services = nss,pam
+debug_level = 0
+
+
+[nss]
+filter_groups = root,gecloud
+
+filter_users = root,gecloud,adm,apache,avahi,bin,daemon,dbus,ftp,games,gdm,gopher,haldaemon,halt,ldap,lp,mail,mailman,mailnull,named,news,nfsnobody,nobody,nscd,ntp,operator,oracle,pcap,radiusd,radvd,rpc,rpcuser,shutdown,smmsp,sshd,sync,tomcat,uucp,vcsa,xfs
+
+
+[pam]
+
+
+[domain/LDAP]
+auth_provider = ldap
+id_provider = ldap
+chpass_provider = none
+sudo_provider = none
+
+cache_credentials = True
+enumerate = False
+
+ldap_id_use_start_tls = True
+ldap_tls_cacertdir = {{ ldap_cert_dir }}
+ldap_tls_reqcert = demand
+
+{% if accid == pnw_preprod_acc_id %}
+ldap_uri = {% for server in ldap_servers %}{{ ldap_protocol }}://{{ server }}:{{ ldap_port }}
+{%- if not loop.last %},{% endif %}
+{% endfor %}
+
+
+ldap_default_bind_dn = {{ ldap_default_bind_dn_preprod }}
+ldap_default_authtok = {{ ldap_authtok_preprod }}
+{% endif %}
+{% if accid == pnw_prod_acc_id %}
+ldap_uri = {% for server in ldap_servers %}{{ ldap_protocol }}://{{ server }}:{{ ldap_port }}
+{%- if not loop.last %},{% endif %}
+{% endfor %}
+
+
+ldap_default_bind_dn = {{ ldap_default_bind_dn_prod }}
+ldap_default_authtok = {{ ldap_authtok_prod }}
+{% endif %}
+{% if accid == ent_emea_pnw_acc_id %}
+ldap_uri = {% for server in ldap_servers %}{{ ldap_protocol }}://{{ server }}:{{ ldap_port }}
+{%- if not loop.last %},{% endif %}
+{% endfor %}
+
+
+ldap_default_bind_dn = {{ ldap_default_bind_dn_ent_emea_pnw }}
+ldap_default_authtok = {{ ldap_authtok_ent_emea_pnw }}
+{% endif %}
+{% if accid == ent_emea_pnw_preprod_acc_id %}
+ldap_uri = {% for server in ldap_servers %}{{ ldap_protocol }}://{{ server }}:{{ ldap_port }}
+{%- if not loop.last %},{% endif %}
+{% endfor %}
+
+
+ldap_default_bind_dn = {{ ldap_default_bind_dn_ent_emea_pnw_preprod }}
+ldap_default_authtok = {{ ldap_authtok_ent_emea_pnw_preprod }}
+{% endif %}
+{% if accid == pwr_sharedhr_acc_id %}
+ldap_uri = {% for server in ldap_servers %}{{ ldap_protocol }}://{{ server }}:{{ ldap_port_pwr_sharedhr }}
+{%- if not loop.last %},{% endif %}
+{% endfor %}
+
+
+ldap_default_bind_dn = {{ ldap_default_bind_dn_pwr_sharedhr }}
+ldap_default_authtok = {{ ldap_authtok_pwr_sharedhr }}
+{% endif %}
+{% if accid == pwr_power_services %}
+ldap_uri = {% for server in ldap_servers %}{{ ldap_protocol }}://{{ server }}:{{ ldap_port }}
+{%- if not loop.last %},{% endif %}
+{% endfor %}
+
+
+ldap_default_bind_dn = {{ ldap_default_bind_dn_pwr_power_services }}
+ldap_default_authtok = {{ ldap_authtok_pwr_power_services }}
+{% endif %}
+ldap_default_authtok_type = password
+
+ldap_search_base = dc=nixauth
+
+ldap_group_search_base = ou=group,dc=nixauth?subtree?
+ldap_netgroup_search_base = ou=netgroup,dc=nixauth?subtree?
+ldap_user_search_base = ou=nixusers,dc=nixauth?subtree?(geunixstatus=A)
+
+ldap_group_object_class = geposixgroup
+ldap_netgroup_object_class = genisnetgroup
+ldap_user_object_class = geposixaccount
+
+ldap_user_shell = gelinuxloginshell
+ldap_user_home_directory = gelinuxhomedirectory
+ldap_netgroup_name = genisnetgroupname

@@ -1,0 +1,63 @@
+---
+- hosts: all
+  gather_facts: True
+  vars:
+    splunk_working_directory: '/tmp/'
+    splunk_uf_binary_linux: 'splunkforwarder-7.2.9.1-605df3f0dfdd-linux-2.6-x86_64.rpm'
+
+  pre_tasks:
+
+    - name: "get metadata"
+      shell: "curl -H Metadata:true http://169.254.169.254/metadata/instance?api-version=2021-02-01"
+      register: azure_metadata
+
+    - name: "set azure_metadata"
+      set_fact:
+        azure_metadata: "{{ azure_metadata.stdout | from_json }}"
+
+    - name: Gather metadata facts
+      set_fact:
+        location: "{{ azure_metadata.compute.location }}"
+        vm_name: "{{ azure_metadata.compute.name }}"
+        vnet: "{{ azure_metadata.compute.vmId }}"
+        ipv4: "{{ azure_metadata.network.interface[0].ipv4.ipAddress[0].privateIpAddress }}"
+        subid: "{{ azure_metadata.compute.subscriptionId }}"
+
+  tasks:
+
+    - name: Check if splunk is installed
+      become: yes
+      stat:
+        path: /opt/splunkforwarder/bin/splunk
+      register: splunk_path
+
+    - name: splunk is installed already
+      debug: msg='splunk is already installed under /opt/splunkforwarder'
+      when: splunk_path.stat.exists == true
+
+    - name: Stop the Splunk Service
+      become: yes
+      service: 
+        name: SplunkForwarder.service
+        state: stopped
+      #when: splunk_path.stat.exists == false or ("'splunkforwarder' in ansible_facts.packages" and existing_version != version_linux)
+      when: splunk_path.stat.exists == false
+
+    - name: Azure login and download the installer from blob
+      shell: az login --identity --username 9b863056-d02e-4d5a-a790-31df84d596f6 ;
+             az account set --subscription 9c1ab385-2554-43ca-bdf8-f8d937bf4a28 ;
+             az storage blob download --account-name sa328uai3047228common --container-name common --name {{ splunk_uf_binary_linux }} --file /tmp/{{ splunk_uf_binary_linux }} --auth-mode login
+      become: yes
+
+    #- name: Installing the splunk agent on Rhel
+    #  yum:
+    #    name: "/tmp/{{ splunk_uf_binary_linux }}"
+    #    state: present       
+    #  become: yes
+        
+    - name: Deleting the splunk file
+      file:
+         path: "/tmp/{{ splunk_uf_binary_linux }}"
+         state: absent
+      become: yes
+      tags: delete_splunk_deb

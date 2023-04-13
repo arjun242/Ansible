@@ -1,0 +1,9 @@
+# History:
+  # 03-10-2020 : Initial subnet group Setup
+stack_defaults:
+  tags: 
+    core_component: "true"
+stacks:
+  {{aws_region}}:
+    {{prefix}}db-subnet-group:
+      template: subnet-group.yml

@@ -1,0 +1,50 @@
+---
+# - name: Check PyGithub Installation Status
+#   command: "{{ ansible_python_interpreter | default('/usr/bin/python') }} -c 'import {{ module }}; print({{ module }}.__version__)'"
+#   vars:
+#     module: PyGithub
+#   register: test
+# - debug:
+#     var: test.stdout
+  
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Include secret vars
+  include_vars: secret.yml
+  no_log: true
+
+- name: Include secret vars
+  include_vars: state.yml
+  no_log: true
+  
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/"
+
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-ops/gp-jenkins-selfservice"
+    dest: "{{source_directory}}/{{resource_folder}}/"
+    clone: yes
+    recursive: yes
+    version: master
+
+- name: Generate python state file
+  template:
+    src: "state.json"
+    dest: "{{source_directory}}/{{resource_folder}}/state.json"
+    
+- name: Invoke GitHub Org Script
+  command: "python3 {{source_directory}}/{{resource_folder}}/git-org-scripts/src/main.py --host 'ansible' --cloud '{{deployment_cloud}}'"
+  register: output
+
+- name: Display Script Output to Screen
+  debug: "{{ output.stdout }}"
+
+- name: Delete directory for parameter file
+  file:
+    state: absent
+    path: "{{source_directory}}/{{resource_folder}}/"
+

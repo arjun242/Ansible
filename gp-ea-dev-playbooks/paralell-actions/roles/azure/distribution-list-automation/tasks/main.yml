@@ -1,0 +1,42 @@
+# Include variables for directory path & github + IDM api secrets.
+- name: Include vars file
+  include_vars: templates-directory.yml
+- name: Include secret vars
+  include_vars: secret.yml
+  no_log: true
+
+# Creating directory to invoke script
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/"
+
+# Clone IDM API code repo to local environment
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-ea-org/idm-automation"
+    dest: "{{source_directory}}/{{resource_folder}}/"
+    clone: yes
+    recursive: yes
+    version: ansible
+
+# Dynamically build state.json file
+- name: Generate python state file
+  template:
+    src: "state.json"
+    dest: "{{source_directory}}/{{resource_folder}}/state.json"
+
+# Invoke IDM API Script
+- name: Invoke IDM API Script
+  command: "python3 {{source_directory}}/{{resource_folder}}/src/main.py {{ client_id }} {{ client_secret }}"
+  register: output
+  
+# Display Script Output to Screen
+- name: Display Script Output to Screen
+  debug: "{{ output.stdout }}"
+
+# Delete Local Project directory
+- name: Delete directory for parameter file
+  file:
+    state: absent
+    path: "{{source_directory}}/{{resource_folder}}/"

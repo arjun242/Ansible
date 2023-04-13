@@ -1,0 +1,12 @@
+# History:
+  # 06/07/2021 - Incorporating into new repo and infra processor
+  
+stack_defaults:
+  tags: 
+    core_component: "true"
+    
+stacks:
+  {{aws_region}}:
+    {{prefix}}app-route-table:
+      template: gp-route-table-public.yml
+

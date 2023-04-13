@@ -1,0 +1,47 @@
+[
+    {
+        "groupDisplayName":"@Gas Power Azure_{{ sub_code }}_Reader_PIM",
+        "groupEmailAddress": "gas_power_azure_{{ sub_code }}_reader_pim@ge.com",
+        "groupDescription": "{{ sub_code }} Azure Subscription PIM Reader DL.",
+        "groupPrimaryManager":"204053935",
+        "managers": [
+            "204053935",
+	    "212502266",
+            "212571457",
+            "212628192"
+        ],
+        "members": [
+            "212502266"
+        ]
+    },
+    {
+        "groupDisplayName":"@Gas Power Azure_{{ sub_code }}_Contributor_PIM",
+        "groupEmailAddress": "gas_power_azure_{{ sub_code }}_contributor_pim@ge.com",
+        "groupDescription": "{{ sub_code }} Azure Subscription PIM Contributor DL.",
+        "groupPrimaryManager":"204053935",
+        "managers": [
+            "204053935",
+	    "212502266",
+            "212571457",
+            "212628192"
+        ],
+        "members": [
+            "212502266"
+        ]
+    },
+    {
+        "groupDisplayName":"@Gas Power Azure_{{ sub_code }}_UAA_PIM",
+        "groupEmailAddress": "gas_power_azure_{{ sub_code }}_uaa_pim@ge.com",
+        "groupDescription": "{{ sub_code }} Azure Subscription PIM UAA DL.",
+        "groupPrimaryManager":"204053935",
+        "managers": [
+            "204053935",
+	    "212502266",
+            "212571457",
+            "212628192"
+        ],
+        "members": [
+            "212502266"
+        ]
+    }
+]

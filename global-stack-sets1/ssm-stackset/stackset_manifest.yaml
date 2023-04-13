@@ -1,0 +1,2 @@
+# update or create a new stack set manully through cloudformation stacksets "ssm-parameters-default" in gp-ops account.
+# any changes in this template will lead to modify the ssm parameter values to default.

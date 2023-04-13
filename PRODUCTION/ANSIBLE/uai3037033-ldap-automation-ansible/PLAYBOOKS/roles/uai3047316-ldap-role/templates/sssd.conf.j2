@@ -1,0 +1,57 @@
+[sssd]
+config_file_version = 2
+domains = LDAP
+services = nss,pam
+debug_level = 0
+
+
+[nss]
+filter_groups = root,gecloud
+filter_users = root,gecloud,adm,apache,avahi,bin,daemon,dbus,ftp,games,gdm,gopher,haldaemon,halt,ldap,lp,mail,mailman,mailnull,named,news,nfsnobody,nobody,nscd,ntp,operator,oracle,pcap,radiusd,radvd,rpc,rpcuser,shutdown,smmsp,sshd,sync,tomcat,uucp,vcsa,xfs
+
+
+[pam]
+
+
+[domain/LDAP]
+auth_provider = ldap
+id_provider = ldap
+chpass_provider = none
+sudo_provider = none
+
+cache_credentials = True
+enumerate = False
+
+ldap_id_use_start_tls = True
+ldap_tls_cacertdir = /etc/openldap/cacerts
+ldap_tls_reqcert = demand
+
+
+{% if account_id in ldap_uri.keys() %}
+{% set ldap_account=account_id %}
+{% else %}
+{% set ldap_account='common' %}
+{% endif %}
+ldap_uri = {% for server in ldap_uri[ldap_account] %}{{ ldap_protocol[ldap_account] }}://{{ server }}
+{%- if not loop.last %},{% endif %}
+{% endfor %}
+
+
+ldap_default_bind_dn = {{ ldap_bind_dn[ldap_account] }}
+ldap_default_authtok = {{ ldap_authtok[ldap_account] }}
+ldap_default_authtok_type = password
+
+ldap_search_base = {{ ldap_search_base[ldap_account] }}
+
+ldap_group_search_base = ou=group,{{ ldap_search_base[ldap_account] }}?subtree?
+ldap_netgroup_search_base = ou=netgroup,{{ ldap_search_base[ldap_account] }}?subtree?
+ldap_user_search_base = ou=nixusers,{{ ldap_search_base[ldap_account] }}?subtree?(geunixstatus=A)
+
+
+ldap_group_object_class = geposixgroup
+ldap_netgroup_object_class = genisnetgroup
+ldap_user_object_class = geposixaccount
+
+ldap_user_shell = gelinuxloginshell
+ldap_user_home_directory = gelinuxhomedirectory
+ldap_netgroup_name = genisnetgroupname

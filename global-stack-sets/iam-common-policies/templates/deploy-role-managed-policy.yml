@@ -1,0 +1,54 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an IAM custom managed policy for all deploy roles.
+Resources:
+  CustomManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: common-deploy-role
+      Description: Common managed policy for all deploy roles.
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CommonPassRolePermissions
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource:
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/ssm-default-instance-profile-role
+            
+          - Sid: DecodeAuthorizationMessage
+            Action:
+              - sts:DecodeAuthorizationMessage
+            Resource:
+              - "*"
+            Effect: Allow
+            
+          - Sid: lambdaInvoke  # Invoke access on lambda functions for Cloudformation Macros
+            Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+            - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cf-macro*"
+            - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cf-customresource*"
+            - !Sub "arn:aws:lambda:${AWS::Region}:*:function:common*"
+            - !Sub "arn:aws:lambda:${AWS::Region}:*:function:automation*"
+            - !Sub "arn:aws:lambda:${AWS::Region}:*:function:rds-db-hardening*"
+          
+          - Sid: SSMConstrainedsharedRead
+            Effect: Allow
+            Action:
+              - ssm:List* 
+              - ssm:GetDocument
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetParametersByPath
+              - ssm:SendCommand
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:parameter/shared*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:document/shared*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:parameter/common*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:document/common*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:parameter/automation*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:document/automation*

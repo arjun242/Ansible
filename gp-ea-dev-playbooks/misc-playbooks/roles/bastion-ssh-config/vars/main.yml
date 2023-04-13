@@ -1,0 +1,9 @@
+BucketName: ansible-bucket-xyz
+PrivateObjectDir: /check/ssh_host_rsa_key
+PublicObjectDir: /check/ssh_host_rsa_key_pub
+S3DownloadDir: /tmp/s3Download
+BucketRegion: us-east-1
+PrivateKeyFileName: ssh_host_rsa_key
+PublicKeyFileName: ssh_host_rsa_key.pub
+TempStoreDirectory: /tmp/fromTower
+SSHDirectory: /etc/ssh

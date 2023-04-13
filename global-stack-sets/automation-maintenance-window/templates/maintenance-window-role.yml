@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This role and policy is created for maintenance window in gp-ops account
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the admin Role... e.g. 'cldSAAdmin'
+    Default: maintenance-window-role
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: /inf/
+  SSMLogBucket:
+    Type: String
+    Description: Bucket Name
+    Default: gp-us-east-ops-mw-patch-logs
+Resources:
+  MaintenanceWindowRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ssm.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /inf/
+      RoleName: maintenance-window-role
+  SSMMaintenanceWindPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    DependsOn:
+      - MaintenanceWindowRole
+    Properties:
+      Description: Basic managed policy modeled after the AmazonSSMManagedInstanceCore
+      ManagedPolicyName: ssm-maintenance-window-role
+      Roles: 
+        - !Ref MaintenanceWindowRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: SSMAccess
+            Effect: Allow
+            Action:
+              - 'ssm:CancelCommand'
+              - 'ssm:GetCommandInvocation'
+              - 'ssm:ListCommandInvocations'
+              - 'ssm:ListCommands'
+              - 'ssm:SendCommand'
+              - 'ssm:GetAutomationExecution'
+              - 'ssm:GetParameters'
+              - 'ssm:StartAutomationExecution'
+              - 'ssm:ListTagsForResource'
+            Resource: '*'
+          - Sid: EC2Access
+            Effect: Allow
+            Action:
+              - 'ec2:DescribeInstanceAttribute'
+              - 'ec2:DescribeInstanceStatus'
+              - 'ec2:DescribeInstances'
+            Resource: '*'
+          - Sid: LambdaAccess
+            Effect: Allow
+            Action:
+              - 'lambda:InvokeFunction'
+            Resource:
+              - 'arn:aws:lambda:*:*:function:SSM*'
+              - 'arn:aws:lambda:*:*:function:*:SSM*'
+          - Sid: Execution
+            Effect: Allow
+            Action:
+              - 'states:DescribeExecution'
+              - 'states:StartExecution'
+            Resource:
+              - 'arn:aws:states:*:*:stateMachine:SSM*'
+              - 'arn:aws:states:*:*:execution:SSM*'
+          - Sid: ResourceGroups
+            Effect: Allow
+            Action:
+              - 'resource-groups:ListGroups'
+              - 'resource-groups:ListGroupResources'
+              - 'resource-groups:GetGroupQuery'
+            Resource: '*'
+          - Sid: StackAccess
+            Effect: Allow
+            Action:
+              - 'cloudformation:DescribeStacks'
+              - 'cloudformation:ListStackResources'
+            Resource: '*'
+          - Sid: GetResources
+            Effect: Allow
+            Action:
+              - 'tag:GetResources'
+            Resource: '*'
+          - Sid: SelectResourceConfig
+            Effect: Allow
+            Action:
+              - 'config:SelectResourceConfig'
+            Resource: '*'
+          - Sid: GetEC2InstanceRecommendations
+            Effect: Allow
+            Action:
+              - 'compute-optimizer:GetEC2InstanceRecommendations'
+            Resource: '*'
+          - Sid: TrustedAdvisorChecks
+            Effect: Allow
+            Action:
+              - 'support:DescribeTrustedAdvisorChecks'
+              - 'support:DescribeTrustedAdvisorCheckSummaries'
+              - 'support:DescribeTrustedAdvisorCheckResult'
+            Resource: '*'
+          - Sid: PassRole
+            Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'iam:PassedToService':
+                  - ssm.amazonaws.com
+          - Sid: AutomationGetParameters
+            Effect: Allow
+            Action:
+              - 'ssm:GetParameter'
+              - 'ssm:GetParameters'
+            Resource: !Sub >-
+              arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation/*
+          - Sid: SSMMessages
+            Effect: Allow
+            Action:
+              - 'ssmmessages:CreateControlChannel'
+              - 'ssmmessages:CreateDataChannel'
+              - 'ssmmessages:OpenControlChannel'
+              - 'ssmmessages:OpenDataChannel'
+            Resource: '*'
+          - Sid: EC2Messages
+            Effect: Allow
+            Action:
+              - 'ec2messages:AcknowledgeMessage'
+              - 'ec2messages:DeleteMessage'
+              - 'ec2messages:FailMessage'
+              - 'ec2messages:GetEndpoint'
+              - 'ec2messages:GetMessages'
+              - 'ec2messages:SendReply'
+            Resource: '*'
+          - Sid: S3GetforSSM
+            Effect: Allow
+            Action:
+              - 's3:GetObject'
+            Resource:
+              - !Sub 'arn:aws:s3:::aws-ssm-${AWS::Region}/*'
+              - !Sub 'arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*'
+              - !Sub 'arn:aws:s3:::amazon-ssm-${AWS::Region}/*'
+              - !Sub 'arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*'
+              - !Sub 'arn:aws:s3:::region-birdwatcher-${AWS::Region}/*'
+              - !Sub 'arn:aws:s3:::patch-baseline-snapshot-${AWS::Region}/*'
+              - !Sub 
+                - 'arn:aws:s3:::${VName}-automation-common-tools/*'
+                - VName: !ImportValue VPCName
+          - Sid: S3Logs
+            Effect: Allow
+            Action:
+              - 's3:GetObject*'
+              - 's3:ListBucket'
+              - 's3:PutObject*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${SSMLogBucket}'
+              - !Sub 'arn:aws:s3:::${SSMLogBucket}/*'
+          - Sid: Logs
+            Effect: Allow
+            Action:
+              - 'cloudwatch:PutMetricData'
+              - 'ec2:DescribeInstanceStatus'
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:DescribeLogGroups'
+              - 'logs:DescribeLogStreams'
+              - 'logs:PutLogEvents'
+            Resource: '*'
+          - Sid: SnsAccess
+            Effect: Allow
+            Action: 'sns:*'
+            Resource: '*'
+          - Sid: KmsAccess
+            Effect: Allow
+            Action:
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey
+              - kms:GenerateDataKeyWithoutPlaintext'
+            Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/common-kms-key"
+Outputs:
+  SSMMaintenanceWindPolicyARN:
+    Description: SSM managed policy ARN
+    Value: !Ref SSMMaintenanceWindPolicy
+    Export:
+      Name: SSMMaintenanceWindPolicyARN
+  SSMMainSessionPolicy:
+    Value: !Ref SSMMaintenanceWindPolicy
+    Export:
+      Name: SSMMainSessionPolicyARN

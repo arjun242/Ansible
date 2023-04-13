@@ -1,0 +1,10 @@
+---
+- name: Create Auto-scaling role
+  cloudformation:
+    stack_name: AWS-Autoscaling-Service-Role-CFT
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/templates/autoscaling.yml"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"

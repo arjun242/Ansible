@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CF template for IAM Role cleanup assumed role
+
+Resources:
+  IAMRoleCleanupAssumedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: IAMRoleCleanupAssumedRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::325381443140:role/IAMRoleCleanupExecutionRole'
+          Sid: ''
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/IAMReadOnlyAccess
+        - arn:aws:iam::aws:policy/service-role/AWSConfigRulesExecutionRole
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: IAMPolicy
+                Action:
+                - iam:UpdateAssumeRolePolicy
+                - iam:DeleteRole
+                - iam:DetachRolePolicy 
+                - iam:DeleteRolePolicy
+                Effect: Allow
+                Resource: '*'
+          PolicyName: IAMRoleCleanupAssumedPolicy  
+      Tags:
+        - Key: "UAI"
+          Value: "UAI3037033"
+        - Key: "appname"
+          Value: "gp-policydefectremediation"
+        - Key: "env"
+          Value: "prd"
+
+Outputs:
+  IAMRoleCleanupAssumedRole:
+    Description: "IAM Assumed Role created for IAM Role cleanup function"
+    Value: !GetAtt IAMRoleCleanupAssumedRole.Arn

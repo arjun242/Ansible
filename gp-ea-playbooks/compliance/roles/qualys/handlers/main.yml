@@ -1,0 +1,7 @@
+---
+# handlers file for Qualys
+- name: restart qualys
+  become: yes
+  service:
+     name: 'qualys-cloud-agent.service'
+     state: restarted

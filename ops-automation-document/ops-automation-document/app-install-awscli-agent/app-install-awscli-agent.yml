@@ -1,0 +1,35 @@
+---
+schemaVersion: '2.2'
+description: Install awscli - Linux (Centos 6 & 7) & window server
+parameters: {}
+mainSteps:
+- name: LinuxOSType
+  action: aws:runShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - yum install unzip -y
+    - 'if ! aws --version > /dev/null'
+    - then
+    - cd /home/gecloud
+    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    - unzip -o awscliv2.zip
+    - ./aws/install
+    - fi
+
+
+- name: WindowsSetup
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Windows 
+  inputs:
+    runCommand:
+    - Invoke-WebRequest https://s3.amazonaws.com/aws-cli/AWSCLI64PY3.msi -OutFile C:\temp\AWSCLI64PY3.msi
+    - sleep 60
+    - Start-Process "msiexec.exe" -ArgumentList "/i C:\temp\AWSCLI64PY3.msi /qn" -Wait -NoNewWindow
+    - sleep 20

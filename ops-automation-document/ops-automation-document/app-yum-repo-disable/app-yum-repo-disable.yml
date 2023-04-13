@@ -1,0 +1,30 @@
+ # History:
+  # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name..  
+schemaVersion: '2.2'
+description: executes the document on linux server to disable untrusted yum repos.
+mainSteps:
+- name: YumRepoDisable
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - Standard_Yum_Repo=('CentOS-7 - Base' 'CentOS-7 - Extras' 'CentOS-7 - Updates' 'Extra Packages for 7 - x86_64')
+    - yum repolist enabled | sed '1,/repo id/d' | tr -s " " | awk 'NF{NF-=1};1' | awk '{$1=""}1' | sed 's/^ *//; s/ *$//; /^$/d' > /tmp/EnabledRepoList
+    - while IFS= read -r line
+    - do
+    - tag=0
+    - for i in "${Standard_Yum_Repo[@]}"
+    - do
+    - if [[ "${i//[$' \t\n\r']/}" == "${line//[$' \t\n\r']/}" ]]
+    - then
+    - tag=1
+    - break
+    - fi
+    - done
+    - if [[ "$tag" -eq 0 ]]
+    - then
+    - yum-config-manager --disable "$line"
+    - fi
+    - done < /tmp/EnabledRepoList

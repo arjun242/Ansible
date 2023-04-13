@@ -1,0 +1,36 @@
+ # History:
+  # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document on linux server to configure mails on the server.
+
+mainSteps:
+- name: MailConfig
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - echo 'append_dot_mydomain = no' > /etc/postfix/main.cf 
+    - echo 'biff = no' >> /etc/postfix/main.cf
+    - echo 'cyrus_destination_recipient_limit = 1' >> /etc/postfix/main.cf
+    - echo 'inet_interfaces = loopback-only' >> /etc/postfix/main.cf
+    - echo 'inet_protocols = ipv4' >> /etc/postfix/main.cf
+    - echo 'mailbox_size_limit = 51200000' >> /etc/postfix/main.cf
+    - echo 'maildrop_destination_recipient_limit = 1' >> /etc/postfix/main.cf
+    - echo 'mydestination = ip-100-64-0-8.ec2.internal, ip-100-64-0-8, localhost.localdomain, localhost'>> /etc/postfix/main.cf
+    - echo 'mydomain = ec2.internal' >> /etc/postfix/main.cf
+    - echo 'myhostname = ip-100-64-0-8.ec2.internal' >> /etc/postfix/main.cf
+    - echo 'myorigin = $myhostname' >> /etc/postfix/main.cf
+    - echo 'smtp_sasl_auth_enable = no' >> /etc/postfix/main.cf
+    - echo 'smtp_tls_CAfile = /etc/pki/tls/cert.pem' >> /etc/postfix/main.cf
+    - echo 'smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache' >> /etc/postfix/main.cf
+    - echo 'smtp_use_tls = yes' >> /etc/postfix/main.cf
+    - echo 'smtpd_tls_CAfile = /etc/pki/tls/cert.pem' >> /etc/postfix/main.cf
+    - echo 'smtpd_tls_cert_file = /etc/ssl/certs/ssl-cert-snakeoil.pem' >> /etc/postfix/main.cf
+    - echo 'smtpd_tls_key_file = /etc/ssl/private/ssl-cert-snakeoil.key' >> /etc/postfix/main.cf
+    - echo 'smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache' >> /etc/postfix/main.cf
+    - echo 'smtpd_use_tls = yes' >> /etc/postfix/main.cf
+    - echo 'message_size_limit = 10240000' >> /etc/postfix/main.cf          
+    - sleep 20

@@ -1,0 +1,75 @@
+---
+- name: Copy files to temp location
+  copy:
+    src: "{{role_path}}/files/"
+    dest: "{{ dest_directory }}"
+
+- name: check if files copied to temp folder or not
+  stat:
+    path: "{{ main_file_path }}"
+  register: pyfiles
+
+- name: check if src folder exists
+  stat:
+    path: "{{ src_dir }}"
+  register: pyfiles_src
+
+- name: check if config folder exists
+  stat:
+    path: "{{ config_dir }}"
+  register: files_config
+
+- name: Copy accountConfigFile
+  template:
+    src: "account.yml"
+    dest: "{{ config_dir }}"
+
+- name: check if output folder exists
+  stat:
+    path: "{{ output_dir }}"
+  register: files_output
+
+- name: Copy output file to temp location
+  copy:
+    src: "{{role_path}}/files/output/account-audit-summary.xlsx"
+    dest: "{{ output_dir }}"
+
+- name: check if output xls exists
+  stat:
+    path: "{{ file_attachment_path }}"
+  register: file_output_xls
+
+- name: Run below block if file copy successful
+  block:
+    - name: Run a script using an executable in a system path
+      command: "python3 {{ main_file_path }}"
+      register: output
+
+    - name: Sending Email Notifications
+      mail:
+        host: alpmlip01.e2k.ad.ge.com
+        port: 25
+        from: "{{ from_email_id }}"
+        to:
+          - "{{ to_email_id }}"
+        subject: "AWS Account provisioning audit report for {{ aws_account_name }}"
+        attach:
+        - "{{ file_attachment_path }}"
+        body: 
+            <p>A new AWS account is provisioned by the EA team. PFA the audit report for the same. Account Details:</p>
+            <p style="margin:0; padding:0;"><strong>Account ID:</strong> {{ aws_account_id }}</p>
+            <p style="margin:0; padding:0;"><strong>Account Alias:</strong> {{ aws_account_name }}</p>
+            <p style="margin:0; padding:0;"><strong>Account Region:</strong> {{ aws_region }}</p>
+            <p style="margin:0; padding:0;">&nbsp;</p>
+            <p style="margin:0; padding:0;">Note- This is an auto generated message.</p>
+            <p style="margin:0; padding:0;">&nbsp;</p>
+        
+        subtype: html
+        charset: utf8
+      delegate_to: localhost
+
+  when:
+    - pyfiles.stat.exists == true
+    - pyfiles_src.stat.exists == true
+    - files_output.stat.exists == true
+    - files_config.stat.exists == true

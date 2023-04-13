@@ -1,0 +1,29 @@
+ # History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to add appadmin user to EC2 instances.
+parameters: 
+  AppAdminUser:
+    type: String
+    description: app admin user name
+    default: "{{ssm:/automation/user/appadmin}}"
+mainSteps:
+- name: CreateAppAdmin
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - useradd -m -d /home/{{AppAdminUser}} -s /bin/bash {{AppAdminUser}}
+    - mkdir /home/{{AppAdminUser}}
+    - cd /etc/sudoers.d
+    - echo "%{{AppAdminUser}} ALL=(ALL) NOPASSWD:/sbin/fdisk -l" >> {{AppAdminUser}}
+    - echo "%{{AppAdminUser}} ALL=(ALL) NOPASSWD:/sbin/reboot" >> {{AppAdminUser}}
+    - echo "%{{AppAdminUser}} ALL=(ALL) NOPASSWD:/sbin/chkconfig" >> {{AppAdminUser}}
+    - echo "%{{AppAdminUser}} ALL=(ALL) NOPASSWD:/usr/bin/yum" >> {{AppAdminUser}}
+    - echo "%{{AppAdminUser}} ALL=(ALL) NOPASSWD:/usr/bin/vim" >> {{AppAdminUser}}
+    - echo "Defaults:%{{AppAdminUser}} !requiretty" >> {{AppAdminUser}}
+    - chmod 444 {{AppAdminUser}}
+    - sleep 10

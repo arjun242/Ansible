@@ -1,0 +1,30 @@
+---
+schemaVersion: '2.2'
+description: executes the document on windows server to configure the qualys agent
+parameters:
+    QualysActivationId:
+      type: String
+      description: qualys activation id
+      default: "{{ssm:/automation/qualys/activationid}}"
+    QualysCustomerId:
+      type: String
+      description: qualys activation id
+      default: "{{ssm:/automation/qualys/customerid}}"
+mainSteps:
+- name: Qualyswindosinstall
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+    - platformType
+    - Windows
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - cd C:\temp
+    #- Invoke-WebRequest https://s3.amazonaws.com/gp-us-east-ops-automation-common-tools/QualysCloudAgent.exe
+    #  -OutFile  QualysCloudAgent.exe
+    - aws s3 cp s3://gp-us-east-ops-automation-common-tools/QualysCloudAgent.exe QualysCloudAgent.exe
+    - sleep 10
+    - ".\\QualysCloudAgent.exe CustomerId={{QualysCustomerId}}  ActivationId={{QualysActivationId}}"

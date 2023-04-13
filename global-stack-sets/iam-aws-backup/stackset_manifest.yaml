@@ -1,0 +1,15 @@
+custom_resources:
+  - custom_stackset_name: iam-aws-backup-event-bridge-cross-account
+    template_file: templates/event-bridge-role-cross-account.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: iam-aws-backup-tag-restore-lambda-assume-role
+    template_file: templates/tag-restore-lambda-assume-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: iam-aws-backup-custom-service-role
+    template_file: templates/aws-backup-custom-service-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

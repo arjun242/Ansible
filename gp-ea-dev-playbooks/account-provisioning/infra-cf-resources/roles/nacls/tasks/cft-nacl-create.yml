@@ -1,0 +1,156 @@
+- name: New folder for NAT-Gateway
+  file:
+    state: directory
+    path: "/tmp/account-automation-folder/nacl-creation/"
+
+- name:
+  template:
+    src: "{{role_path}}/files/{{item}}"
+    dest: "/tmp/account-automation-folder/nacl-creation/"
+  loop:
+    - gp-nacl-application.yml
+    - gp-nacl-database.yml
+    - gp-nacl-ep.yml
+    - gp-nacl-ext.yml
+    - gp-nacl-integration.yml
+    - gp-nacl-rb.yml
+
+- name: Creating Application Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-app-nacl"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/nacl-creation/gp-nacl-application.yml"
+    template_parameters:
+      UAI: "{{UAI}}"
+      APPSubnetCIDR: "{{appSubnetCIDR}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Creating DB Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-db-nacl"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/nacl-creation/gp-nacl-database.yml"
+    template_parameters:
+      UAI: "{{UAI}}"
+      APPSubnetCIDR: "{{appSubnetCIDR}}"
+      DBSubnetCIDR: "{{dbSubnetCIDR}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Creating EP Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-ep-nacl"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/nacl-creation/gp-nacl-ep.yml"
+    template_parameters:
+      UAI: "{{UAI}}"
+      EPSubnetCIDR: "{{epSubnetCIDR}}"
+      VPCCIDR: "{{vpcCIDR}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+    
+- name: Creating EXT and RB NACL CFT
+  block:
+    - name: New folder for EXT and RB
+      file:
+        state: directory
+        path: "/tmp/account-automation-folder/NACL-EXT-RB/"
+        
+    - name: "Copy gp-nacl-ext.yml, gp-nacl-rb.yml to templates"
+      template:
+        src: "{{role_path}}/files/{{item}}"
+        dest: "/tmp/account-automation-folder/NACL-EXT-RB/"
+      loop:
+        - "gp-nacl-ext.yml"
+        - "gp-nacl-rb.yml"
+      when: lookup('vars', 'extSubnetCIDR') != "NA" and lookup('vars','rbSubnetCIDR') != "NA"
+
+    - name: Creating EXT Subnet NACL CFT
+      cloudformation:
+        stack_name: "{{prefix}}gp-ext-nacl"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "/tmp/account-automation-folder/NACL-EXT-RB/gp-nacl-ext.yml"
+        template_parameters:
+          UAI: "{{UAI}}"
+          APPSubnetCIDR: "{{appSubnetCIDR}}"
+          DBSubnetCIDR: "{{dbSubnetCIDR}}"
+          EXTSubnetCIDR: "{{extSubnetCIDR}}"
+          IGRSubnetCIDR: "{{igrSubnetCIDR}}"
+          RBSubnetCIDR: "{{rbSubnetCIDR}}"
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+      when: igrSubnetCIDR != "NA"
+
+    - name: Creating RB Subnet NACL CFT
+      cloudformation:
+        stack_name: "{{prefix}}gp-rb-nacl"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "/tmp/account-automation-folder/NACL-EXT-RB/gp-nacl-rb.yml"
+        template_parameters:
+          DBSubnetCIDR: "{{dbSubnetCIDR}}"
+          EXTSubnetCIDR: "{{extSubnetCIDR}}"
+          IGRSubnetCIDR: "{{igrSubnetCIDR}}"
+          RBSubnetCIDR: "{{rbSubnetCIDR}}"
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+      when: igrSubnetCIDR != "NA"
+    
+    - name: Creating EXT Subnet NACL CFT
+      cloudformation:
+        stack_name: "{{prefix}}gp-ext-nacl"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "/tmp/account-automation-folder/NACL-EXT-RB/gp-nacl-ext.yml"
+        template_parameters:
+          UAI: "{{UAI}}"
+          APPSubnetCIDR: "{{appSubnetCIDR}}"
+          DBSubnetCIDR: "{{dbSubnetCIDR}}"
+          EXTSubnetCIDR: "{{extSubnetCIDR}}"
+          RBSubnetCIDR: "{{rbSubnetCIDR}}"
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+      when: igrSubnetCIDR == "NA"
+
+    - name: Creating RB Subnet NACL CFT
+      cloudformation:
+        stack_name: "{{prefix}}gp-rb-nacl"
+        state: "present"
+        region: "{{ aws_region }}"
+        template: "/tmp/account-automation-folder/NACL-EXT-RB/gp-nacl-rb.yml"
+        template_parameters:
+          DBSubnetCIDR: "{{dbSubnetCIDR}}"
+          EXTSubnetCIDR: "{{extSubnetCIDR}}"
+          RBSubnetCIDR: "{{rbSubnetCIDR}}"
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        security_token: "{{ session_token }}"
+      when: igrSubnetCIDR == "NA"
+  when: lookup('vars', 'extSubnetCIDR') != "NA" and lookup('vars','rbSubnetCIDR') != "NA"
+  
+- name: Creating IGR Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-igr-nacl"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/nacl-creation/gp-nacl-integration.yml"
+    template_parameters:
+      UAI: "{{UAI}}"
+      IGRSubnetCIDR: "{{igrSubnetCIDR}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  when: igrSubnetCIDR != "NA"
+
+    # all variables can be used directly in conditionals without double curly braces

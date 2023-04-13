@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation template to create Cloud watch event for aws services health
+Resources:
+  ScheduledRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: cloudwatch-schedule-rule-for-dlm-lambda
+      Description: This rule will run every 30 minutes and trigger the mentioned lambda function
+      ScheduleExpression: "rate(30 minutes)"
+      State: ENABLED
+      Targets:
+        - Arn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:dlm-policy-state-check'
+          Id: 'dlm-policy-state-check'

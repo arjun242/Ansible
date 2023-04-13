@@ -1,0 +1,296 @@
+##### History
+# date  - initials - Description
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CF Template to create NACL entries for gpnaclExt
+Parameters: 
+
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed. UAI starting sequence. MUST be in lowercase.
+    ConstraintDescription: The UAI must be valid, but specified as uai in lower case followed by 7 digits
+    AllowedPattern: ^uai[0-9]*$
+    MinLength: !!int 10
+    MaxLength: !!int 10
+
+  RBSubnetCIDR:
+    Description: Complete RB subnets CIDR Az1 and Az2 
+    Type: String
+    AllowedPattern: ^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$
+    ConstraintDescription: Must be a valid IP4 CIDR range
+
+  EXTSubnetCIDR:
+    Description: Complete External subnets CIDR Az1 and Az2 
+    Type: String
+    AllowedPattern: ^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$
+    ConstraintDescription: Must be a valid IP4 CIDR range
+
+  {% if igrSubnetCIDR!= "NA" -%}
+  IGRSubnetCIDR:
+    Description: Complete IGR subnets CIDR Az1 and Az2 
+    Type: String
+    AllowedPattern: ^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$
+    ConstraintDescription: Must be a valid IP4 CIDR range
+  {% endif %}
+
+  DBSubnetCIDR:
+    Description: Complete DB subnets CIDR Az1 and Az2 
+    Type: String
+    AllowedPattern: ^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$
+    ConstraintDescription: Must be a valid IP4 CIDR range
+
+  APPSubnetCIDR:
+    Description: Complete App subnets CIDR Az1 and Az2 
+    Type: String
+    AllowedPattern: ^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$
+    ConstraintDescription: Must be a valid IP4 CIDR range
+
+Resources:
+  gpnaclExt:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      Tags:
+      - Key: Name
+        Value: {{prefix}}gp-nacl-ext
+      - Key: app
+        Value: gp-cloud-common
+      - Key: uai
+        Value: !Ref UAI
+      VpcId: !ImportValue {{prefix}}vpcid
+  #Web Traffic inbound 80
+  Ingress1000:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '80'
+        To: '80'
+      Protocol: '6'
+      RuleAction: allow
+      RuleNumber: '1000'
+    Type: AWS::EC2::NetworkAclEntry
+  #Web Traffic inbound 443 
+  Ingress1100:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '443'
+        To: '443'
+      Protocol: '6'
+      RuleAction: allow
+      RuleNumber: '1100'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #We should only be running ALBs in thsi subnet, and their ephermal port range is 1024-65535.
+  #Any connections initiated via the ALB will need a path back in which is the range below.
+  #Ephemeral inbound TCP
+  Ingress2000:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '1024'
+        To: '65535'
+      Protocol: '6'
+      RuleAction: allow
+      RuleNumber: '2000'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #Ephemeral inbound UDP  
+  Ingress2100:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '1024'
+        To: '65535'
+      Protocol: '17'
+      RuleAction: allow
+      RuleNumber: '2100'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #Cross Zone Access
+  Ingress3000:
+    Properties:
+      CidrBlock: !Ref EXTSubnetCIDR	
+      Egress: false
+      NetworkAclId:
+        Ref: gpnaclExt      
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '3000'
+    Type: AWS::EC2::NetworkAclEntry
+
+    # Ansible tower connectivity from gp-ops
+  Ingress1553:
+    Properties:
+      CidrBlock: 10.157.140.0/25
+      Egress: false
+      NetworkAclId:
+        Ref: gpnaclExt      
+      PortRange:
+        From: 22
+        To: 22
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 1553
+    Type: AWS::EC2::NetworkAclEntry
+  
+  Ingress1554:
+    Properties:
+      CidrBlock: 10.157.140.0/25
+      Egress: false
+      NetworkAclId:
+        Ref: gpnaclExt      
+      PortRange:
+        From: 5986
+        To: 5986
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 1554
+    Type: AWS::EC2::NetworkAclEntry
+
+
+###########Out Bound##############
+
+  #Deny access to APP subnets Az1 and Az2
+  Egress101:
+    Properties:
+      CidrBlock: !Ref APPSubnetCIDR
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt      
+      Protocol: '-1'
+      RuleAction: deny
+      RuleNumber: '101'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #Deny access to DB subnets Az1 and Az2
+  Egress102:
+    Properties:
+      CidrBlock: !Ref DBSubnetCIDR
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt      
+      Protocol: '-1'
+      RuleAction: deny
+      RuleNumber: '102'
+    Type: AWS::EC2::NetworkAclEntry
+
+  {% if igrSubnetCIDR != "NA" -%}
+  #Deny access to IGR subnets Az1 and Az2
+  Egress103:
+    Properties:
+      CidrBlock: !Ref IGRSubnetCIDR
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt      
+      Protocol: '-1'
+      RuleAction: deny
+      RuleNumber: '103'
+    Type: AWS::EC2::NetworkAclEntry
+  {% endif %}
+
+  #Outbound HTTP All
+  Egress1010:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '443'
+        To: '443'
+      Protocol: '6'
+      RuleAction: allow
+      RuleNumber: '1010'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #Outbound HTTPS All
+  Egress1011:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '443'
+        To: '443'
+      Protocol: '17'
+      RuleAction: allow
+      RuleNumber: '1011'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #Outbound HTTPS to RB Subnet 8443-8543
+  Egress1014:
+    Properties:
+      CidrBlock: !Ref RBSubnetCIDR
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '8443'
+        To: '8543'
+      Protocol: '6'
+      RuleAction: allow
+      RuleNumber: '1014'
+    Type: AWS::EC2::NetworkAclEntry
+ 
+  #Cover ephemeral for Myapp and VPN Users  
+  Egress1120:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '1024'
+        To: '65535'
+      Protocol: '6'
+      RuleAction: allow
+      RuleNumber: '1120'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #Cover ephemeral for Myapp and VPN Users   
+  Egress1130:
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt
+      PortRange:
+        From: '1024'
+        To: '65535'
+      Protocol: '17'
+      RuleAction: allow
+      RuleNumber: '1130'
+    Type: AWS::EC2::NetworkAclEntry
+
+  #Cross Zone Access
+  Egress1300:
+    Properties:
+      CidrBlock: !Ref EXTSubnetCIDR
+      Egress: true
+      NetworkAclId:
+        Ref: gpnaclExt      
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '1300'
+    Type: AWS::EC2::NetworkAclEntry
+
+Outputs:
+  NaclEXT:
+    Description: Export NACL ID of EXT Subnet
+    Value:
+      Ref: gpnaclExt
+    Export: 
+      Name: {{prefix}}ext-nacl

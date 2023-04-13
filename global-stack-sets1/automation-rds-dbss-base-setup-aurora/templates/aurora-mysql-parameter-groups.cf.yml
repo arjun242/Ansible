@@ -1,0 +1,115 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the mysql parameter groups (and default parameter groups) that are neccessary for RDS instance builds.
+              It must be created prior to any RDS Instances
+              Last version 30-May-2020
+
+ # History:
+  # 14-Apr-2020: Initial version
+  #Stack Name: dbss-aurora-mysql-parameter-groups
+  # 30-May-2020: Added VPC alias parameter
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+
+Resources:
+  rdsauroramysqldefaultparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql default parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        max_connect_errors: "9999"
+        wait_timeout: "3600"
+        interactive_timeout: "3600"
+        max_allowed_packet: "33554432"
+
+  rdsauroramysqlisoparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql ISO parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        max_connect_errors: "9999"
+        wait_timeout: "3600"
+        interactive_timeout: "3600"
+        max_allowed_packet: "33554432"
+
+  rdsauroramysqlsoxparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql SOX parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        max_connect_errors: "9999"
+        wait_timeout: "3600"
+        interactive_timeout: "3600"
+        max_allowed_packet: "33554432"
+
+  rdsauroramysqldodparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql DOD parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        max_connect_errors: "9999"
+        wait_timeout: "3600"
+        interactive_timeout: "3600"
+        max_allowed_packet: "33554432"
+
+  rdsauroramysqlgxpparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql GXP parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'aurora-mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        max_connect_errors: "9999"
+        wait_timeout: "3600"
+        interactive_timeout: "3600"
+        max_allowed_packet: "33554432"
+  
+
+Outputs:
+  rdsauroramysqldefaultparamgroup57:
+    Description: "mysql default parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsauroramysqldefaultparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-mysql:default:57'
+      
+  rdsauroramysqlisoparamgroup57:
+    Description: "mysql ISO parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsauroramysqlisoparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-mysql:iso:57'
+      
+  rdsauroramysqlsoxparamgroup57:
+    Description: "mysql SOX parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsauroramysqlsoxparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-mysql:sox:57'
+      
+  rdsauroramysqldodparamgroup57:
+    Description: "mysql DOD parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsauroramysqldodparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-mysql:dod:57'
+     
+  rdsauroramysqlgxpparamgroup57:
+    Description: "mysql gxp parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsauroramysqlgxpparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-mysql:gxp:57'
+      

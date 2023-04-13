@@ -1,0 +1,4 @@
+- name: Change github_enterprise_org's value to gp-ops for Global Stacksets
+  set_stats:
+    data:
+      github_enterprise_org: "gp-ops"

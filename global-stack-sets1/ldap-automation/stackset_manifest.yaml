@@ -1,0 +1,25 @@
+custom_resources:
+  - custom_stackset_name: uai3037033-ldap-pipeline  
+    template_file: templates/cf-template.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value 
+
+  - custom_stackset_name: uai3037033-ldap-eventbridge-role
+    template_file: templates/uai3037033-ldap-eventbridge-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value 
+
+  - custom_stackset_name: uai3037033-ldap-eventrule-ec2-create
+    template_file: templates/uai3037033-ldap-eventrulecreateec2.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value 
+
+  - custom_stackset_name: uai3037033-ldap-eventrule-ec2-delete
+    template_file: templates/uai3037033-ldap-eventruledeleteec2.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value 
+
+  - custom_stackset_name: uai3037033-ldap-ssmfedrole
+    template_file: templates/ssm-fedrole.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value 

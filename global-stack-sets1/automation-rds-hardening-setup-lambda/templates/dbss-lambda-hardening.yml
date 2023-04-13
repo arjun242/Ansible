@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The Lambda will execute hardening script on ECS cluster as well as calculate thresholds of dynamic alarms
+
+ ## History:
+  # 04-May-2020: Initial Release
+  # Name the stack: "dbss-lambda-${EcsClusterType}-${VPCAlias}"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Details
+        Parameters:
+          - VPCAlias
+          - UAI
+      - Label:
+          default: Cluster type
+        Parameters:
+          - EcsClusterType
+      - Label:
+          default: Lambda Source Code
+        Parameters:
+          - LambdaCodeZipKey
+      - Label:
+          default: Optional Lambda Configuration
+        Parameters:
+          - EcsClusterName
+          - SecurityGroupIds
+          - SubnetIds
+          - CodeBucket
+          - S3LogsBucket
+          - LambdaRole
+      - Label:
+          default: Miscellaneous
+        Parameters:
+          - LogLevel
+
+Parameters:
+  VPCAlias:
+    Description: 'The VPC alias within this account. This is logical label identifying execution environment.'
+    Type: String
+    Default: 'gr-db'
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' or 'uai' followed by 7 digits
+    AllowedPattern: '^(UAI|uai)[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'uai3036792'
+  EcsClusterType:
+    Type: String
+    Default: 'fargate'
+    AllowedValues:
+      - 'ec2'
+      - 'fargate'
+    Description: 'Type of ECS cluster the task triggered by the lambda will be ran on'
+  EcsClusterName:
+    Type: String
+    Description: "Optional. Name of IGR ECS Cluster to be used by the lambda. Example: 'dbss-ecs-cluster-fargate-db-tasks'."
+    Default: ''
+  SecurityGroupIds:
+    Type: CommaDelimitedList # List<AWS::EC2::SecurityGroup::Id>
+    Description: "Optional. Existing Security Group Ids separated by comma. Example: 'sg-06dc5465aaabd59ef,sg-0d395630c57019725'."
+    Default: ''
+  SubnetIds:
+    Type: CommaDelimitedList # List<AWS::EC2::Subnet::Id>
+    Description: "Optional. Existing Subnet Ids in your selected VPC, separated by comma. Example: 'subnet-09dcde4e4a4721370,subnet-09dcde4e4a4721371'."
+    Default: ''
+  CodeBucket:
+    Type: String
+    Description: "Optional. Name of S3 bucket where hardening scripts are stored. Example: 'dbss-code-prod-us-east-1'."
+    Default: 'gp-us-east-ops-automation-common-artifacts'
+  S3LogsBucket:
+    Type: String
+    Description: "Optional. Name of S3 bucket where hardening logs are saved. Example: 'dbss-logs-prod-us-east-1'."
+    Default: ''
+  LambdaRole:
+    Type: String
+    Description: "Optional. Arn of lambda function's IAM execution role. Example: 'arn:aws:iam::156405602218:role/svc/lambda-role-kamil-db-212390867-LambdaRole'."
+    Default: ''
+  LambdaCodeZipKey:
+    Type: String
+    Default: lambda/rds-db-hardening.zip
+    Description: Key (path) where in 'code' bucket is source code of the lambda
+  LogLevel:
+    Description: LogLevel for logging python function (as string) - used in all the other more 'complex' Lambda functions defined here
+    Type: String
+    Default: WARNING
+    AllowedValues: [ TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL ]
+
+Conditions:
+  HasEcsClusterName: !Not [!Equals [!Ref EcsClusterName, '']]
+  HasSecurityGroupIds: !Not [!Equals [ !Join [ ',', !Ref SecurityGroupIds ], '']]
+  HasSubnetIds: !Not [!Equals [ !Join [ ',', !Ref SubnetIds ], '']]
+  HasCodeBucket: !Not [!Equals [!Ref CodeBucket, '']]
+  HasS3LogsBucket: !Not [!Equals [!Ref S3LogsBucket, '']]
+  HasLambdaRole: !Not [!Equals [!Ref LambdaRole, '']]
+
+Resources:
+ # log groups for Lambda functions - we create these explicitly, so we can set Retention to 7 days
+  LambdaLogGroupUniversal:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${HardeningLambdaFunction}'
+      RetentionInDays: 7
+
+ # Lambda function definitions
+  HardeningLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "rds-db-hardening-${VPCAlias}"
+      Description: 'Executes RDS hardening and calculates thresholds of dynamic alarms'
+      Runtime: python3.7    # don't have an easy way to install python3.8 in CentOS, so have tested only with 3.7
+                            # keep in mind the dependencies MUST be compiled with the specific version of Python on Amazon Linux OS
+      Handler: rds-db-hardening.lambda_handler
+      MemorySize: 128       # allocate a bit more memory, if loading some 'extensive' native libraries from the Python code inside the container
+                            # this applies mostly to Oracle (33 MB or so); SQLServer and Postgres are ~ 3 MB; MySQL is < 1MB (as zipped binaries)
+      Timeout: 30
+      Role: !If [ HasLambdaRole, !Ref LambdaRole, { "Fn::ImportValue" : !Sub "iam:dba:${VPCAlias}-lambda-role:arn" } ]
+      Code:
+        S3Bucket: !If [ HasCodeBucket, !Ref CodeBucket, { "Fn::ImportValue" : !Sub "s3:${VPCAlias}:code:name" } ]
+        S3Key: !Ref LambdaCodeZipKey
+      Environment:
+        Variables:
+          # LOGLEVEL: !Ref LogLevel
+          ECS_IGR_TYPE:        !Ref EcsClusterType
+          ECS_IGR_CLUSTER:     !If [ HasEcsClusterName, !Ref EcsClusterName, { "Fn::ImportValue" : !Sub "ecs:${VPCAlias}:igr-cluster-${EcsClusterType}:name" } ]
+          ECS_SECURITY_GROUPS: !If [ HasSecurityGroupIds, !Join [ ',', !Ref SecurityGroupIds ], { "Fn::ImportValue" : !Sub "ecs:${VPCAlias}:igr-cluster-${EcsClusterType}:sglist" } ]
+          ECS_SUBNETS:         !If [ HasSubnetIds, !Join [ ',', !Ref SubnetIds ], { "Fn::ImportValue" : !Sub "ecs:${VPCAlias}:igr-subnet-${EcsClusterType}:idlist" } ]
+          S3_CODE_BUCKET:      !If [ HasCodeBucket, !Ref CodeBucket, { "Fn::ImportValue" : !Sub "s3:${VPCAlias}:code:name" } ]
+          S3_LOGS_BUCKET:      !If [ HasS3LogsBucket, !Ref S3LogsBucket, { "Fn::ImportValue" : !Sub "s3:${VPCAlias}:logs:name" } ]
+          VPC_ALIAS:           !Ref VPCAlias
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'rds-db-hardening-${VPCAlias}'
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'Lambda used for hardening databases - runs tasks of ECS IGR cluster'
+
+Outputs:
+    RDSHardeningLambdaFunctionName:
+      Description: "Lambda function calculating thresholds of dynamic alarms and triggering ECS hardening task"
+      Value: !Ref HardeningLambdaFunction
+      Export:
+        Name: !Sub "lambda:${VPCAlias}:rds-dbhardening:name"
+
+    RDSHardeningLambdaFunctionArn:
+      Description: "Lambda function calculating thresholds of dynamic alarms and triggering ECS hardening task"
+      Value: !GetAtt 'HardeningLambdaFunction.Arn'
+      Export:
+        Name: !Sub "lambda:${VPCAlias}:rds-dbhardening:arn"

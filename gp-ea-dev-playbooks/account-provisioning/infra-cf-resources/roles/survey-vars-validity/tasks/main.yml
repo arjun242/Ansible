@@ -1,0 +1,17 @@
+---
+- name: Check if app, db and epsubnet vars are valid
+  set_fact:
+    appSubnetValid: "{% if appSubnetCIDR == (appSubnetCIDR| ipaddr) %}true{% else %}false{% endif %}"
+    dbSubnetValid: "{% if dbSubnetCIDR == (dbSubnetCIDR | ipaddr) %}true{% else %}false{% endif %}"
+    epSubnetValid: "{% if epSubnetCIDR == (epSubnetCIDR | ipaddr) %}true{% else %}false{% endif %}"
+
+- name: Check if igr,ext,rb subnet is valid
+  set_fact:
+    igrSubnetValid: "{% if igrSubnetCIDR == (igrSubnetCIDR| ipaddr) %}true{% elif igrSubnetCIDR ==  'NA' %}true{% else %}false{% endif %}"
+    extSubnetValid: "{% if extSubnetCIDR == (extSubnetCIDR| ipaddr) %}true{% elif extSubnetCIDR ==  'NA' %}true{% else %}false{% endif %}"
+    rbSubnetValid: "{% if rbSubnetCIDR == (rbSubnetCIDR| ipaddr) %}true{% elif rbSubnetCIDR ==  'NA' %}true{% else %}false{% endif %}"
+
+- name: Are both EXT and RB existing?
+  set_fact:
+    ExtAndRbExisting: "{% if (extSubnetCIDR != 'NA' and rbSubnetCIDR!='NA') or (extSubnetCIDR == 'NA' and rbSubnetCIDR =='NA')%}true{% else %}false{% endif %}"
+    

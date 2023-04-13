@@ -1,0 +1,12 @@
+[{
+  "ParameterKey": "Platform",
+  "ParameterValue": "oracle"
+},
+{
+  "ParameterKey": "Env",
+  "ParameterValue": "dev"
+},
+{
+    "ParameterKey": "VPCAlias",
+    "ParameterValue": "gpus1b"
+}]

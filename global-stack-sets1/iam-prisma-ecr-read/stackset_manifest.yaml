@@ -1,0 +1,7 @@
+custom_resources:
+  - name: iam-prisma-ecr-read
+    description: Role for Prisma to scan images hosted in ECR.
+    template_file: templates/iam-prisma-ecr-read.yaml     
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    custom_stackset_name: iam-prisma-ecr-read

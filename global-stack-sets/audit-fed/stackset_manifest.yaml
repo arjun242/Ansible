@@ -1,0 +1,9 @@
+Description: GP Managed Audit Policy and fed role for sec ops team
+DeployTo: https://github.build.ge.com/gp-ops/gr-accounts-setup
+custom_resources:
+  - name: audit-fed
+    custom_stackset_name: audit-fed
+    description: Stack Setup for Audit Policy and fed role
+    template_file: templates/audit-fed.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

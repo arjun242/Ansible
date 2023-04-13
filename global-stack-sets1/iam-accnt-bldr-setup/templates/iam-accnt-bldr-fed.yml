@@ -1,0 +1,186 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: 'Account Builder Federated or switch role to EA Account builders.
+              Template ref: https://github.build.ge.com/gp-ops/global-stack-sets/blob/master/iam-accnt-bldr-setup/templates/iam-accnt-bldr-role-setup.yml'
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Description: Name of the  Role...
+    Default: 'account-bldr'
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'hq'
+  AdminAccountId:
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    Default: "325381443140"
+    Description: 12 digit AWS Account Id of the identity/federation account containing the users to which you're granting access. This is a trusted account.
+  MultiFactorAuthRequired:
+    Default: "False"
+    Type: String
+    AllowedValues:
+      - "True"
+      - "False"
+
+Conditions:
+  AdminSetup: !Equals [!Ref AWS::AccountId, '325381443140']
+  SwitchSetup: !Not [!Equals [!Ref AWS::AccountId, '325381443140']]
+
+Resources:  
+  
+  AccntBldrRole:
+    Type: AWS::IAM::Role
+    Condition: AdminSetup
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - # Allow the role to be assumed from SAML Auth.
+            Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action: 'sts:AssumeRoleWithSAML'
+            Condition:
+              StringEquals:
+                'SAML:aud': 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+      - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+
+      Policies:
+        - PolicyName: AssumeRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+
+              - Sid: AssumeRole
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - "arn:aws:iam::*:role/hq/bu-pw-account-bldr-fed"
+                Effect: Allow
+                
+  CldAccntBldrRole:
+    Type: AWS::IAM::Role
+    Condition: SwitchSetup
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - # Allow the role to be assumed from gp-ops account.
+            Effect: Allow 
+            Principal:
+              "AWS": !Sub "arn:${AWS::Partition}:iam::${AdminAccountId}:role/hq/bu-pw-account-bldr-fed"
+            Action:
+              - sts:AssumeRole
+            Condition:
+              Bool:
+                "aws:MultiFactorAuthPresent": !Ref MultiFactorAuthRequired
+      ManagedPolicyArns:
+      - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+
+  AccntBldrPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${RoleName}-access"
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref AccntBldrRole
+        - 
+          - !Ref CldAccntBldrRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: IAMPermissions
+            Effect: Allow
+            Action:
+              - iam:List*
+              - iam:Get*
+            Resource:
+              - "*"
+              
+          - Sid: SESPermissions
+            Effect: Allow
+            Action:
+              - ses:GetAccount
+              - ses:ListEmailIdentities
+              - ses:ListConfigurationSets
+              - ses:CreateEmailIdentity
+              - ses:PutAccountDetails
+              - ses:TagResource
+            Resource:
+              - "*"
+              
+          - Sid: EC2KeyPairCreation
+            Effect: Allow
+            Action:
+              - ec2:CreateKeyPair
+              - ec2:DescribeKeyPairs
+            Resource:
+              - "*"
+              
+          - Sid: UnConsPermissionsForBuild
+            Effect: Allow
+            Action:
+              - cloudformation:List*
+              - cloudformation:Get*
+              - cloudformation:Describe
+              - cloudwatch:*
+              - sts:DecodeAuthorizationMessage
+              - support:*
+              - codestar-connections:*
+              - ssm:SendCommand
+              - ssm:GetAutomationExecution
+            Resource:
+              - "*"
+
+          - Sid: ConsPermissionsForBuild
+            Action:
+              - kms:*
+              - s3:*
+              - ssm:*
+              - secretsmanager:*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:key/09d54248-165c-4ade-9a92-d16dc319c09f"  # Kms Key
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation/region-account"   # SSM Parameter
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/share_existing_ssm_doc"    # share SSM Document
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/ami-factory"    # ami factory SSM Document
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/windows-ami"    # windows ami SSM Document
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/windows2019-ami"    # windows2019 ami SSM Document
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:automation/uai3026350-ansible-user-Ube5Gr" # SecretsManager
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/share_existing_ssm_doc:$DEFAULT"
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/ami-factory:$DEFAULT"
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/windows-ami:$DEFAULT"
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/windows2019-ami:$DEFAULT"
+              - !Sub "arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common-artifacts" #s3
+              - !Sub "arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common-tools" #s3
+              - !Sub "arn:${AWS::Partition}:s3:::gp-us-west-ops-automation-common-artifacts" #s3
+              - !Sub "arn:${AWS::Partition}:s3:::gp-ap-southeast-ops-automation-common-artifacts" #s3
+              - !Sub "arn:${AWS::Partition}:s3:::uai3027632-pw-sec-automation-gp-ops" #s3
+            Effect: Allow
+
+Outputs:
+
+  AccntBldrFederatedRoleName:
+    Condition: AdminSetup
+    Value: !Ref AccntBldrRole
+  AccntBldrFederatedRoleArn:
+    Condition: AdminSetup
+    Value: !GetAtt AccntBldrRole.Arn
+
+  SwitchAccntBldrFederatedRoleName:
+    Condition: SwitchSetup
+    Value: !Ref CldAccntBldrRole
+  SwitchAccntBldrFederatedRoleArn:
+    Condition: SwitchSetup
+    Value: !GetAtt CldAccntBldrRole.Arn

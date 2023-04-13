@@ -1,0 +1,6 @@
+# Description: To create a service role which is used by Ansible Tower to perform other AWS operations
+# Requirements: IAM Admin role access key, secret key and security token, 
+---
+- hosts: localhost
+  roles:
+    - stackset-exe-role

@@ -1,0 +1,60 @@
+---
+dependencies:
+  - authconfig
+  - compat-openldap
+  - oddjob-mkhomedir
+  - openldap-clients
+  - openssh-clients
+  - openssh-server
+  - sssd
+  - sssd-client
+  - ksh
+  - pam_radius
+  - unzip
+ 
+config_dirs:   
+  - /etc/openldap/cacerts
+  - /etc/raddb
+  - /etc/security
+  - /etc/sssd
+  - /etc/sysconfig
+  - /lib64/security
+  - /lib/security
+  - /etc/pam.d
+  - /tmp/2fa
+  
+change_permissions:
+  - '/etc/openldap/cacerts/GE_trusted_root_issuing_cert.cert'
+  - '/etc/openldap/cacerts/GE_trusted_root.cert'    
+  - '/etc/openldap/cert/key3'
+  - '/etc/openldap/certs/cert8'
+  - '/etc/openldap/cacerts/2020_trusted_root.cert'
+  - 'etc/openldap/cacerts/2020_trusted_auth.cert'
+  - '/etc/sysconfig/authconfig'
+  - '/etc/pam.d/system-auth-ac'
+  - '/etc/pam.d/password-auth-ac'
+  - '/lib64/security/pam_radius_auth.so'
+  - '/etc/openldap/ldap.conf'
+  - '/etc/nsswitch.conf'
+powermax_acc_id: '665129569626'
+pnw_preprod_acc_id: '930136447543'
+pnw_prod_acc_id: '988201728534'
+ent_emea_pnw_acc_id: '322870840626'
+ent_emea_pnw_preprod_acc_id: '951854665038'
+pwr_sharedhr_acc_id: '464798753408'
+pwr_primavera_acc_id: '821735935111'
+pwr_power_services: '564772463473'
+gp_ops_account_id: '325381443140'
+ldap_dir: '/etc/openldap/'
+ldap_cert_dir: "{{ ldap_dir }}cacerts"
+ldap_protocol: 'ldap'
+ldap_port: '8389'
+ldap_protocol_pwr_sharedhr: 'ldaps'
+ldap_port_pwr_sharedhr: '8636'
+ldap_servers:
+    - ghisrvdsrwp01.corporate.ge.com
+    - ghisrvdsrwp02.corporate.ge.com
+    - ghisrvdsrwp03.corporate.ge.com
+raddb_servers: 
+    - 10.152.60.21:1812
+    - 10.152.60.22:1812

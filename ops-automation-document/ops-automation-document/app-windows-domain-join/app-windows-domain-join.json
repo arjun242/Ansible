@@ -1,0 +1,11 @@
+{
+    "Content": "file://app-windows-domain-join.yml", 
+    "Name": "app-windows-domain-join", 
+    "VersionName": "1.0",
+    "DocumentType": "Command",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

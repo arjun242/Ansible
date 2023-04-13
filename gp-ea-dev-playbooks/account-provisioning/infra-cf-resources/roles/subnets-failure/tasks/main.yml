@@ -1,0 +1,131 @@
+---
+- name: Include app-subnet-vars file
+  include_vars: subnet-vars.yml
+
+# Az1 Subnet CF
+- name: Deleting app Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.appAz1 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Deleting app Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.appAz2 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az1 Subnet CF
+- name: Deleting DB Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.db1 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Deleting DB Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.db2 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az1 Subnet CF
+- name: Deleting EP Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.ep1 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Deleting EP Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.ep2 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Deleting IGR Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.igr1 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Deleting IGR Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.igr2 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Deleting EXT Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.ext1 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Deleting EXT Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.ext2 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az1 Subnet CF
+- name: Deleting RB Az1 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.rb1 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+# Az2 subnet CF
+- name: Deleting RB Az2 Subnet CFT
+  cloudformation:
+    stack_name: "{{prefix}}{{ subnet.stackNames.rb2 }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Call Git role
+  include_role:
+    name: git-delete
+  vars:
+    github_enterprise_org: gp-ops-non-prod
+    github_enterprise_repo: cft-infra-templates
+    message: "Ansible deleting Subnets"
+    folder_name: "subnets"
+

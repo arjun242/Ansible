@@ -1,0 +1,77 @@
+---
+schemaVersion: '2.2'
+description: Create Ansible user in ansible target host - Linux & Window
+parameters:
+   BucketName:
+    type: String
+    default: 'gp-us-east-ops-automation-common-tools'
+    description: common bucket
+   User:
+    type: String
+    default: 'ansible'
+    description: ansible user 
+mainSteps:
+
+- name: WindowsSetup
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Windows 
+  inputs:
+    runCommand:
+    - winrm enumerate winrm/config/Listener
+    - Remove-Item -Path WSMan:\localhost\Listener\* -Recurse -Force
+    - Copy-S3Object -BucketName {{BucketName}} -Key ansible/ConfigureRemotingForAnsible.ps1 -LocalFile C:/Windows/Temp/ConfigureRemotingForAnsible.ps1
+    - powershell.exe -ExecutionPolicy ByPass -File C:/Windows/Temp/ConfigureRemotingForAnsible.ps1
+    - Enable-WSManCredSSP -Role Server -Force
+    - $search = Get-LocalUser -Name "ansible"
+    - if ( "ansible" -eq $search.Name ) {
+    -   '  echo "{{User}} exists !"'
+    - "} else {"
+    -   $password = Get-SECSecretValue -SecretId arn:aws:secretsmanager:us-east-1:325381443140:secret:automation/uai3026350-ansible-user -Select SecretString
+    -   New-LocalUser {{User}} -Password $password -FullName "ansible User" -Description "user for ansible."
+    -   Add-LocalGroupMember -Group "Administrators" -Member {{User}}
+    - "}"
+
+- name: LinuxSetup
+  action: aws:runShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - egrep "^{{User}}" /etc/passwd > /dev/null
+    - if [ $? -eq 0 ]
+    - then
+    -   echo "{{User}} exists !"
+    -   egrep "^{{User}}" /etc/sudoers.d/90-cloud-init-users > /dev/null
+    -   if [ $? -eq 0 ]
+    -   then
+    -     exit 0
+    -   else
+    -     sed -i -e '$a# User rules for ansible \n{{User}} ALL=(ALL) NOPASSWD:ALL' /etc/sudoers.d/90-cloud-init-users
+    -   fi
+    - else
+    -   useradd -m {{User}}
+    -   sed -i -e '$a\n# User rules for ansible \n{{User}} ALL=(ALL) NOPASSWD:ALL' /etc/sudoers.d/90-cloud-init-users
+    -   '[ $? -eq 0 ] && echo "User has been added to system!" || echo "Failed to add a user!"'
+    -   mkdir -p /home/{{User}}/.ssh
+    -   aws s3 cp s3://{{BucketName}}/ansible/authorized_keys /home/{{User}}/.ssh/authorized_keys
+    -   chmod 0644 /home/{{User}}/.ssh/authorized_keys
+    -   OS_VER=7
+    -   if [ -f /etc/centos-release ]
+    -   then OS_VER=$(cat /etc/centos-release | cut -d ' ' -f 3)
+    -   elif [ -f /etc/os-release ]
+    -   then . /etc/os-release; OS_VER=$VERSION_ID;
+    -   fi
+    -   if [ ${OS_VER%.*} -lt 7 ]
+    -   then
+    -   sed -i -e '$aMatch User ansible\nPubkeyAuthentication yes\nPasswordAuthentication no' /etc/ssh/sshd_config
+    -   else
+    -   sed -i -e '$aMatch User ansible\nPubkeyAuthentication yes\nPasswordAuthentication no\nAllowUsers ansible' /etc/ssh/sshd_config
+    -   fi
+    -   sed -i "\$i + ":" ansible ":" ALL" /etc/security/access.conf
+    -   service sshd reload
+    - fi

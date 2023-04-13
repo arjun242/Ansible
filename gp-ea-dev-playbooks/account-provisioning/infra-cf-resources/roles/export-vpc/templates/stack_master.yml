@@ -1,0 +1,4 @@
+stacks:
+  {{aws_region}}:
+    {{prefix}}export-vpc-default:
+      template: export-gr-resources.cf.yml 

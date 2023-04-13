@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: "uai[0-9]*"
+    MinLength: 10
+    MaxLength: 10
+
+  
+  Table:
+    Type: String
+    MaxLength: 30
+    Description: TableName, keep to 15 characters or less.  
+    
+
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    AllowedValues:
+    - nonprd
+    - prd
+
+  AppName:
+    Type: String
+    Description: Application Name
+
+Resources:  
+  DynamoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      Tags:
+        - Key: appname
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+        - Key: uai
+          Value: !Ref UAI
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        KMSMasterKeyId: !ImportValue ldapcommonkmskeyname
+        SSEEnabled: true
+        SSEType: KMS
+      TimeToLiveSpecification:
+        AttributeName: expirationTime
+        Enabled: True
+      AttributeDefinitions:
+        - AttributeName: "uai"
+          AttributeType: "S"
+        - AttributeName: "instanceID"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "uai"
+          KeyType: "HASH"
+        - AttributeName: "instanceID"
+          KeyType: "RANGE"
+      TableName: !Sub ${UAI}-${Table}-${Env}
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE

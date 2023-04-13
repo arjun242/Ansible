@@ -1,0 +1,26 @@
+---
+- name: Sending Email Notifications
+  mail:
+    host: alpmlip01.e2k.ad.ge.com
+    port: 25
+    from: Vikram Chandrasekaran <vikram.chandrasekaran@ge.com>
+    to:
+      - Vaishnavi Patel <vaishnavi.patel@ge.com>
+    bcc:
+      - Vikram Chandrasekaran <vikram.chandrasekaran@ge.com>
+    subject: "Account Provisioning Report - {{ aws_account_name }}"
+    body: 
+        <p>Hello Ivan,</p>
+        <p>We have provisioned a new AWS GR account. As part of the provisioning process, we would like to notify you about it. Please find the details of the account below.</p>
+        <p style="margin:0; padding:0;"><strong>Account ID:</strong> {{ aws_account_id }}</p>
+        <p style="margin:0; padding:0;"><strong>Account Name:</strong> {{ aws_account_name }}</p>
+        <p style="margin:0; padding:0;"><strong>VPC ID:</strong> {{ vpc_id }}</p>
+        <p style="margin:0; padding:0;">&nbsp;</p>
+        <p style="margin:0; padding:0;">Please do reach out to us if you have any further questions.</p>
+        <p style="margin:0; padding:0;">&nbsp;</p>
+        <p style="margin:0; padding:0;">Thanks</p>
+        <p style="margin:0; padding:0;">EA Team</p>
+    
+    subtype: html
+    charset: utf8
+  delegate_to: localhost

@@ -1,0 +1,33 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC: NAT Gateway' 
+Resources:
+  NAT:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+         Fn::GetAtt:
+           - EIP
+           - AllocationId
+      SubnetId: !ImportValue "{{natSubnet}}"
+      Tags:
+        - Key: uai
+          Value: {{UAI}}
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: uai
+          Value: {{UAI}}
+Outputs:
+  IPAddress:
+    Description: 'The public IP address of the NAT gateway.'
+    Value: !Ref EIP
+    Export:
+      Name: !Sub '{{prefix}}NatIPAddress'
+  NATID:
+    Description: 'The ID of the NAT gateway.'
+    Value: !Ref NAT
+    Export:
+      Name: !Sub '{{prefix}}NatGatewayId'

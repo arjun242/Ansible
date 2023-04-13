@@ -1,0 +1,14 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: gp-base-sg
+  - name: kms-common-key
+  - name: secrets-gr-accounts
+  - name: ssm-association-creation
+  - name: ssm-parameters-default
+  - name: sns-common-key
+  - name: dynamodb-common-key
+  - name: glue-common-key
+  - name: common-kms-cloudwatch

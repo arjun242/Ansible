@@ -1,0 +1,5 @@
+---
+# installing splunk agent
+- hosts: all
+  roles:
+    - splunk

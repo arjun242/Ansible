@@ -1,0 +1,214 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "AWS IAM managed Policy for StackSet execution role"
+Resources:
+  SvcPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: 'stackset-execution-managed'
+      Roles: 
+      - !ImportValue StackSetExecutionRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: "KMSAccess"
+            Effect: "Allow"
+            Action:
+            - kms:CancelKeyDeletion
+            - kms:CreateAlias
+            - kms:CreateAlias
+            - kms:CreateGrant
+            - kms:CreateKey
+            - kms:Decrypt
+            - kms:DeleteAlias
+            - kms:DeleteAlias
+            - kms:DescribeKey
+            - kms:DisableKey
+            - kms:DisableKeyRotation
+            - kms:EnableKey
+            - kms:EnableKeyRotation
+            - kms:Encrypt
+            - kms:GenerateRandom
+            - kms:GenerateDataKey
+            - kms:GenerateDataKeyWithoutPlaintext
+            - kms:GetKeyPolicy
+            - kms:GetKeyRotationStatus
+            - kms:ListAliases
+            - kms:ListGrants
+            - kms:ListKeyPolicies
+            - kms:ListKeys
+            - kms:ListResourceTags
+            - kms:ListRetirableGrants
+            - kms:PutKeyPolicy
+            - kms:ReEncryptFrom
+            - kms:ReEncryptTo
+            - kms:RetireGrant
+            - kms:RevokeGrant
+            - kms:ScheduleKeyDeletion
+            - kms:TagResource
+            - kms:UntagResource
+            - kms:UpdateAlias
+            - kms:UpdateAlias
+            - kms:UpdateKeyDescription
+            Resource: "*"
+
+          - Sid: "Ec2Access"
+            Effect: "Allow"
+            Action:
+              - ec2:AssociateIamInstanceProfile
+              - ec2:AttachVolume
+              - ec2:AuthorizeSecurityGroupEgress
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:CreateTags
+              - ec2:CreateVolume
+              - ec2:AllocateAddress
+              - ec2:AssignPrivateIpAddresses
+              - ec2:AssociateAddress
+              - ec2:AssociateRouteTable
+              - ec2:AttachNetworkInterface
+              - ec2:CopyImage
+              - ec2:CopySnapshot
+              - ec2:CreateInstanceExportTask
+              - ec2:CreateSecurityGroup
+              - ec2:DeleteSecurityGroup
+              - ec2:DeleteTags
+              - ec2:DeleteVolume
+              - ec2:DetachVolume
+              - ec2:ModifyVolumeAttribute
+              - ec2:DisassociateIamInstanceProfile
+              - ec2:DetachNetworkInterface
+              - ec2:DisassociateAddress
+              - ec2:UnassignPrivateIpAddresses
+              - ec2:RebootInstances
+              - ec2:ReplaceIamInstanceProfileAssociation
+              - ec2:RevokeSecurityGroupEgress
+              - ec2:RevokeSecurityGroupIngress
+              - ec2:RunInstances
+              - ec2:StartInstances
+              - ec2:StopInstances
+              - ec2:TerminateInstances
+              - ec2:Describe*
+              - ec2:ModifyInstanceAttribute
+              - events:*
+            Resource: "*"
+
+          - Sid: "AutoscalingFullAccess"
+            Effect: "Allow"
+            Action:
+              - autoscaling:Describe*
+              - autoscaling:AttachInstances
+              - autoscaling:AttachLoadBalancers
+              - autoscaling:AttachLoadBalancerTargetGroups
+              - autoscaling:CreateAutoScalingGroup
+              - autoscaling:CreateLaunchConfiguration
+              - autoscaling:CreateOrUpdateTags
+              - autoscaling:DetachInstances
+              - autoscaling:DetachLoadBalancers
+              - autoscaling:PutScalingPolicy
+              - autoscaling:PutScheduledUpdateGroupAction
+              - autoscaling:SetDesiredCapacity
+              - autoscaling:SetInstanceHealth
+              - autoscaling:SetInstanceProtection
+              - autoscaling:TerminateInstanceInAutoScalingGroup
+              - autoscaling:UpdateAutoScalingGroup
+              - autoscaling:DeleteLaunchConfiguration
+            Resource: "*"
+            
+          - Sid: "SSMAccess"
+            Effect: "Allow"
+            Action:
+            - ssm:*
+            Resource: "*"
+
+            
+          - Sid: "secretsmanagerAccess"
+            Effect: "Allow"
+            Action:
+            - secretsmanager:*
+            Resource: "*"
+
+          - Sid: "rdsparametergroup"
+            Effect: "Allow"
+            Action: 
+            - rds:*
+            Resource:
+            - "*"
+
+          - Sid: "LambdaFullAccess"
+            Effect: "Allow"
+            Action:
+            - lambda:*
+            Resource: "*"
+            
+          - Sid: CloudWatchLogsFullAcess
+            Effect: Allow
+            Action:
+            - logs:*
+            Resource: "*"  
+
+          - Sid: "EcrAccess"
+            Effect: "Allow"
+            Action:
+            - ecr:*
+            Resource: "*"
+            
+          - Sid: EcsAccess
+            Effect: Allow
+            Action:
+            - ecs:*
+            Resource: "*"  
+
+          - Sid: CodeBuildAccess
+            Effect: Allow
+            Action:
+            - codebuild:*
+            Resource: "*"  
+
+          - Sid: CodePipelineAccess
+            Effect: Allow
+            Action:
+            - codepipeline:*
+            Resource: "*"  
+
+          - Sid: CodeStarAccess
+            Effect: Allow
+            Action:
+            - codestar-connections:*
+            Resource: "*"  
+            
+          - Sid: BackupAccess
+            Effect: Allow
+            Action:
+            - backup:*
+            - backup-storage:MountCapsule
+            Resource: "*"  
+            
+          - Sid: DynamodbAccess
+            Effect: Allow
+            Action:
+              - dynamodb:Describe*
+              - dynamodb:List*
+              - dynamodb:CreateTable
+              - dynamodb:UpdateTable
+              - dynamodb:DeleteTable
+              - dynamodb:CreateGlobalTable
+              - dynamodb:TagResource
+            Resource: "*"
+            
+          - Sid: ConfigAccess
+            Effect: Allow
+            Action:
+              - config:PutConfigRule
+              - config:PutAggregationAuthorization
+              - config:PutConfigurationRecorder
+              - config:PutDeliveryChannel
+              - config:DeleteConfigRule
+              - config:DeleteAggregationAuthorization
+              - config:DeleteConfigurationRecorder
+              - config:DeleteDeliveryChannel
+              - config:Get*
+              - config:Describe*
+              - config:List*
+            Resource: "*"
+            

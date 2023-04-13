@@ -1,0 +1,24 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an IAM custom managed policy that gives GESOS image repository access.
+Resources:
+  CustomManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: common-gesos-ecr-access
+      Description: Common managed policy that gives GESOS image repository access.
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: GetDownload
+          Effect: Allow
+          Action:
+            - 'ecr:GetDownloadUrlForLayer'
+            - 'ecr:BatchGetImage'
+            - 'ecr:BatchCheckLayerAvailability'
+          Resource: !Sub 'arn:aws:ecr:${AWS::Region}:144538309574:repository/*'
+        - Sid: GetAuth
+          Effect: Allow
+          Action: 'ecr:GetAuthorizationToken'
+          Resource: '*'

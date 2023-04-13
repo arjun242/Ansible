@@ -1,0 +1,8 @@
+UAI: uai3037033
+App: ldap
+Env: prd
+ContainerPort: 8005
+ServiceName: uai3037033-ldap-backend
+TaskName: backend1
+TaskDefinition: arn:aws:ecs:us-east-1:325381443140:task-definition/uai3037033-ldap-prd-backend1-baseline:2
+DesiredCount: 0

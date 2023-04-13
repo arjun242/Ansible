@@ -1,0 +1,8 @@
+custom_resources:
+       
+  - name: common-access-logging-s3-bucket
+    custom_stackset_name: common-access-logging-s3-bucket
+    description: AWS Common Access Logging S3 Bucket
+    template_file: templates/s3-bucket-common-access-logging.cf.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

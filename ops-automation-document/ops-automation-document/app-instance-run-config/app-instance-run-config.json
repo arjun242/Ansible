@@ -1,0 +1,11 @@
+{
+    "Content": "file://app-instance-run-config.json", 
+    "Name": "app-instance-run-config", 
+    "VersionName": "latest",
+    "DocumentType": "Command",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }  

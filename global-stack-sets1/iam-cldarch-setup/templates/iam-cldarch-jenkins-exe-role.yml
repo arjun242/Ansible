@@ -1,0 +1,473 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: jenkins cldfrmn execution role for CloudArch
+
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the Role... e.g. 'cldSAAdmin'
+    Default: cldarch-jenkins-execution
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: /inf/
+  JenkinsRoleArn:
+    Type: String
+    Description: Name of the Admin Role...
+    Default: 'arn:aws:iam::325381443140:role/inf/ops-master-jenkins'
+  ComplianceRoleArn:
+    Type: String
+    Description: Name of the Admin Role...
+    Default: 'arn:aws:iam::523084324983:role/inf/compliance-remediation-role'
+  TagAssociate:
+    Type: CommaDelimitedList
+    Description: "List of all values ex: ops, sa, admin, app "
+    Default: sa, app
+Resources:
+  JenkinsExeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${RoleName}'
+      Path: !Sub '${RolePath}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref JenkinsRoleArn
+                - !Ref ComplianceRoleArn
+            Action:
+              - sts:AssumeRole
+              - sts:TagSession
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-deploy-role"  
+
+  JenkinsExeRolePolicyIam:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${RoleName}-IAMAccessLimited'
+      Roles:
+        - !Ref JenkinsExeRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PassRolePermissions
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource:
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/*
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/*
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/*
+
+          - Sid: IamCreateAccess  #not required if app team not suppose to create roles (App team will do Pull req for respective roles EA will run)
+            Effect: Allow
+            Action:
+              - iam:AttachRolePolicy
+              - iam:CreateRole
+              - iam:CreatePolicy
+              - iam:DeleteRolePolicy
+              - iam:DeleteRole
+              - iam:DetachRolePolicy
+              - iam:DeletePolicy
+              - iam:DeleteInstanceProfile	
+              - iam:PutRolePolicy
+            Resource:
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/uai*
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/uai*  # policy
+            - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/uai*  # Instance-Profile
+          
+          - Sid: CreateServiceLinkedRole  # this is not required if the servicelinked roles are created in the first run by admin
+            Effect: Allow
+            Action:
+              - iam:CreateServiceLinkedRole
+            Resource:
+            - "*"
+
+  JenkinsExeRolePolicyConstrained:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${RoleName}-Constrained'
+      Roles:
+        - !Ref JenkinsExeRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: 'EcsFullAccess'  # request or resource taging is not accepted
+            Effect: Allow
+            Resource: "*"
+            Action:
+              - ecs:*
+            Condition:
+              ArnEquals:
+                ecs:cluster: !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/uai*"
+          
+          - Sid: S3CommonBucketsAccess # resource taging is not accepted
+            Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common-tools'
+              - !Sub 'arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common-tools/*'
+              - !Sub 'arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common*'
+              
+          - Sid: 'GlueAccess'  # GECHG1223492
+            Effect: Allow
+            Resource: "*"
+            Action:
+              - glue:CreateDatabase
+              - glue:UpdateDatabase
+              - glue:GetTrigger
+              - glue:UpdateTrigger
+              - glue:CreateTrigger
+              - glue:UpdateJob
+              - glue:CreateJob
+              - glue:CreateTable
+              - glue:GetTables
+              - glue:UpdateConnection
+              - glue:CreateConnection
+              - glue:UpdateClassifier
+              - glue:CreateClassifier
+            Condition:
+              ArnEquals:
+                glue:catalog: !Sub "arn:${AWS::Partition}:glue:${AWS::Region}:${AWS::AccountId}:uai*"
+
+          - Sid: DMS
+            Effect: Allow
+            Resource:
+              - "*"
+            Action:
+              - dms:CreateReplicationSubnetGroup   # Does not supports any Tag or Resource policy
+              - dms:ModifyReplicationSubnetGroup
+              - dms:CreateReplicationInstance
+              - dms:CreateReplicationTask
+              - dms:CreateEndpoint
+              - dms:DeleteEndpoint
+              - dms:DeleteReplicationInstance
+              - dms:DeleteReplicationSubnetGroup
+              - dms:DeleteReplicationTask
+              
+          - Sid: LambdaConditionalAccess  # resource taging is not accepted
+            Effect: Allow
+            Action:
+            - lambda:*EventSourceMapping  # will have Create, Update, Get and Delete on EventSourceMapping
+            Resource:
+            - '*'
+            Condition:
+              ArnEquals:
+                lambda:FunctionArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:uai*"
+
+          - Sid: Ec2ConditionalAccessonEc2Tag
+            Effect: Allow
+            Action:
+              - ec2:StopInstances
+              - ec2:AssociateIamInstanceProfile
+              - ec2:ReplaceIamInstanceProfileAssociation
+              - ec2:AttachVolume
+              - ec2:CreateLaunchTemplateVersion
+              - ec2:DeleteLaunchTemplate
+              - ec2:DeleteLaunchTemplateVersions
+              - ec2:DeleteVolume
+              - ec2:DetachVolume
+              - ec2:DisassociateIamInstanceProfile
+              - ec2:TerminateInstances
+              - ec2:ModifyLaunchTemplate
+              - ec2:ReplaceIamInstanceProfileAssociation
+            Resource:
+              - "*"
+            Condition:
+              ForAnyValue:StringEquals:
+                ec2:ResourceTag/associate: !Ref TagAssociate
+
+          - Sid: AllowRunInstancesWithRestrictions
+            Effect: Allow
+            Action:
+              - ec2:RunInstances
+              - ec2:CreateVolume
+            Resource:
+              - "*"
+            Condition:
+              ForAnyValue:StringEquals: 
+                aws:TagKeys:
+                  - 'uai'
+
+          - Sid: ResourceFullsAccess  
+            Effect: Allow
+            Action:
+              - s3:*    # request or resource taging is not accepted
+              - ecr:*   # request or resource taging is not accepted
+              - lambda:* # request or resource taging is not accepted
+              - logs:*  # request or resource taging is not accepted
+              - sqs:*  # request or resource taging is not accepted
+              - elasticloadbalancing:* # request or resource taging is not accepted
+              - autoscaling:*
+              - appstream:*
+              - rds:*
+              - secretsmanager:*
+              - cloudformation:*
+              - ssm:*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::uai*" # s3  
+              - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/uai*"  #ecr
+              - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:uai*"  #lambda Function
+              - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:layer:uai*"   #lambda Function Layer
+              - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*uai*"  # logs
+              - !Sub "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:uai*"  # sqs
+              - !Sub "arn:${AWS::Partition}:elasticloadbalancing:${AWS::Region}:${AWS::AccountId}:*uai*"  # ELB
+              - !Sub "arn:${AWS::Partition}:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/uai*"  # autoscaling autoScalingGroup
+              - !Sub "arn:${AWS::Partition}:autoscaling:${AWS::Region}:${AWS::AccountId}:launchConfiguration:*:launchConfigurationName/uai*" # autoscaling launchConfiguration
+              - !Sub "arn:${AWS::Partition}:appstream:${AWS::Region}:${AWS::AccountId}:fleet/uai*"    #Appstream fleet
+              - !Sub "arn:${AWS::Partition}:appstream:${AWS::Region}:${AWS::AccountId}:image/uai*"    #Appstream image
+              - !Sub "arn:${AWS::Partition}:appstream:${AWS::Region}:${AWS::AccountId}:image-builder/uai*"    #Appstream image-builder
+              - !Sub "arn:${AWS::Partition}:appstream:${AWS::Region}:${AWS::AccountId}:stack/uai*"    #Appstream stack
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:global-cluster:*"  # RDS Cluster
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"  # RDS Cluster
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-pg:*"  # RDS Cluster
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:uai*"  # RDS DB snapshot
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"  # RDS DB Instance
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:es:*"  # RDS DB Instance
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:rds:pw*"  # RDS DB snapshot Because RDS name does not start with the UAI                           
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:secgrp:*" # RDS SecurityGroup
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:pg:*" # RDS ParamaterGroup
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:og:*"  # RDS OptionGroup
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:subgrp:*" #Rds Subnet Group
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:uai*"  # SecretsManager
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*"  # SecretsManager
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/app/*"  # SecretsManager
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/uai*"  # SecretsManager
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/cnt-security/login/uai*" #SecretsManager-Prisma
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/uai*" # Cloudformation
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:changeSet/uai*" # Cloudformation-changeset
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/uai*"   # SSM Parameter
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/uai*"    # SSM Document
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation/*"
+              - !Sub "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:uai*"  # sqs
+              - !Sub "arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:*"  # sns
+          - Sid: ResourceAccess
+            Effect: Allow
+            Action:
+              - ecs:DeleteCluster # ecs
+              - ecs:UpdateCluster
+              - ecs:UpdateClusterSettings
+              - kms:CreateAlias # request or resource taging is not accepted
+              - kms:ScheduleKeyDeletion # request or resource taging is not accepted
+              - kms:UpdateAlias  # Working on Resource Tag 
+              - kms:DeleteAlias
+            Resource:
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/uai*"  # Kms Key Alias 
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:key/*"
+              - !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/uai*"  # ecs
+              
+  JenkinsExeRolePolicyUnConstrained:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${RoleName}-Uncons'
+      Roles:
+        - !Ref JenkinsExeRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ResourceFullAccess # required * on all the actions and no conditions are allowed
+            Effect: Allow
+            Resource: 
+            - "*"
+            Action:
+              - application-autoscaling:* # application-autoscaling
+              - apigateway:*
+              - appmesh:*
+              - elasticfilesystem:*
+              - elasticache:*
+              - chatbot:*
+              - mq:*
+              - iot:* # IOT full acess
+              - cloudfront:* #cloudfront full access. 
+              - elasticfilesystem:* 
+              - kinesis:*
+              - firehose:*
+              - es:*
+              - dynamodb:*
+              - cognito-idp:*
+              - cognito-identity:*
+              - states:*
+              - greengrass:*
+              - datapipeline:*
+              - codebuild:*
+              - sns:*
+              - codepipeline:*
+              - sagemaker:*
+              - lex:*
+              - events:*
+              - schemas:*
+              - waf:*
+              - wafv2:CreateWebACL
+              - kendra:*
+              
+          - Sid: ResourceAccess
+            Effect: Allow
+            Resource: 
+            - "*"
+            Action:
+              - apigateway:GET # apigateway
+              - cloudformation:ValidateTemplate # CLoudformation
+              - cloudformation:CreateUploadBucket 
+              - cloudformation:EstimateTemplateCost 
+              - cloudformation:PreviewStackUpdate
+              - cloudformation:List*
+              - cloudformation:Get*
+              - cloudformation:Describe*
+              - cloudformation:CreateChangeSet
+              - cloudwatch:Get*  # cloudwatch
+              - cloudwatch:List*
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:DeleteAlarms
+              - cloudwatch:Put*
+              - ecr:GetAuthorizationToken  # ecr
+              - ecr:ListImages
+              - ecs:CreateCluster # ecs
+              - ecs:RegisterTaskDefinition
+              - ecs:DeregisterTaskDefinition
+              - ecs:TagResource
+              - ecs:UntagResource
+              - ecs:AssociateAddress
+              - ecs:PutAccountSetting
+              - ecs:UpdateClusterSettings
+              - appmesh:ListVirtualNodes # appmesh
+              - appmesh:DescribeVirtualNode
+              - ec2:RunInstances # Ec2
+              - ec2:StartInstances
+              - ec2:AttachNetworkInterface
+              - ec2:AuthorizeSecurityGroupEgress
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:CreateLaunchTemplate
+              - ec2:CreateNetworkInterface
+              - ec2:CreateNetworkInterfacePermission
+              - ec2:CreateSecurityGroup
+              - ec2:CreateTags
+              - ec2:DeleteNetworkInterface
+              - ec2:DeleteNetworkInterfacePermission
+              - ec2:DeleteTags
+              - ec2:DeleteSecurityGroup
+              - ec2:ModifyInstanceAttribute
+              - ec2:ModifyInstanceEventStartTime
+              - ec2:ModifyLaunchTemplate
+              - ec2:ModifyNetworkInterfaceAttribute
+              - ec2:ModifyVolume
+              - ec2:DescribeSecurityGroups
+              # - ec2:CreateVolume
+              - ec2:ModifyVolumeAttribute
+              - ec2:RevokeSecurityGroupIngress
+              - ec2:RevokeSecurityGroupEgress
+              - ec2:UpdateSecurityGroupRuleDescriptionsEgress
+              - ec2:UpdateSecurityGroupRuleDescriptionsIngress
+              - kms:GenerateRandom  # kms
+              - kms:CreateKey  # Working on Request Tag 
+              - kms:TagResource
+              - kms:UntagResource
+              - kms:UpdateKeyDescription # Working on Resource Tag 
+              - kms:PutKeyPolicy
+              - kms:GenerateDataKeyWithoutPlaintext
+              - kms:GenerateDataKey
+              - kms:EnableKeyRotation
+              - kms:EnableKey
+              - kms:DisableKeyRotation
+              - kms:CreateGrant
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - glue:CreateJob
+              - glue:UpdateConnection
+              - glue:CreateConnection
+              - logs:CreateLogGroup # logs
+              - logs:FilterLogEvents
+              - logs:CreateLogDelivery
+              - logs:PutResourcePolicy
+              - logs:PutRetentionPolicy
+              - logs:UpdateLogDelivery
+              - logs:DeleteLogDelivery
+              - logs:DescribeResourcePolicies
+              - logs:GetLogDelivery
+              - logs:ListLogDeliveries
+              - events:DescribeRule # events
+              - events:DeleteRule
+              - events:ListRuleNamesByTarget
+              - events:ListTargetsByRule
+              - events:PutRule
+              - events:PutTargets
+              - events:RemoveTargets
+              - rds:AddTagsToResource # rds
+              - rds:AddSourceIdentifierToSubscription
+              - rds:AuthorizeDBSecurityGroupIngress
+              - rds:CreateEventSubscription
+              - rds:CreateDBSecurityGroup
+              - rds:DeleteDBSecurityGroup
+              - rds:DeleteEventSubscription
+              - rds:ModifyEventSubscription
+              - rds:RevokeDBSecurityGroupIngress
+              - s3:ListAllMyBuckets # s3
+              - secretsmanager:GetRandomPassword  #secretsmanager
+              - secretsmanager:CreateSecret 
+              - secretsmanager:DeleteSecret
+              - secretsmanager:TagResource 
+              - ssm:CreateDocument # ssm
+              - ssm:AddTagsToResource
+              - ssm:UpdateDocument
+              - ssm:UpdateDocumentDefaultVersion
+              - ssm:GetConnectionStatus
+              - ssm:GetCommandInvocation
+              - ssm:UpdateAssociation
+              - ssm:DeleteAssociation
+              - ssm:DescribeAssociation
+              - ssm:CreateAssociation
+              - ssm:ListAssociations
+              - tag:GetTagValues #tag
+              - tag:GetResources
+              - tag:TagResources
+              - tag:UntagResources
+              - servicediscovery:List* #servicediscovery
+              - servicediscovery:Get*
+              - servicediscovery:CreateService
+              - servicediscovery:CreateHttpNamespace
+              - servicediscovery:CreatePrivateDnsNamespace
+              - servicediscovery:DeleteNamespace
+              - servicediscovery:RegisterInstance
+              - servicediscovery:DeregisterInstance
+              - servicediscovery:DiscoverInstances
+              - servicediscovery:DeleteService
+              - servicediscovery:UpdateInstanceCustomHealthStatus
+              - servicediscovery:UpdateService
+              - servicediscovery:GetNamespace
+              - servicediscovery:TagResource
+              - servicediscovery:UntagResource
+              - servicediscovery:UpdatePrivateDnsNamespace
+              - route53:Get*   # route53
+              - route53:List*
+              - route53:CreateHostedZone
+              - route53:DeleteHostedZone
+              - route53:ChangeResourceRecordSets
+              - route53:CreateHealthCheck
+              - route53:CreateTrafficPolicy*
+              - route53:UpdateHealthCheck
+              - route53:UpdateHostedZoneComment
+              - route53:UpdateTrafficPolicyComment
+              - route53:UpdateTrafficPolicyInstance
+              - lambda:Get* # lambda
+              - lambda:EnableReplication*
+              ### Giving the access for codestar-connections service###
+              - codestar-connections:PassConnection
+              - codestar-connections:CreateConnection
+              - codestar-connections:CreateHost
+              - codestar-connections:GetConnection
+              - codestar-connections:GetHost
+              - codestar-connections:List*
+Outputs:
+  JenkinsExeRoleName:
+    Description: Jenkins Role Name
+    Value: !Ref JenkinsExeRole
+  JenkinsExeRoleArn:
+    Description: Jenkins Role Arn
+    Value: !GetAtt JenkinsExeRole.Arn

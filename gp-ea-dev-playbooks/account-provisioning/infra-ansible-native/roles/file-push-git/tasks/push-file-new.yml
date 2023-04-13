@@ -1,0 +1,74 @@
+---
+- name: Including secret vars
+  include_vars: main.yml
+  no_log: true
+
+- name: Create empty directory
+  file:
+    path: "{{dest_directory}}"
+    state: directory
+
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{github_enterprise_repo}}"
+    dest: "{{dest_directory}}"
+    clone: yes
+    recursive: yes
+
+- name: Synchronize source and destination directories
+  synchronize:
+    src: "{{source_directory}}"
+    dest: "{{dest_directory}}"
+  delegate_to: localhost
+
+# - name: Git repo commands
+#   shell: 
+#     cmd: |
+#       "git init"
+#       "git remote add checkGit \"https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{github_enterprise_repo}}\" "
+#       "git config user.name \"Vikram\" && git config user.email vikram.chandrasekaran@ge.com"
+#       "git pull checkGit master"
+#       "git add --all"
+#       "git commit -a -m \"New commit into {{github_enterprise_repo}} by Ansible\""
+#       "git push checkGit master"
+#       "git remote rm checkGit"
+      
+#     chdir: "{{dest_directory}}"
+
+- name: Reinitialize existing repo
+  shell:
+    cmd: "cd {{dest_directory}} && git init"
+
+- name: Add remote
+  shell:
+    cmd: "cd {{dest_directory}} && git remote add checkGit \"https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{github_enterprise_repo}}\" "
+
+- name: Add identity
+  shell:
+    cmd: "cd {{dest_directory}} && git config user.name \"Vikram\" && git config user.email vikram.chandrasekaran@ge.com"
+
+- name: Pull the latest revision of repo
+  shell:
+    cmd: "cd {{dest_directory}} && git pull checkGit master"
+
+- name: Add the modified files using git add
+  shell:
+    cmd: "cd {{dest_directory}} && git add --all"
+
+- name: Commit the changes
+  shell:
+    cmd: "cd {{dest_directory}} && git commit -a -m \"New file pushed to account-provisioning repo using Ansible\" "  
+
+- name: Push the changes
+  shell:
+    cmd: "cd {{dest_directory}} && git push checkGit master"
+
+- name: Remove remote
+  shell:
+    cmd: " cd {{dest_directory}} && git remote rm checkGit"
+
+- name: Delete destination directory
+  file:
+    path: "{{dest_directory}}"
+    state: absent
+  

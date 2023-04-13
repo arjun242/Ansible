@@ -1,0 +1,22 @@
+{
+    "name": "{{ aws_account_name|upper }}-SOURCE",
+    "description": "{{ aws_account_name|upper }}-SOURCE",
+    "source": "scm",
+    "source_path": "inventory/{{ aws_account_name|upper }}-INVENTORY/aws_ec2.yml",
+    "source_script": null,
+    "source_vars": "",
+    "credential": null,
+    "enabled_var": "",
+    "enabled_value": "",
+    "host_filter": "",
+    "overwrite": true,
+    "overwrite_vars": false,
+    "custom_virtualenv": null,
+    "timeout": 0,
+    "verbosity": 1,
+    "inventory": {{ inventory_id }},
+    "update_on_launch": true,
+    "update_cache_timeout": 1,
+    "source_project": {{ source_project_id }},
+    "update_on_project_update": false
+}

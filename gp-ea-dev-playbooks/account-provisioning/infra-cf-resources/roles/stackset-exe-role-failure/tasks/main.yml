@@ -1,0 +1,9 @@
+---
+- name: Creating stackset exe role cloudformationstack
+  cloudformation:
+    stack_name: "gp-stackset-execution"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"

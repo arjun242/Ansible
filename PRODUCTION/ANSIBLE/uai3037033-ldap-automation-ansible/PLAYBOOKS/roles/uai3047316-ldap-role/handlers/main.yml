@@ -1,0 +1,6 @@
+- name: restart oddjobd
+  become: yes
+  service: 
+    name: oddjobd
+    state: restarted 
+    enabled: yes

@@ -1,0 +1,9 @@
+UAI: "{{UAI}}"
+APPSubnetCIDR: "{{appSubnetCIDR}}"
+DBSubnetCIDR: "{{dbSubnetCIDR}}"
+EXTSubnetCIDR: "{{extSubnetCIDR}}"
+{% if igrSubnetCIDR != "NA" -%}
+IGRSubnetCIDR: "{{igrSubnetCIDR}}"
+{% endif -%}
+RBSubnetCIDR: "{{rbSubnetCIDR}}"
+VPCCIDR: "{{vpcCIDR}}"

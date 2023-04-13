@@ -1,0 +1,221 @@
+---
+
+# Gathering some EC2 metadata facts to use for pulling files from S3
+- name: Gathering Metadata Facts
+  ec2_metadata_facts:
+
+- name: check if apache installed or not
+  stat:
+    path: "{{ install_directory }}"
+  register: apache_installed
+
+- name: Apache installation check conditions
+  block:
+
+    #- name: Collect Tags information
+    - name: Retrieve the tags created on the instance
+      ec2_tag:
+        region: '{{ ansible_ec2_placement_region }}'
+        resource: '{{ ansible_ec2_instance_id }}'
+        state: list
+      register: ec2_tags
+
+    # set uai variable
+    - name: Set uai variable
+      set_fact:
+        uai: "{{ ec2_tags.tags.uai }}"
+      when: ec2_tags is defined
+
+    # set app variable
+    - name: Set app variable
+      set_fact:
+        app: "{{ ec2_tags.tags.app }}"
+      when: ec2_tags is defined
+
+    # set env variable
+    - name: Set env variable
+      set_fact:
+        env: "{{ ec2_tags.tags.env }}"
+      when: ec2_tags is defined
+    
+    - name: check apache ssl directory exists or not
+      stat:
+        path: "{{ conf_dir }}"
+      register: conf_directory
+
+    - name: "Create directories if not exists"
+      file:
+        path: "{{ conf_dir }}"
+        state: directory
+        mode: 0775
+        group: apache
+        owner: apache
+      when: 
+        - conf_directory.stat.exists == false
+        - apache_installed.stat.exists == true
+
+    # This task will pull ssl conf file from App's S3 bucket
+    - name: GET ssl conf file from Apps S3 bucket
+      aws_s3:
+        bucket: "{{ bucket_name }}"
+        object: config/"{{ uai }}"/"{{ app }}"-"{{ env }}"/web/pw_apache_touchless/ssl.conf.erb
+        dest: "{{role_path}}/files/"
+        mode: get
+        region: "{{ ansible_ec2_placement_region }}"
+        overwrite: different
+      delegate_to: localhost
+      ignore_errors: yes
+
+    # This task will pull oidc conf file from App's S3 bucket
+    - name: GET oidc conf file from Apps S3 bucket
+      aws_s3:
+        bucket: "{{ bucket_name }}"
+        object: config/"{{ uai }}"/"{{ app }}"-"{{ env }}"/web/pw_apache_touchless/oidc.conf.erb
+        dest: "{{role_path}}/files/"
+        mode: get
+        region: "{{ ansible_ec2_placement_region }}"
+        overwrite: different
+      delegate_to: localhost
+      ignore_errors: yes
+
+    - name: check for downloaded ssl.conf.erb template if exists
+      stat:
+        path: "{{role_path}}/files/ssl.conf.erb"
+      register: s3_ssl_conf_erb_exists
+
+    - name: check for downloaded oidc.conf.erb template if exists
+      stat:
+        path: "{{role_path}}/files/oidc.conf.erb"
+      register: s3_oidc_conf_erb_exists
+
+    - name: Copy the conversion script to tower
+      template:
+        src: /files/convertToJinjaTemp.py
+        dest: /tmp/convertErbToJinja/files/
+
+    - name: Run python script using path of tower folder location
+      script: /tmp/convertErbToJinja/files/convertToJinjaTemp.py "{{role_path}}/files/ssl.conf.erb"
+      args:
+        executable: python3
+      when: s3_ssl_conf_erb_exists
+
+    - name: Run python script using path of tower folder location
+      script: /tmp/convertErbToJinja/files/convertToJinjaTemp.py "{{role_path}}/files/oidc.conf.erb"
+      args:
+        executable: python3
+      when: s3_oidc_conf_erb_exists
+
+    # This task is to check for the appConfig.json file
+    - name: Checking for the appConfig.json file
+      become: yes
+      stat: 
+        path: "{{ config_json }}"
+      register: app_config_file_check
+
+    - name: Checking for the ssl-conf file
+      become: yes
+      stat:
+        path: "{{ ssl_conf }}"
+      register: ssl_conf_file_check
+
+    - name: Checking for the oidc-conf file
+      become: yes
+      stat:
+        path: "{{ oidc_conf }}"
+      register: oidc_conf_file_check
+
+    # Creating a block to to perform tasks only when appConfig.json exists
+    - name: Configure Apache conf files
+      block:
+
+      # Based on file_check perform below
+        - name: Read contents of appConfig.json
+          become: yes
+          shell: cat "{{ config_json }}"
+          register: config_json_contents
+      
+        - name: Set app_config_json dict
+          set_fact:
+            configStdout: "{{ config_json_contents.stdout | from_json }}"
+          when: config_json_contents is defined
+
+        - name: Set environment_config dict
+          set_fact:
+            environment_config: "{{ config_json_contents.stdout | from_json | json_query('[*].environment') }}"
+          when: config_json_contents is defined
+
+        - name: Generate Crypto from OS
+          become: yes
+          shell: openssl rand -base64 16
+          register: crypto_passphrase
+
+      # This task will update ssl & oidc conf files using template when config json exists 
+        - name: Update the oidc.conf & ssl.conf files
+          set_fact:
+            oid_sso_url: "{{ configStdout | json_query('[*].OIDC_SSOURL') | to_json | replace('[','') | replace(']','') | trim }}"
+            clientId: "{{ configStdout | json_query('[*].OIDC_CLIENT_ID') | to_json | replace('[','') | replace(']','') | trim }}"
+            clientSecret: "{{ configStdout |  json_query('[*].OIDC_SECRET') | to_json | replace('[','') | replace(']','') | trim }}"
+            redirect_url: "{{ configStdout | json_query('[*].OIDC_REDIRECTURL') | to_json | replace('[','') | replace(']','') | trim }}"
+            oidc_policies: "{{ configStdout | json_query('[*].security') | to_json | replace('[','') | replace(']','') | trim }}"
+            mappings: "{{ configStdout | json_query('[*].mappings') | to_json | replace('[','') | replace(']','') }}"
+            fqdn: "{{ environment_config | json_query('[*].fqdn') | to_json | replace('[','') | replace(']','') | trim }}"
+            externally_facing: "{{ environment_config | json_query('[*].\"Externally facing\"') }}"
+            crypto_from_os: "{{ crypto_passphrase.stdout | to_json | trim }}"
+
+        - name: Update oidc.conf.j2 template
+          become: yes
+          template:
+            src: "oidc.conf.j2"
+            dest: "{{ oidc_conf }}"
+
+        - name: Select ssl.conf-ext.j2 template
+          become: yes
+          template:
+            src: "ssl.conf-ext.j2"
+            dest: "{{ ssl_conf }}"
+            force: yes
+          when: (externally_facing | to_json) == '[\"Yes\"]'
+
+        - name: Select ssl.conf-int.j2 template
+          become: yes
+          template:
+            src: "ssl.conf-int.j2"
+            dest: "{{ ssl_conf }}"
+            force: yes
+          when: ( externally_facing | to_json ) == '[\"No\"]'
+
+        - name: Checking for newly created ssl_conf file
+          become: yes
+          stat: 
+            path: "{{ ssl_conf }}"
+          register: new_ssl_conf_check
+
+        - name: Checking for newly created oidc_conf file
+          become: yes
+          stat:
+            path: "{{ oidc_conf }}"
+          register: new_oidc_conf_check
+
+        - name: Changing permission of the files
+          become: yes
+          file:
+            path: "{{ item }}"
+            mode: 0775
+          with_items:
+            - "{{ ssl_conf }}"
+            - "{{ oidc_conf }}"
+          notify: restart apache service 
+          when:
+            - new_ssl_conf_check.stat.exists == true
+            - new_oidc_conf_check.stat.exists == true
+      
+      when: 
+        - app_config_file_check.stat.exists == true
+        - ssl_conf_file_check.stat.exists == false
+        - oidc_conf_file_check.stat.exists == false
+      ignore_errors: yes
+  #Condition to execute the block tasks only when the appConfig.json file exists on the target host.
+
+  when: 
+    - apache_installed.stat.exists == true
+  ignore_errors: yes

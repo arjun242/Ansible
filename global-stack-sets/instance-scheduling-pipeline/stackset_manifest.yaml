@@ -1,0 +1,16 @@
+custom_resources:
+  - name: gp-instance-scheduling-pipeline
+    custom_stackset_name: gp-instance-scheduling-pipeline
+    description: Sets up the CI/CD pipelines for the InstanceScheduling repository
+    template_file: templates/Pipeline.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change
+    deploy_to:
+      - account: ent-emea-pnw-preprod
+        override_parameter_file: parameters/ent-emea-pnw-preprod.yml
+        regions:
+          - eu-west-1
+      - account: pnw-preprod
+        override_parameter_file: parameters/pnw-preprod.yml
+        regions:
+          - us-east-1

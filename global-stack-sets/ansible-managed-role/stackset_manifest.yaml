@@ -1,0 +1,7 @@
+Description: AWS IAM Role for Ansible Dymanic Inventory for account, configured in Tower
+DeployTo: https://github.build.ge.com/gp-ops/gr-accounts-setup
+custom_resources:
+  - custom_stackset_name: iam-ansible-managed-role-prd
+    template_file: templates/iam-ansible-managed-role-prd.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

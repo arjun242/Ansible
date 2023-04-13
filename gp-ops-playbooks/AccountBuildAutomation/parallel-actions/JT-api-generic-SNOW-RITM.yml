@@ -1,0 +1,4 @@
+---
+- hosts: localhost
+  roles:
+    - api-generic-SNOW-RITM

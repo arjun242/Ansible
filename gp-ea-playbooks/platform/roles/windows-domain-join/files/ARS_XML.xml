@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body>
+<addRequest xmlns="urn:oasis:names:tc:SPML:2:0" returnData="nothing">
+    <containerID ID="OU=Unclaimed,OU=Computers,OU=Enterprise,DC=mgmt,DC=cloud,DC=ds,DC=ge,DC=com"/>
+    <data>
+        <attr name="cn" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>changehostname</value></attr>
+        <attr name="sAMAccountName" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>changehostname$</value></attr>
+        <attr name="objectClass" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>computer</value></attr>
+        <attr name="edsaJoinComputerToDomain" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>CC-MGMT\DEL_GE009000000_SVR_Join_Domain</value></attr>
+        <attr name="GEHRINDUSTRYGROUPID" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>1147425</value></attr>
+        <attr name="GEVSVRTYPE" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>Windows</value></attr>
+        <attr name="GEVSVRSUPPORTEDBY" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>GE009000000</value></attr>
+        <attr name="otherManagedBy" xmlns="urn:oasis:names:tc:DSML:2:0:core"><value>CN=105026584,OU=Standard,OU=Users,OU=Enterprise,DC=Logon,DC=DS,DC=GE,DC=COM</value></attr>
+</data>
+</addRequest>
+</soap:Body>
+</soap:Envelope>

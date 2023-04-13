@@ -1,0 +1,22 @@
+---
+
+- include_vars: secrets.yml
+  #no_log: true
+
+- name: Create inventory source in Tower
+  uri:
+    url: "{{ tower_api_inventory_source_url }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 201
+    timeout: 30
+    headers:
+      Authorization: "Bearer {{ tower_oauth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: "{{ lookup('template','inventory_source_payload.j2') }}"
+  register: accnt_inventory_source_response

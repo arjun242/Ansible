@@ -1,0 +1,10 @@
+# CODEOWNERS
+codeowners:
+ aws:
+  - team_name: SA
+ azure:
+  - team_name: EA
+  - team_name: Operations
+versions:
+ azure:
+  core_infra: 2.2

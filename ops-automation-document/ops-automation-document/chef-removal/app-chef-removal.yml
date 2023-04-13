@@ -1,0 +1,37 @@
+# History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to remove chef-client from EC2 instances....
+
+mainSteps:
+
+- name: WindowsSetup
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Windows 
+  inputs:
+    runCommand:
+    - $app = Get-WmiObject -Class Win32_Product | where-object {$_.name -like '*chef*'}
+    - sleep 20
+    - $app.Uninstall()
+    - sleep 10
+    - $app = Get-WmiObject -Class Win32_Product | where-object {$_.name -like '*Push Jobs*'}
+    - sleep 20
+    - $app.Uninstall()
+    - remove-item -path "C:\\chef" -recurse
+
+
+
+- name: LinuxOSType
+  action: aws:runShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - yum remove chef -y
+    - rm -rf /etc/chef

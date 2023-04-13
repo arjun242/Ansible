@@ -1,0 +1,63 @@
+---
+- include_vars: secrets.yml
+  no_log: true
+
+- name: Create lists and set facts
+  set_fact: 
+    list_Members: "{{ Members.split(',') }}"
+
+- debug:
+    var: list_Members
+
+- debug:
+    var: AwsAccountId
+
+- debug:
+    var: Manager
+
+- debug:
+    var: OtherManager
+
+#Generate OAuth2 Token
+- name: Generate the OAuth2 token
+  uri:
+    url: "{{ access_token_url }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 200
+    timeout: 30
+    headers:
+      Authorization: "Basic {{ encrypted_client_id_pwd }}"
+    body:
+    body_format: json
+  register: response
+
+- name: Setting the oauth token
+  set_fact:
+    oauth_token: "{{ response.json.access_token }}"
+
+# Create microsite fedrole DL
+- name: Create DL for the microsite users fedrole
+  uri:
+    url: "{{ api_url_create_DL }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 200
+    timeout: 30
+    headers:
+      Authorization: "Bearer {{ oauth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: "{{ lookup('template','dl-template.j2') }}"
+  register: DLRegister
+
+- debug:
+    var: DLRegister

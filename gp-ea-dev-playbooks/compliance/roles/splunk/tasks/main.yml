@@ -1,0 +1,9 @@
+---
+ 
+- name: Installation and Configuration for Windows
+  import_tasks: windows.yml
+  when: ansible_os_family == "Windows"
+
+- name: Installation and Configuration for Redhat
+  import_tasks: linux.yml
+  when: ansible_os_family == "RedHat"

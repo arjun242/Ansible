@@ -1,0 +1,38 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: dbss-rds-aurora-mysql-cluster-parameters-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-aurora-mysql-parameters-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-aurora-pgsql-cluster-parameters-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-aurora-pgsql-parameters-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-mysql-option-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-mysql-parameter-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-oracle-option-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-oracle-parameter-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-postgresql-parameter-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-sqlserver-option-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}
+  - name: dbss-rds-sqlserver-parameter-groups
+    parameters:
+      VPCAlias: {{ aws_account_name }}

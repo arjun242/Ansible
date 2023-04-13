@@ -1,0 +1,19 @@
+version: 0.2
+phases:
+   pre_build:
+    commands:
+      # - aws --version
+      - sam package --template-file uai3037033-ldap-Naapi-Fetch.yml --output-template-file uai3037033-ldap-Naapi-Fetch-package.yml --s3-bucket uai3047316-ladap-automation-s3-nonpr-ldaps3bucket-o8pynhngemrd
+      - sam deploy --template-file uai3037033-ldap-Naapi-Fetch-package.yml --stack-name uai3037033-ldap-naapi-fetch-lambda
+
+      - sam package --template-file uai3037033-ldap-Connect-Check.yml --output-template-file uai3037033-ldap-Connect-Check-package.yml --s3-bucket uai3047316-ladap-automation-s3-nonpr-ldaps3bucket-o8pynhngemrd
+      - sam deploy --template-file uai3037033-ldap-Connect-Check-package.yml --stack-name uai3037033-ldap-Connect-Check-lambda
+
+      - sam package --template-file uai3037033-ldap-ldap2fa.yml --output-template-file uai3037033-ldap-ldap2fa-package.yml --s3-bucket uai3047316-ladap-automation-s3-nonpr-ldaps3bucket-o8pynhngemrd
+      - sam deploy --template-file uai3037033-ldap-ldap2fa-package.yml --stack-name uai3037033-ldap-ldap2fa-lambda
+
+      - sam package --template-file uai3037033-ldap-eve-Connect-Check.yml --output-template-file uai3037033-ldap-eve-Connect-Check-package.yml --s3-bucket uai3047316-ladap-automation-s3-nonpr-ldaps3bucket-o8pynhngemrd
+      - sam deploy --template-file uai3037033-ldap-eve-Connect-Check-package.yml --stack-name uai3037033-ldap-eve-Connect-Check-lambda
+
+      - sam package --template-file uai3037033-ldap-ui-Connect-Check.yml --output-template-file uai3037033-ldap-ui-Connect-Check-package.yml --s3-bucket uai3047316-ladap-automation-s3-nonpr-ldaps3bucket-o8pynhngemrd
+      - sam deploy --template-file uai3037033-ldap-ui-Connect-Check-package.yml --stack-name uai3037033-ldap-ui-Connect-Check-lambda

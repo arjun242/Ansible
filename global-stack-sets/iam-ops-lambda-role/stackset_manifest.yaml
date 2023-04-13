@@ -1,0 +1,29 @@
+custom_resources:
+
+  - name: LambdaCustomOpsRole
+    custom_stackset_name: LambdaCustomOpsRole
+    description: Custom role for Lambda.
+    template_file: templates/iam-ops-snapshot-lambda-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw
+        regions:
+          - eu-west-1
+  - name: OpsLambdaAutomationRole
+    custom_stackset_name: OpsLambdaAutomationRole
+    template_file: templates/iam-ops-lambda-automation-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

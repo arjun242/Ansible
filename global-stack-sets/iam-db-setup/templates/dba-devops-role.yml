@@ -1,0 +1,1399 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation Template to create a role that authorizes access to database devops users in another account
+                  Last version from 07-Dec-2020
+## History:
+   #This template must be deployed into EACH account that needs to be accessed via these cross-account roles
+   # 08-Jul-2020: Added restricted access to S3,KMS and CF stack
+   # 09-Jul-2020: Added ECS policies
+   # 20-Nov-2020: Updated SNS and KMS policies to handle SNS encryption. Also updated CF policies to create database related stacks
+
+
+Metadata:
+  Version: 0.7
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Input Details for Database Team's IAM Role
+        Parameters:
+          - RoleName
+          - SourceAccountId
+          - MultiFactorAuthRequired
+
+Parameters:
+  GRRoleName:
+    Default: "db-devops-fed"
+    Type: String
+    Description: Provide name of the role to be created in current account
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'dbss'
+  GRAdminAccountId:
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    Default: "325381443140"
+    Description: 12 digit AWS Account Id of the identity/federation account containing the users to which you're granting access. This is a trusted account.
+  RoleName:
+    Default: "db-devops"
+    Type: String
+    Description: Provide name of the role to be created in current account
+  SourceAccountId:
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    Default: "589623221417"
+    Description: 12 digit AWS Account Id of the identity/federation account containing the users to which you're granting access. This is a trusted account.
+  MultiFactorAuthRequired:
+    Default: "False"
+    Type: String
+    AllowedValues:
+      - "True"
+      - "False"
+
+Conditions:
+  AdminSetup: !Equals [!Ref AWS::AccountId, '325381443140']
+  SwitchSetup: !Not [!Equals [!Ref AWS::AccountId, '325381443140']]
+
+Resources:
+  DbDevopsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      #RoleName: !Ref
+      RoleName: !Sub "${RoleName}"
+      Path: /dbss/
+      #Path: /mc/
+      MaxSessionDuration: 7200  # 2 Hrs
+      Tags:
+        - Key: support-group
+          Value: dig-tech-cts-cloud-db-support-team
+        - Key: uai
+          Value: UAI3036792
+
+      # The trust policy that is associated with this role.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            #"AWS": !Join [ "", [ "arn:aws:iam::", !Ref SourceAccountId, ":root" ] ]
+            "AWS": !Sub "arn:${AWS::Partition}:iam::${SourceAccountId}:root"
+          Action:
+          - sts:AssumeRole
+          Condition:
+            Bool:
+              "aws:MultiFactorAuthPresent": !Ref MultiFactorAuthRequired
+
+      #For attaching Managed policies
+      ManagedPolicyArns:
+        #For managing RDS instances
+        #- arn:aws:iam::aws:policy/AmazonRDSFullAccess
+        #- arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+        #- arn:aws:iam::aws:policy/service-role/AmazonDMSRedshiftS3Role, Added in managed policy
+        #For AWS Service catalog
+        - arn:aws:iam::aws:policy/AWSServiceCatalogAdminFullAccess
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+
+      #Define/add all required IAM inline policies here
+
+  DbssDbdevopsAdminPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn:
+      - DbDevopsRole
+    Properties:
+      Description: Admin Policies for db devops role
+      ManagedPolicyName: !Sub "${RoleName}-admin-policy"
+      Path: /dbss/
+      #Path: /mc/
+      Roles:
+      - !Ref DbDevopsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: "AllowMiscellaneousresources"
+          Effect: "Allow"
+          Action:
+            - application-autoscaling:DeleteScalingPolicy
+            - application-autoscaling:DeregisterScalableTarget
+            - application-autoscaling:DescribeScalableTargets
+            - application-autoscaling:DescribeScalingActivities
+            - application-autoscaling:DescribeScalingPolicies
+            - application-autoscaling:PutScalingPolicy
+            - application-autoscaling:RegisterScalableTarget
+            # For SNS Resource
+            # - sns:CreateTopic #For build
+            # - sns:DeleteTopic #For build
+            # - sns:Get*
+            # - sns:List*
+            # - sns:SetTopicAttributes
+            # - sns:Subscribe
+            # - sns:Unsubscribe
+            # - sns:Publish
+            #end
+            #For logs
+            - logs:DescribeLogStreams
+            - logs:GetLogEvents
+            - logs:FilterLogEvents
+            - logs:GetLogEvents
+            - logs:Create*
+            - logs:PutMetricFilter
+            - logs:PutLogEvents
+            - logs:PutRetentionPolicy
+            - logs:PutQueryDefinition
+            # For RDS Enhanced monitoring
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            #End
+            #- cloudwatch:*
+            - cloudwatch:DescribeAlarms
+            - cloudwatch:GetMetricStatistics
+            - cloudwatch:PutMetricAlarm
+            - cloudwatch:DeleteAlarms
+            #- cloudwatch:CreateLogGroup
+            #For listing the secrets
+            - secretsmanager:ListSecrets
+            - secretsmanager:GetRandomPassword
+            #End
+            #- trustedadvisor:*
+            - health:Describe*
+            - dynamodb:*
+            - redshift:*
+            - pi:*
+            - rds:*
+            - support:* #For managing support cases
+            #For Cloudtrails
+            - cloudtrail:DescribeTrails
+            - cloudtrail:GetTrail
+            - cloudtrail:GetTrailStatus
+            - cloudtrail:LookupEvents
+            - cloudtrail:ListPublicKeys
+            - cloudtrail:ListTags
+            - lambda:ListFunctions
+            - config:Get*
+            - config:Describe*
+            - config:List*
+            #For EC2 resource
+            - ec2:AssignPrivateIpAddresses
+            - ec2:AttachNetworkInterface
+            - ec2:CreateNetworkInterface # Required for DMS Service
+            - ec2:CreateSecurityGroup
+            - ec2:AuthorizeSecurityGroupIngress
+            - ec2:AuthorizeSecurityGroupEgress
+            - ec2:CreateTags
+            #- ec2:UpdateTags
+            - ec2:DeleteTags
+            - ec2:DeleteSecurityGroup
+            - ec2:ModifyNetworkInterfaceAttribute # Required for DMS Service
+            - ec2:RevokeSecurityGroupEgress
+            - ec2:RevokeSecurityGroupIngress
+            - ec2:DeleteNetworkInterface # Required for DMS Service
+            - ec2:DescribeInternetGateways
+            - ec2:DetachNetworkInterface
+            - ec2:UnassignPrivateIpAddresses
+            - ec2:DescribeInstances
+            - ec2:DescribeInstanceStatus
+            - ec2:DescribeSecurityGroups
+            - ec2:DescribeAccountAttributes
+            - ec2:DescribeAvailabilityZones
+            - ec2:DescribeSubnets
+            - ec2:DescribeVpcAttribute
+            - ec2:DescribeVpcs
+            #To run stack from AWS Console
+            # - cloudformation:CreateUploadBucket
+            #EC2 Snapshots related policies
+            #End
+            #CF Access for automation
+            #- cloudformation:*
+            #End
+            #For ECS cluster Setup
+            # - autoscaling:*
+            # - ecs:*
+            - ecr:*
+            #End
+            #For jump host access
+            - ssm:GetDocument
+            - ssm:SendCommand
+            #End
+            # #For KMS
+            # - kms:Encrypt
+            # - kms:Decrypt
+            # - kms:ReEncrypt*
+            # - kms:GenerateDataKey*
+            # - kms:DescribeKey
+            # - kms:CreateGrant
+            # - kms:ListGrants
+            # - kms:RevokeGrant
+            # #End
+            #IAM Access
+            #- iam:PassRole
+            - iam:PutRolePolicy #For ECS cluster
+            - iam:List*
+            - iam:Get*
+            #End
+            #For DMS Service
+            - dms:*
+            #End
+          Resource: '*'
+
+        - Sid: "AlloweventResource"
+          Effect: "Allow"
+          Action:
+            - events:DeleteRule
+            - events:DisableRule
+            - events:EnableRule
+            - events:PutRule
+            - events:PutTargets
+            - events:RemoveTargets
+            - events:TagResource
+            - events:UntagResource
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/dbss*"
+
+        - Sid: "AlloweventResource1"
+          Effect: "Allow"
+          Action:
+            - events:Describe*
+            - events:List*
+            - events:PutEvents
+            - events:TestEventPattern
+          Resource: "*"
+        - Sid: !Sub "AllowLamdaResource"
+          Effect: "Allow"
+          Action:
+            - lambda:*
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:rds-*"
+            - Fn::Sub: "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:dbss-*"
+        - Sid: !Sub "AllowphdResource"
+          Effect: "Allow"
+          Action:
+            - health:*
+            - organizations:ListAccounts
+          Resource: '*'
+          Condition:
+            StringEquals:
+              health:service:
+                - RDS
+        - Sid: AllowS3ObjectsAcces
+          Effect: "Allow"
+          Action:
+            # - s3:website
+            # - s3:sync
+            # - s3:rm
+            # - s3:mv
+            # - s3:ls
+            # - s3:cp
+            - s3:PutObject
+            - s3:GetObject
+            - s3:AbortMultipartUpload
+            - s3:ReplicateTags
+            - s3:RestoreObject
+            - s3:PutObjectVersionTagging
+            - s3:GetObjectTagging
+            - s3:DeleteObject
+            - s3:ListMultipartUploadParts
+            - s3:ListBucket
+          #Resource: "arn:aws:s3:::*"
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::mc-migrations-mac-*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::mc-migrations-mac-*"
+
+        # Check S3 integration role for Oracle service
+        - Sid: AllowS3BucketsAcces
+          Effect: "Allow"
+          Action:
+            - s3:CreateBucket
+            - s3:PutBucketAcl
+            - s3:PutBucketLogging
+            - s3:PutBucketNotification
+            - s3:PutBucketPolicy
+            - s3:PutBucketTagging
+            - s3:PutBucketVersioning
+            - s3:PutLifecycleConfiguration
+            - s3:PutEncryptionConfiguration
+            - s3:DeleteBucket
+            - s3:DeleteBucketPolicy
+            - s3:DeleteBucketWebsite
+            - s3:GetBucket*
+            - s3:Get*Configuration
+            - s3:PutObject
+            - s3:PutBucketWebsite
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dms-*"
+
+        # - Sid: AllowS3CreateBuckets
+        #   Effect: "Allow"
+        #   Action:
+        #     - s3:CreateBucket
+        #   Resource:
+        #     - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss-*"
+
+        #   # Condition:
+        #   # StringLike:
+        #   #   s3:Name:
+        #   #     - /dbss*
+        #   #     - /dbss*/*
+
+        - Sid: AllowTrustedAdvisorResource
+          Effect: "Allow"
+          Action:
+            - trustedadvisor:*
+          Resource: "*"
+
+        - Sid: AllowKMSReadAccess
+          Effect: "Allow"
+          Action:
+            - kms:Describe*
+            - kms:Get*
+            - kms:List*
+          Resource: "*"
+
+        - Sid: "AllowRDSKMS"
+          Effect: "Allow"
+          Action:
+            - kms:Encrypt
+            - kms:Decrypt
+            - kms:ReEncrypt*
+            - kms:GenerateDataKey*
+            - kms:CreateGrant
+            - kms:RevokeGrant
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/rds"
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/mc-default-rds*"
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/sns*"
+
+        # - Sid: AllowKMSCreate
+        #   Effect: "Allow"
+        #   Action:
+        #     - kms:CreateKey
+        #   Resource: "*"
+        #   Condition:
+        #     StringLike:
+        #       kms:Name:
+        #         - dbss
+
+        - Sid: AllowSNSCreateForRDS
+          Effect: "Allow"
+          Action:
+            - sns:AddPermission
+            - sns:CreateTopic
+            - sns:SetTopicAttributes
+            - sns:Subscribe
+            - sns:DeleteTopic
+            - sns:UnSubscribe
+          #Changes done on 19-Nov
+            - sns:Get*
+            - sns:List*
+            - sns:ConfirmSubscription
+            - sns:Publish
+          Resource: "*"
+
+        - Sid: AllowCFforRDSBuilds
+          Effect: "Allow"
+          Action:
+            - cloudformation:DeleteStackInstances
+            - cloudformation:CancelUpdateStack
+            - cloudformation:UpdateStackInstances
+            - cloudformation:SignalResource
+            - cloudformation:UpdateTerminationProtection
+            - cloudformation:UpdateStackSet
+            - cloudformation:CreateChangeSet
+            - cloudformation:DeleteStackSet
+            - cloudformation:CreateStackInstances
+            - cloudformation:DeleteChangeSet
+            - cloudformation:ContinueUpdateRollback
+            - cloudformation:CreateStack
+            - cloudformation:DeleteStack
+            - cloudformation:TagResource
+            - cloudformation:UpdateStack
+            - cloudformation:StopStackSetOperation
+            - cloudformation:UntagResource
+            - cloudformation:ExecuteChangeSet
+            - cloudformation:SignalResource #For RDS Hardening
+            - cloudformation:CreateUploadBucket # To run template from console
+            #Changes done on 19-Nov
+            - cloudformation:DescribeStacks
+            - cloudformation:DescribeChangeSet
+            - cloudformation:GetTemplate
+            - cloudformation:GetStackPolicy
+            - cloudformation:DescribeStackEvents
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/UAI*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/DBSS*/*"
+
+
+  DbssDbdevopsBuildPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn:
+      - DbDevopsRole
+    Properties:
+      Description: build Policies for db devops role
+      ManagedPolicyName: !Sub "${RoleName}-build-policy"
+      Path: /dbss/
+      #Path: /mc/
+      Roles:
+      - !Ref DbDevopsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AllowCodeBuildResources
+          Effect: "Allow"
+          Action:
+            - codebuild:BatchDeleteBuilds
+            - codebuild:BatchPutTestCases
+            - codebuild:CreateProject
+            - codebuild:CreateReport
+            - codebuild:CreateReportGroup
+            - codebuild:CreateWebhook
+            - codebuild:DeleteProject
+            - codebuild:DeleteReport
+            - codebuild:DeleteReportGroup
+            - codebuild:DeleteResourcePolicy
+            - codebuild:DeleteWebhook
+            - codebuild:PutResourcePolicy
+            - codebuild:UpdateProject
+            - codebuild:UpdateReport
+            - codebuild:UpdateReportGroup
+            - codebuild:UpdateWebhook
+            - codebuild:DeleteOAuthToken
+            - codebuild:DeleteSourceCredentials
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/dbss*"
+
+        - Sid: AllowCodeBuildAll
+          Effect: "Allow"
+          Action:
+            - codebuild:BatchGetBuilds
+            - codebuild:BatchGetProjects
+            - codebuild:BatchGetReportGroups
+            - codebuild:BatchGetReports
+            #- codebuild:DeleteOAuthToken
+            #- codebuild:DeleteSourceCredentials
+            - codebuild:DescribeTestCases
+            - codebuild:GetResourcePolicy
+            - codebuild:ImportSourceCredentials
+            - codebuild:InvalidateProjectCache
+            - codebuild:ListBuilds
+            - codebuild:ListBuildsForProject
+            - codebuild:ListConnectedOAuthAccounts
+            - codebuild:ListCuratedEnvironmentImages
+            - codebuild:ListProjects
+            - codebuild:ListReportGroups
+            - codebuild:ListReports
+            - codebuild:ListReportsForReportGroup
+            - codebuild:ListRepositories
+            - codebuild:ListSharedProjects
+            - codebuild:ListSharedReportGroups
+            - codebuild:ListSourceCredentials
+            - codebuild:PersistOAuthToken
+            - codebuild:StartBuild
+            - codebuild:StopBuild
+          Resource: "*"
+
+        - Sid: AllowCodeCommitResources
+          Effect: "Allow"
+          Action:
+            - codecommit:AssociateApprovalRuleTemplateWithRepository
+            - codecommit:BatchAssociateApprovalRuleTemplateWithRepositories
+            - codecommit:BatchDisassociateApprovalRuleTemplateFromRepositories
+            - codecommit:Create*
+            - codecommit:Delete*
+            - codecommit:DisassociateApprovalRuleTemplateFromRepository
+            - codecommit:GitPush
+            - codecommit:Merge*
+            - codecommit:OverridePullRequestApprovalRules
+            - codecommit:Post*
+            - codecommit:PutFile
+            - codecommit:PutRepositoryTriggers
+            - codecommit:TagResource
+            - codecommit:TestRepositoryTriggers
+            - codecommit:UntagResource
+            - codecommit:Update*
+            - codecommit:UploadArchive
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:codecommit:${AWS::Region}:${AWS::AccountId}:dbss*"
+
+        - Sid: AllowCodeCommitAll
+          Effect: "Allow"
+          Action:
+            - codecommit:BatchDescribeMergeConflicts
+            - codecommit:BatchGetCommits
+            - codecommit:BatchGetPullRequests
+            - codecommit:BatchGetRepositories
+            - codecommit:CancelUploadArchive
+            - codecommit:DescribeMergeConflicts
+            - codecommit:DescribePullRequestEvents
+            - codecommit:EvaluatePullRequestApprovalRules
+            - codecommit:Get*
+            - codecommit:GitPull
+            - codecommit:List*
+          Resource: "*"
+
+        - Sid: AllowManageDBAdminUserSecret
+          Effect: "Allow"
+          Action:
+            - secretsmanager:DescribeSecret
+            - secretsmanager:PutSecretValue
+            - secretsmanager:TagResource
+            - secretsmanager:GetSecretValue
+            - secretsmanager:UpdateSecret
+            - secretsmanager:DeleteSecret
+            - secretsmanager:UntagResource
+            - secretsmanager:ListSecretVersionIds
+            - secretsmanager:GetResourcePolicy
+            - secretsmanager:RestoreSecret
+            - secretsmanager:RotateSecret
+          #arn:partition:service:region:account-id:resource-id
+          #arn:partition:service:region:account-id:resource-type/resource-id
+          #arn:partition:service:region:account-id:resource-type:resource-id
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*/UAI*"
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*/uai*"
+
+        - Sid: AllowManageDBAppUserSecret
+          Effect: "Allow"
+          Action:
+            - secretsmanager:CancelRotateSecret
+            - secretsmanager:UpdateSecretVersionStage
+            - secretsmanager:PutResourcePolicy
+            - secretsmanager:DeleteResourcePolicy
+            - secretsmanager:TagResource
+            - secretsmanager:UntagResource
+            - secretsmanager:RestoreSecret
+            - secretsmanager:RotateSecret
+            - secretsmanager:UpdateSecret
+            - secretsmanager:DeleteSecret
+            - secretsmanager:GetSecretValue
+            - secretsmanager:PutSecretValue
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/app/UAI*"
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/app/uai*"
+
+        - Sid: AllowCreateSecret
+          Effect: "Allow"
+          Action:
+            - secretsmanager:CreateSecret
+            #- secretsmanager:ListSecrets
+            #- secretsmanager:GetRandomPassword
+          Resource: "*"
+          Condition:
+            StringLike:
+              secretsmanager:Name:
+                - /dba/*/UAI*
+                - /dba/*/uai*
+                - /app/UAI*
+                - /app/uai*
+
+        - Sid: "AllowIamResourceForRDS"
+          Effect: "Allow"
+          Action:
+            - iam:CreateServiceLinkedRole
+          Resource: "*"
+          Condition:
+            StringEquals:
+              iam:AWSServiceName:
+                - rds.amazonaws.com # For AWSServiceRoleForRDS
+                - rds.application-autoscaling.amazonaws.com
+                - dms.amazonaws.com # For DMS Services
+                - monitoring.rds.amazonaws.com
+                - dynamodb.amazonaws.com
+                - dynamodb.application-autoscaling.amazonaws.com
+                - ecs.application-autoscaling.amazonaws.com
+                - ecs.amazonaws.com
+                - ecs-tasks.amazonaws.com
+                - ecr.amazonaws.com
+                - ec2scheduled.amazonaws.com
+                - ec2.application-autoscaling.amazonaws.com
+                - ec2.amazonaws.com
+                - ec2.amazonaws.com #For ECS Cluster
+                - ecs.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - codebuild.amazonaws.com
+                - codecommit.amazonaws.com
+                - codedeploy.amazonaws.com
+                - codepipeline.amazonaws.com
+                - config.amazonaws.com
+                - cloudformation.amazonaws.com
+                - health.amazonaws.com
+                - trustedadvisor.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - redshift.amazonaws.com
+
+        - Sid: "AllowIamPassroleForRDSECS"
+          Effect: "Allow"
+          Action:
+            - iam:PassRole
+          Resource: "*"
+          Condition:
+            StringEquals:
+              iam:PassedToService:
+                - rds.amazonaws.com # For AWSServiceRoleForRDS
+                - rds.application-autoscaling.amazonaws.com
+                - dms.amazonaws.com # For DMS Services
+                - monitoring.rds.amazonaws.com
+                - dynamodb.amazonaws.com
+                - dynamodb.application-autoscaling.amazonaws.com
+                - ecs.application-autoscaling.amazonaws.com
+                - ecs.amazonaws.com
+                - ecs-tasks.amazonaws.com
+                - ecr.amazonaws.com
+                - ec2scheduled.amazonaws.com
+                - ec2.application-autoscaling.amazonaws.com
+                - ec2.amazonaws.com
+                - ec2.amazonaws.com #For ECS Cluster
+                - ecs.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - codebuild.amazonaws.com
+                - codecommit.amazonaws.com
+                - codedeploy.amazonaws.com
+                - codepipeline.amazonaws.com
+                - config.amazonaws.com
+                - cloudformation.amazonaws.com
+                - health.amazonaws.com
+                - trustedadvisor.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - redshift.amazonaws
+                - servicecatalog.amazonaws.com
+                - cloudtrail.amazonaws.com # For Cloudtrail
+
+        - Sid: !Sub "AllowIamPassroleForRDSRole"
+          Effect: "Allow"
+          Action:
+            - iam:PassRole
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/RDS*"
+
+  DbssDbdevopsECSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn:
+      - DbDevopsRole
+    Properties:
+      Description: build Policies for db devops role
+      ManagedPolicyName: !Sub "${RoleName}-ecs-policy"
+      Path: /dbss/
+      #Path: /mc/
+      Roles:
+      - !Ref DbDevopsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AllowCodeBuildResources
+          Effect: "Allow"
+          Action:
+            - ecs:Describe*
+            - ecs:List*
+            - ecs:CreateCluster
+            - ecs:ListClusters
+          Resource: "*"
+
+        - Sid: AllowECSForOPS1
+          Effect: "Allow"
+          Action:
+            - ecs:Describe*
+            - ecs:DeleteCluster
+            - ecs:DeregisterContainerInstance
+            - ecs:ListContainerInstances
+            - ecs:RegisterContainerInstance
+            - ecs:SubmitContainerStateChange
+            - ecs:SubmitTaskStateChange
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/dbss*"
+
+        - Sid: AllowECSForOPS2
+          Effect: "Allow"
+          Action:
+            - ecs:Describe*
+            - ecs:DescribeContainerInstances
+            - ecs:DescribeTasks
+            - ecs:ListTasks
+            - ecs:UpdateContainerAgent
+            - ecs:StartTask
+            - ecs:StopTask
+            - ecs:RunTask
+          Resource: "*"
+          Condition:
+            ArnEquals:
+                ecs:cluster:
+                 - Fn::Sub: "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/dbss*"
+
+  DbssDenyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn:
+      - DbDevopsRole
+    Properties:
+      Description: Deny Policies for db devops role
+      ManagedPolicyName: !Sub "${RoleName}-deny-policy"
+      Path: /dbss/
+      #Path: /mc/
+      Roles:
+      - !Ref DbDevopsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: IAMDeny
+          Effect: Deny
+          Action:
+            - iam:UpdateUser
+            - iam:UpdateLoginProfile
+            - iam:UpdateGroup
+            - iam:UpdateAssumeRolePolicy
+            - iam:SetDefaultPolicyVersion
+            - iam:ResyncMFADevice
+            - iam:RemoveUserFromGroup
+            - iam:RemoveRoleFromInstanceProfile
+            - iam:Put*Policy
+            - iam:EnableMFADevice
+            - iam:Detach*Policy
+            - iam:DeleteVirtualMFADevice
+            - iam:DeleteUser*
+            - iam:DeleteRole*
+            - iam:DeletePolicy*
+            - iam:DeleteLoginProfile
+            - iam:DeleteInstanceProfile
+            - iam:DeleteGroupPolicy
+            - iam:DeleteGroup
+            - iam:DeactivateMFADevice
+            - iam:CreateVirtualMFADevice
+            - iam:CreateUser
+            - iam:CreateRole
+            - iam:CreatePolicy*
+            - iam:CreateLoginProfile
+            - iam:CreateGroup
+            - iam:ChangePassword
+            - iam:Attach*Policy
+            - iam:AddUserToGroup
+            - iam:*UpdateAccount*
+            - iam:*SAMLProvider
+            - iam:*OpenIdConnect*
+            - iam:*DeleteAccount*
+            - iam:*CreateAccount*
+          Resource: '*'
+
+  DbssReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn:
+      - DbDevopsRole
+    Properties:
+      Description: Provides read-only access to db devops role
+      ManagedPolicyName: !Sub "${RoleName}-readonly-policy"
+      Path: /dbss/
+      #Path: /mc/
+      Roles:
+      - !Ref DbDevopsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ReadOnly
+          Effect: Allow
+          Action:
+            - acm:DescribeCertificate
+            - acm:GetCertificate
+            - acm:ListCertificates
+            - autoscaling:Describe*
+            - apigateway:GET
+            # - apigateway:POST
+            # - apigateway:PUT
+            - athena:Get*
+            - athena:List*
+            - cloudformation:DescribeStackEvents
+            - cloudformation:DescribeStackResource*
+            - cloudformation:DescribeStacks
+            - cloudformation:DescribeChangeSet
+            - cloudformation:List*
+            - cloudformation:Get*
+            - cloudfront:Get*
+            - cloudfront:List*
+            - cloudtrail:DescribeTrails
+            - cloudtrail:GetTrailStatus
+            - cloudtrail:LookupEvents
+            - cloudwatch:Describe*
+            - cloudwatch:Get*
+            - cloudwatch:List*
+            - codecommit:BatchGetRepositories
+            - codecommit:Get*
+            - codecommit:GitPull
+            - codecommit:List*
+            - codedeploy:Batch*
+            - codedeploy:Get*
+            - codedeploy:List*
+            - config:Deliver*
+            - config:Describe*
+            - config:Get*
+            - directconnect:Describe*
+            - dynamodb:Describe*
+            - dynamodb:List*
+            - ec2:Describe*
+            - elasticfilesystem:Describe*
+            - ecr:GetAuthorizationToken
+            - ecr:BatchCheckLayerAvailability
+            - ecr:GetDownloadUrlForLayer
+            #- ecr:GetManifest
+            - ecr:DescribeRepositories
+            - ecr:ListImages
+            - ecr:BatchGetImage
+            - ecs:Describe*
+            - ecs:List*
+            - elasticache:Describe*
+            - elasticache:List*
+            - elasticbeanstalk:Check*
+            - elasticbeanstalk:Describe*
+            - elasticbeanstalk:List*
+            - elasticbeanstalk:RequestEnvironmentInfo
+            - elasticbeanstalk:RetrieveEnvironmentInfo
+            - elasticloadbalancing:Describe*
+            - elasticmapreduce:Describe*
+            - elasticmapreduce:List*
+            - events:DescribeRule
+            - events:ListRuleNamesByTarget
+            - events:ListRules
+            - events:ListTargetsByRule
+            - events:TestEventPattern
+            - firehose:Describe*
+            - firehose:List*
+            - iam:GenerateCredentialReport
+            - iam:Get*
+            - iam:List*
+            - inspector:Describe*
+            - inspector:Get*
+            - inspector:List*
+            # - inspector:LocalizeText
+            # - inspector:PreviewAgentsForResourceGroup
+            - kinesis:Describe*
+            - kinesis:Get*
+            - kinesis:List*
+            - kms:Describe*
+            - kms:Get*
+            - kms:List*
+            - lambda:List*
+            - lambda:Get*
+            - logs:Describe*
+            - logs:Get*
+            - logs:TestMetricFilter
+            - logs:FilterLogEvents
+            - opsworks:Describe*
+            - opsworks:Get*
+            - rds:Describe*
+            - rds:ListTagsForResource
+            - redshift:Describe*
+            - s3:List*
+            - sns:Get*
+            - sns:List*
+            - sqs:GetQueueAttributes
+            - sqs:ListQueues
+            - tag:Get*
+            - trustedadvisor:Describe*
+          Resource: '*'
+
+  AdminDbDevopsRole:
+    Type: AWS::IAM::Role
+    Condition: AdminSetup
+    Properties:
+      RoleName: !Sub "${GRRoleName}"
+      Path: !Sub /${RolePath}/
+      MaxSessionDuration: 7200  # 2 Hrs
+      Tags:
+        - Key: support-group
+          Value: dig-tech-cts-cloud-db-support-team
+        - Key: uai
+          Value: UAI3036792
+      # The trust policy that is associated with this role.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - # Allow this role to be assumed by a federated entity
+          Effect: Allow 
+          Principal:
+            Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+          Action:
+            - sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals:
+              SAML:aud: 'https://signin.aws.amazon.com/saml'
+      Policies:
+        - PolicyName: AssumeRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AssumeRole
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - !Sub "arn:aws:iam::*:role/${RolePath}/${GRRoleName}"
+                Effect: Allow
+      #For attaching Managed policies
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSServiceCatalogAdminFullAccess
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+
+  AdminDbDevopsSwitchRole:
+    Type: AWS::IAM::Role
+    Condition: SwitchSetup
+    Properties:
+      RoleName: !Sub "${GRRoleName}"
+      Path: !Sub /${RolePath}/
+      Tags:
+        - Key: support-group
+          Value: dig-tech-cts-cloud-db-support-team
+        - Key: uai
+          Value: UAI3036792
+      # The trust policy that is associated with this role.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - # Allow the role to be assumed from Admin account.
+            Effect: Allow 
+            Principal:
+              "AWS": !Sub "arn:${AWS::Partition}:iam::${GRAdminAccountId}:role/${RolePath}/${GRRoleName}"
+            Action:
+              - sts:AssumeRole
+            Condition:
+              Bool:
+                "aws:MultiFactorAuthPresent": !Ref MultiFactorAuthRequired
+      #For attaching Managed policies
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSServiceCatalogAdminFullAccess
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+
+  #Define/add all required IAM inline policies here
+  DbssDbdevopsAdminInLinePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${GRRoleName}-admin-policy"
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref AdminDbDevopsRole
+        - 
+          - !Ref AdminDbDevopsSwitchRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: "AllowMiscellaneousresources"
+          Effect: "Allow"
+          Action:
+            - application-autoscaling:DeleteScalingPolicy
+            - application-autoscaling:DeregisterScalableTarget
+            - application-autoscaling:PutScalingPolicy
+            - application-autoscaling:RegisterScalableTarget
+            - logs:GetLogEvents
+            - logs:FilterLogEvents
+            - logs:GetLogEvents
+            - logs:Create*
+            - logs:PutMetricFilter
+            - logs:PutLogEvents
+            - logs:PutRetentionPolicy
+            - logs:PutQueryDefinition
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - cloudwatch:Get*
+            - cloudwatch:Describe*
+            - cloudwatch:List*
+            - cloudwatch:create*
+            - cloudwatch:PutMetricAlarm
+            - cloudwatch:DeleteAlarms
+            - cloudwatch:PutMetricAlarm
+            - cloudwatch:DeleteAlarms
+            - secretsmanager:ListSecrets
+            - secretsmanager:GetRandomPassword
+            - cloudtrail:GetTrail
+            - cloudtrail:GetTrailStatus
+            - cloudtrail:LookupEvents
+            - cloudtrail:ListPublicKeys
+            - cloudtrail:ListTags
+            - lambda:ListFunctions
+            - config:Get*
+            - ec2:AssignPrivateIpAddresses
+            - ec2:AttachNetworkInterface
+            - ec2:CreateNetworkInterface # Required for DMS Service
+            - ec2:CreateSecurityGroup
+            - ec2:AuthorizeSecurityGroupIngress
+            - ec2:AuthorizeSecurityGroupEgress
+            - ec2:CreateTags
+            - ec2:DeleteTags
+            - ec2:DeleteSecurityGroup
+            - ec2:ModifyNetworkInterfaceAttribute # Required for DMS Service
+            - ec2:RevokeSecurityGroupEgress
+            - ec2:RevokeSecurityGroupIngress
+            - ec2:DeleteNetworkInterface # Required for DMS Service
+            - ec2:DescribeInternetGateways
+            - ec2:DetachNetworkInterface
+            - ec2:UnassignPrivateIpAddresses
+            - ssm:GetDocument
+            - ssm:SendCommand
+            - iam:PutRolePolicy #For ECS cluster
+            - ecs:List*
+            - ecs:Describe*
+            - ecs:Create*
+            - kms:Create*
+            - kms:List*
+            - kms:CancelKeyDeletion
+            # - kms:ReEncrypt*
+            # - kms:Decrypt
+            - kms:Describe*
+            #- kms:GenerateDataKey*
+            - dms:*
+            - ecr:*            
+            - dynamodb:*
+            - redshift:*
+            - pi:*
+            - rds:*
+            - support:*
+          Resource: '*'
+        - Sid: "AlloweventResource"
+          Effect: "Allow"
+          Action:
+            - events:DeleteRule
+            - events:DisableRule
+            - events:EnableRule
+            - events:PutRule
+            - events:PutTargets
+            - events:RemoveTargets
+            - events:TagResource
+            - events:UntagResource
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/dbss*"
+        - Sid: "AlloweventResource1"
+          Effect: "Allow"
+          Action:
+            - events:Describe*
+            - events:List*
+            - events:PutEvents
+            - events:TestEventPattern
+          Resource: "*"
+        - Sid: !Sub "AllowLamdaResource"
+          Effect: "Allow"
+          Action:
+            - lambda:*
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:rds-*"
+            - Fn::Sub: "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:dbss-*"
+            - Fn::Sub: "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:dba-*"
+        - Sid: !Sub "AllowphdResource"
+          Effect: "Allow"
+          Action:
+            - health:*
+            - organizations:ListAccounts
+          Resource: '*'
+          Condition:
+            StringEquals:
+              health:service:
+                - RDS
+        - Sid: AllowS3ObjectsAcces
+          Effect: "Allow"
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:AbortMultipartUpload
+            - s3:ReplicateTags
+            - s3:RestoreObject
+            - s3:PutObjectVersionTagging
+            - s3:GetObjectTagging
+            - s3:DeleteObject
+            - s3:ListMultipartUploadParts
+            - s3:ListBucket
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dba*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dba*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::mc-migrations-mac-*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::mc-migrations-mac-*"
+
+        - Sid: AllowS3BucketsAcces
+          Effect: "Allow"
+          Action:
+            - s3:CreateBucket
+            - s3:PutBucketAcl
+            - s3:PutBucketLogging
+            - s3:PutBucketNotification
+            - s3:PutBucketPolicy
+            - s3:PutBucketTagging
+            - s3:PutBucketVersioning
+            - s3:PutLifecycleConfiguration
+            - s3:PutEncryptionConfiguration
+            - s3:DeleteBucket
+            - s3:DeleteBucketPolicy
+            - s3:DeleteBucketWebsite
+            - s3:GetBucket*
+            - s3:Get*Configuration
+            - s3:PutObject
+            - s3:PutBucketWebsite
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*/*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:s3:::dms-*"
+
+        - Sid: AllowTrustedAdvisorResource
+          Effect: "Allow"
+          Action:
+            - trustedadvisor:*
+          Resource: "*"
+
+        - Sid: "AllowRDSKMS"
+          Effect: "Allow"
+          Action:
+            - kms:Encrypt
+            - kms:Decrypt
+            - kms:ReEncrypt*
+            - kms:GenerateDataKey*
+            - kms:CreateGrant
+            - kms:RevokeGrant
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/rds"
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/mc-default-rds*"
+            - Fn::Sub: "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/sns*"
+
+        - Sid: AllowSNSCreateForRDS
+          Effect: "Allow"
+          Action:
+            - sns:AddPermission
+            - sns:CreateTopic
+            - sns:SetTopicAttributes
+            - sns:Subscribe
+            - sns:DeleteTopic
+            - sns:UnSubscribe
+            - sns:Get*
+            - sns:ConfirmSubscription
+            - sns:Publish
+            - sns:List*
+          Resource: "*"
+
+  DbssDbdevopsBuildInLinePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${GRRoleName}-build-policy"
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref AdminDbDevopsRole
+        - 
+          - !Ref AdminDbDevopsSwitchRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AllowCodeBuildResources
+          Effect: "Allow"
+          Action:
+            - codebuild:BatchDeleteBuilds
+            - codebuild:BatchPutTestCases
+            - codebuild:CreateProject
+            - codebuild:CreateReport
+            - codebuild:CreateReportGroup
+            - codebuild:CreateWebhook
+            - codebuild:DeleteProject
+            - codebuild:DeleteReport
+            - codebuild:DeleteReportGroup
+            - codebuild:DeleteResourcePolicy
+            - codebuild:DeleteWebhook
+            - codebuild:PutResourcePolicy
+            - codebuild:UpdateProject
+            - codebuild:UpdateReport
+            - codebuild:UpdateReportGroup
+            - codebuild:UpdateWebhook
+            - codebuild:DeleteOAuthToken
+            - codebuild:DeleteSourceCredentials
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/dba*"
+            - Fn::Sub: "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/dba*"            
+
+        - Sid: AllowCodeBuildAll
+          Effect: "Allow"
+          Action:
+            - codebuild:BatchGetBuilds
+            - codebuild:BatchGetProjects
+            - codebuild:BatchGetReportGroups
+            - codebuild:BatchGetReports
+            - codebuild:DescribeTestCases
+            - codebuild:GetResourcePolicy
+            - codebuild:ImportSourceCredentials
+            - codebuild:InvalidateProjectCache
+            - codebuild:PersistOAuthToken
+            - codebuild:StartBuild
+            - codebuild:StopBuild
+          Resource: "*"
+
+        - Sid: AllowManageDBAdminUserSecret
+          Effect: "Allow"
+          Action:
+            - secretsmanager:*
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*"
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/dba/*"
+
+        - Sid: AllowManageDBAppUserSecret
+          Effect: "Allow"
+          Action:
+            - secretsmanager:CancelRotateSecret
+            - secretsmanager:UpdateSecretVersionStage
+            - secretsmanager:PutResourcePolicy
+            - secretsmanager:DeleteResourcePolicy
+            - secretsmanager:TagResource
+            - secretsmanager:UntagResource
+            - secretsmanager:RestoreSecret
+            - secretsmanager:RotateSecret
+            - secretsmanager:UpdateSecret
+            - secretsmanager:DeleteSecret
+            - secretsmanager:GetSecretValue
+            - secretsmanager:PutSecretValue
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/app/UAI*"
+            - Fn::Sub: "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/app/uai*"
+
+        - Sid: AllowCreateSecret
+          Effect: "Allow"
+          Action:
+            - secretsmanager:CreateSecret
+          Resource: "*"
+          Condition:
+            StringLike:
+              secretsmanager:Name:
+                - /dba/*/UAI*
+                - /dba/*/uai*
+                - /app/UAI*
+                - /app/uai*
+
+        - Sid: "AllowIamResourceForRDS"
+          Effect: "Allow"
+          Action:
+            - iam:CreateServiceLinkedRole
+          Resource: "*"
+          Condition:
+            StringEquals:
+              iam:AWSServiceName:
+                - rds.amazonaws.com # For AWSServiceRoleForRDS
+                - rds.application-autoscaling.amazonaws.com
+                - dms.amazonaws.com # For DMS Services
+                - monitoring.rds.amazonaws.com
+                - dynamodb.amazonaws.com
+                - dynamodb.application-autoscaling.amazonaws.com
+                - ecs.application-autoscaling.amazonaws.com
+                - ecs.amazonaws.com
+                - ecs-tasks.amazonaws.com
+                - ecr.amazonaws.com
+                - ec2scheduled.amazonaws.com
+                - ec2.application-autoscaling.amazonaws.com
+                - ec2.amazonaws.com
+                - ec2.amazonaws.com #For ECS Cluster
+                - ecs.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - codebuild.amazonaws.com
+                - codecommit.amazonaws.com
+                - codedeploy.amazonaws.com
+                - codepipeline.amazonaws.com
+                - config.amazonaws.com
+                - cloudformation.amazonaws.com
+                - health.amazonaws.com
+                - trustedadvisor.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - redshift.amazonaws.com
+        - Sid: "AllowIamPassroleForRDSECS"
+          Effect: "Allow"
+          Action:
+            - iam:PassRole
+          Resource: "*"
+          Condition:
+            StringEquals:
+              iam:PassedToService:
+                - rds.amazonaws.com # For AWSServiceRoleForRDS
+                - rds.application-autoscaling.amazonaws.com
+                - dms.amazonaws.com # For DMS Services
+                - monitoring.rds.amazonaws.com
+                - dynamodb.amazonaws.com
+                - dynamodb.application-autoscaling.amazonaws.com
+                - ecs.application-autoscaling.amazonaws.com
+                - ecs.amazonaws.com
+                - ecs-tasks.amazonaws.com
+                - ecr.amazonaws.com
+                - ec2scheduled.amazonaws.com
+                - ec2.application-autoscaling.amazonaws.com
+                - ec2.amazonaws.com
+                - ec2.amazonaws.com #For ECS Cluster
+                - ecs.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - codebuild.amazonaws.com
+                - codecommit.amazonaws.com
+                - codedeploy.amazonaws.com
+                - codepipeline.amazonaws.com
+                - config.amazonaws.com
+                - cloudformation.amazonaws.com
+                - health.amazonaws.com
+                - trustedadvisor.amazonaws.com
+                - secretsmanager.amazonaws.com
+                - redshift.amazonaws
+                - servicecatalog.amazonaws.com
+                - cloudtrail.amazonaws.com # For Cloudtrail
+        - Sid: !Sub "AllowIamPassroleForRDSRole"
+          Effect: "Allow"
+          Action:
+            - iam:PassRole
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/RDS*"
+
+  DbssDbdevopsECSInLinePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${GRRoleName}-ecs-policy"
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref AdminDbDevopsRole
+        - 
+          - !Ref AdminDbDevopsSwitchRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AllowCodeBuildResources
+          Effect: "Allow"
+          Action:
+            - ecs:CreateCluster
+            - ecs:ListClusters
+          Resource: "*"
+
+        - Sid: AllowECSForOPS1
+          Effect: "Allow"
+          Action:
+            - ecs:DeleteCluster
+            - ecs:DeregisterContainerInstance
+            - ecs:ListContainerInstances
+            - ecs:RegisterContainerInstance
+            - ecs:SubmitContainerStateChange
+            - ecs:SubmitTaskStateChange
+            - ecs:UpdateContainerAgent
+            - ecs:StartTask
+            - ecs:StopTask
+            - ecs:RunTask
+          Resource:
+            - Fn::Sub: "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/dbss*"
+            - Fn::Sub: "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/dba*"
+
+        - Sid: AllowECSForOPS2
+          Effect: "Allow"
+          Action:
+            - ecs:UpdateContainerAgent
+            - ecs:StartTask
+            - ecs:StopTask
+            - ecs:RunTask
+          Resource: "*"
+          Condition:
+            ArnEquals:
+                ecs:cluster:
+                 - Fn::Sub: "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/dbss*"
+                 - Fn::Sub: "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/dba*"

@@ -1,0 +1,63 @@
+- name: Create a new directory for stack_master templates
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Create a new directory for stack_master parameters
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/parameters"
+
+- name: Copy stack-master.yml
+  template:
+    src: "stack_master.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/stack_master.yml"
+
+- name: "Copy gp-nacl-application.yml, gp-nacl-database.yml, gp-nacl-ep.yml to templates"
+  template:
+    src: "{{role_path}}/files/{{item}}"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"
+  loop:
+    - "gp-nacl-application.yml"
+    - "gp-nacl-database.yml"
+    - "gp-nacl-ep.yml"
+
+- name: "Copy gp-nacl-ext.yml, gp-nacl-rb.yml to templates"
+  template:
+    src: "{{role_path}}/files/{{item}}"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"
+  loop:
+    - "gp-nacl-ext.yml"
+    - "gp-nacl-rb.yml"
+  when: lookup('vars', 'extSubnetCIDR') != "NA" and lookup('vars','rbSubnetCIDR') != "NA"
+
+- name: Copy gp-nacl-integration.yml to templates
+  template:
+    src: "{{role_path}}/files/gp-nacl-integration.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"
+  when: igrSubnetCIDR != "NA"
+
+- name: "Copy gp-nacl-application-parameters.yml, gp-nacl-database-parameters.yml, gp-nacl-ep-parameters.yml to parameters"
+  template:
+    src: "{{item.srcName}}"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{item.destName | replace('-','_')}}"
+  loop:
+    - { srcName: "gp-nacl-application-parameters.yml", destName: "{{prefix}}gp-app-nacl.yml"}
+    - { srcName: "gp-nacl-database-parameters.yml", destName: "{{prefix}}gp-db-nacl.yml"}
+    - { srcName: "gp-nacl-ep-parameters.yml", destName: "{{prefix}}gp-ep-nacl.yml"}
+  
+- name: "Copy gp-nacl-ext-parameters.yml, gp-nacl-rb-parameters.yml to parameters"
+  template:
+    src: "{{item.srcName}}"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{item.destName | replace('-','_')}}"
+  loop:
+    - { srcName: "gp-nacl-ext-parameters.yml", destName: "{{prefix}}gp-ext-nacl.yml"}
+    - { srcName: "gp-nacl-rb-parameters.yml", destName: "{{prefix}}gp-rb-nacl.yml"}
+  when: lookup('vars', 'extSubnetCIDR') != "NA" and lookup('vars','rbSubnetCIDR') != "NA"
+
+- name: Copy gp-nacl-igr-parameters.yml to parameters
+  template:
+    src: "gp-nacl-igr-parameters.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{prefix}}gp_igr_nacl.yml"
+  when: igrSubnetCIDR != "NA"
+

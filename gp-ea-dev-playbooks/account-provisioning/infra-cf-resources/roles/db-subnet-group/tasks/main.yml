@@ -1,0 +1,39 @@
+---
+- set_stats:
+    data:
+      to_be_deleted:
+        - folder_name: db-subnet-group
+          repo: cft-infra-templates
+          message: "Ansible is deleting db-subnet-group"
+          stackNames:
+            - "{{prefix}}db-subnet-group"
+
+- name: New folder for db-subnet-group
+  file:
+    state: directory
+    path: "/tmp/account-automation-folder/db-subnet-group/"
+
+- name: Render CF template
+  template:
+    src: subnet-group.yml
+    dest: "/tmp/account-automation-folder/db-subnet-group/"
+
+- name: Create db-subnet-group stack
+  cloudformation:
+    stack_name: "{{prefix}}db-subnet-group"
+    state: "present"
+    region: "{{ region }}"
+    template: "/tmp/account-automation-folder/db-subnet-group/subnet-group.yml"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Render CFT files
+  include_tasks: db-subnet-group-render.yml
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_repo: cft-infra-templates
+    message: "Ansible is creating db-subnet-group"

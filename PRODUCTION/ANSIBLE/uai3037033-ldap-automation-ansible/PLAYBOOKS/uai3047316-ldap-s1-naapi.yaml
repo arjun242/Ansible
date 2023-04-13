@@ -1,0 +1,102 @@
+---
+#Play1
+- name: Filter Reachable instances from all instanes
+  hosts: all
+  ignore_unreachable: true
+  #no_log: true
+ 
+  environment:
+    PATH: "{{ lookup('env', 'PATH') }}: /usr/local/bin/aws"
+  tasks:
+ #Ping remote instances using ansible PING module
+   - name: ping the instance_ids
+     ping:
+     register: ping_out
+     no_log: true
+#group instances which are reachable from Ansible control node   
+   - group_by: key=reachable
+     when: ping_out.ping is defined or ping_out.ping == 'pong'
+     ignore_errors: true
+#--------------------------------
+#Play2
+     
+- name: LDAP Installation Playbook
+  hosts: reachable
+  # any_errors_fatal: true
+  serial:
+   - 1
+   - 100%
+  environment:
+    PATH: "{{ lookup('env', 'PATH') }}: /usr/local/bin/aws"
+  tasks:
+#Checking LDAP installation by status of sssd service
+  - include_vars: static_vars.yml
+  - name: Un-install the SSSD-CLIENT package
+    become: yes
+    package:
+      name: "{{ item }}" 
+      state: absent
+    with_items:
+    - sssd-client
+    ignore_errors: true
+  - name: Get Service Status
+    systemd:
+      name: "sssd"
+    register: sssd_service_status
+#Print message if LDAP alreay installed
+  - block:
+    - name: Getting the pre-existing netgroups
+      become: yes
+      shell: |
+        prefix="+ : "
+        suffix=" : ALL"
+        grep -r '+ : @' /etc/security/access.conf |grep -v '#' | sed -e "s/^$prefix//" -e "s/$suffix$//"
+      register: pre_ex_netgrp
+    #Registering variable with fetched netgroups if any
+    - name: defining pre-existing netgroupss
+      set_fact:
+        exist_netgroups: "{{ pre_ex_netgrp.stdout_lines }}"
+    - name: updating netgroups to dynamodb table
+      shell: |
+        aws dynamodb update-item --table-name "{{ ddb_table_name }}" --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"ExistingNetGroups": {"Value": {"S": "{{ exist_netgroups|join(', ') }}"}}}' --region "{{ region }}"
+      delegate_to: localhost
+    #if LDAP already installed previously and Existing Netgroups other than Default netgroups in Remote instance will be fetched and appended in access.conf.j2 jinja template.
+    - name: Getting the pre-existing netgroups in second RUN
+      become: yes
+      shell: |
+        prefix="+ : "
+        suffix=" : ALL"
+        sed -n '/# BEGIN OF CUSTOM_NETGROUPS/,/# END OF CUSTOM_NETGROUPS/p' /etc/security/access.conf | grep -v '#'| sed -e "s/^$prefix//" -e "s/$suffix$//"
+      register: custom_netgrp    
+    #Registering variable with custom netgroups
+    - name: defining pre-existing netgroupss
+      set_fact:
+        custom_netgroups: "{{ custom_netgrp.stdout_lines }}"
+    - name: updating netgroups to dynamodb table
+      shell: |
+        aws dynamodb update-item --table-name {{ ddb_table_name }} --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"NetGroupName": {"Value": {"S": "{{ custom_netgroups|join(', ') }}"}}}' --region {{ region }}
+      delegate_to: localhost
+    when: 
+    - sssd_service_status.status.LoadError is not defined
+    ignore_errors: true 
+  
+  - name: Notify if LDAP installation was SKIPPED
+    debug:
+      msg: "LDAP has been installed"
+    when: 
+    - sssd_service_status.status.LoadError is not defined
+#Update LDAP Installation status as Already installed to Dynamodb
+  - name: updating LDAP status
+    shell: |
+      aws dynamodb update-item --table-name {{ ddb_table_name }} --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"LdapStatus": {"Value": {"S": "Already installed"}}}' --region {{ region }}
+    when: 
+    - sssd_service_status.status.LoadError is not defined
+    delegate_to: localhost
+  
+# If LDAP not installed and OS_FAMILY belongs to REDHAT,include ldap role  
+  - name: Including the role 
+    include_role:
+      name: uai3047316-ldap-role 
+    when: 
+    - sssd_service_status.status.LoadError is defined
+    - ansible_facts['os_family'] == "RedHat"

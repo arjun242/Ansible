@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create Backup plans and rules
+Resources:
+  NonProdBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: GP-Non-Prod-Backup-Plan
+        BackupPlanRule:
+          - RuleName: GP-Non-Prod-Rule
+            EnableContinuousBackup: True
+            TargetBackupVault: !ImportValue GP-Non-Prod-Vault-Name
+            RecoveryPointTags:
+              Vault: non-prod
+            ScheduleExpression: cron(0 4 * * ? *)
+            Lifecycle:
+              DeleteAfterDays: 7
+            CompletionWindowMinutes: 1440
+            StartWindowMinutes: 120
+
+  
+  NonProdBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref NonProdBackupPlan
+      BackupSelection:
+        SelectionName: GP-Non-Prod-Backup-Selection
+        IamRoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/Centralized-Backup-Service-Role" ## Custom service role ARN to be added
+        NotResources:
+          - "arn:aws:backup-gateway:*:*:vm/*"
+          - "arn:aws:ec2:*:*:instance/*"
+          - "arn:*:fsx:*"
+          - "arn:aws:rds:*:*:cluster:*"
+          - "arn:aws:s3:::*"
+          - "arn:aws:storagegateway:*:*:gateway/*"
+        ListOfTags:
+          - ConditionKey: env
+            ConditionType: STRINGEQUALS
+            ConditionValue: dev
+          - ConditionKey: env
+            ConditionType: STRINGEQUALS
+            ConditionValue: qa
+          - ConditionKey: env
+            ConditionType: STRINGEQUALS
+            ConditionValue: stg
+            
+        # Conditions:
+        #   - StringNotEquals:
+        #       ConditionKey: aws:ResourceTag/ ## Tag key of rubrik resources
+        #       ConditonValue: ## Tag value for rubrik resources
+
+  ProdBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: GP-Prod-Backup-Plan
+        BackupPlanRule:
+          - RuleName: GP-Prod-Rule
+            EnableContinuousBackup: True
+            TargetBackupVault: !ImportValue GP-Prod-Vault-Name
+            RecoveryPointTags:
+              Vault: prod
+            ScheduleExpression: cron(0 4 * * ? *)
+            Lifecycle:
+              DeleteAfterDays: 30
+            CompletionWindowMinutes: 1440
+            StartWindowMinutes: 120
+
+  
+  ProdBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref ProdBackupPlan
+      BackupSelection:
+        SelectionName: GP-Prod-Backup-Selection
+        IamRoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/Centralized-Backup-Service-Role" ## Custom service role ARN to be added
+        NotResources:
+          - "arn:aws:backup-gateway:*:*:vm/*"
+          - "arn:aws:ec2:*:*:instance/*"
+          - "arn:*:fsx:*"
+          - "arn:aws:rds:*:*:cluster:*"
+          - "arn:aws:s3:::*"
+          - "arn:aws:storagegateway:*:*:gateway/*"
+        ListOfTags:
+          - ConditionKey: env
+            ConditionType: STRINGEQUALS
+            ConditionValue: prd
+          - ConditionKey: env
+            ConditionType: STRINGEQUALS
+            ConditionValue: prod
+        # Conditions:
+        #   - StringNotEquals:
+        #       ConditionKey: aws:ResourceTag/ ## Tag key of rubrik resources
+        #       ConditonValue: ## Tag value for rubrik resources
+
+
+
+
+
+  

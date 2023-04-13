@@ -1,0 +1,10 @@
+---
+- name: Generate the python file
+  template:
+    src: "{{role_path}}/files/ebs.py"
+    dest: "/tmp/account-automation-folder/ebs-encryption/"
+
+- name: Run a script using an executable in a system path
+  script: /tmp/account-automation-folder/ebs-encryption/ebs.py
+  args:
+    executable: python3

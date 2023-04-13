@@ -1,0 +1,287 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Custom Service role for AWS Backup
+
+# define resources to be deployed
+Resources:
+  # Fed Role definition
+  BackupCustomRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "Centralized-Backup-Service-Role" ## Name to be checked as similar role is available in gp-ops
+      Path: '/inf/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: "backup.amazonaws.com"
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Ref CustomBackupPolicyForAWSBackup
+        - !Ref CustomRestorePolicyForAWSBackup
+
+  CustomBackupPolicyForAWSBackup:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Managed policy for taking backups for AWS Backup'
+      ManagedPolicyName: 'CustomBackupPolicyForAWSBackup'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - dynamodb:DescribeTable
+              - dynamodb:DeleteBackup
+            Resource: arn:aws:dynamodb:*:*:table/*/backup/*
+            Effect: Allow
+            Sid: DynamoDb
+          - Action:
+              - dynamodb:DescribeBackup
+              - dynamodb:DeleteBackup
+              - dynamodb:Describe*
+              - dynamodb:List*
+              - dynamodb:StartAwsBackupJob
+            Resource: arn:aws:dynamodb:*:*:table/*
+            Effect: Allow
+            Sid: DynamoDbAccess
+          - Action:
+              - rds:Describe*
+              - rds:AddTagsToResource
+              - rds:ListTagsForResource
+              - rds:DescribeDBSnapshots
+              - rds:CreateDBSnapshot
+              - rds:CopyDBSnapshot
+              - rds:DescribeDBInstances
+              - rds:ModifyDBInstance # Added for Continuous Backup for RDS
+            Resource: "*"
+            Effect: Allow
+            Sid: Rds
+          - Action:
+              - rds:DeleteDBSnapshot
+            Resource: arn:aws:rds:*:*:snapshot:awsbackup:*
+            Effect: Allow
+            Sid: DeleteSnapShot
+          - Action:
+              - storagegateway:CreateSnapshot
+              - storagegateway:ListTagsForResource
+            Resource: arn:aws:storagegateway:*:*:gateway/*/volume/*
+            Effect: Allow
+            Sid: StorageGateway
+          - Action:
+              - ec2:CopySnapshot
+            Resource: arn:aws:ec2:*::snapshot/*
+            Effect: Allow
+            Sid: CopySnapShot
+          - Action:
+              - ec2:CopyImage
+            Resource: "*"
+            Effect: Allow
+            Sid: CopyImage
+          - Action:
+              - ec2:CreateTags
+              - ec2:DeleteSnapshot
+            Resource: arn:aws:ec2:*::snapshot/*
+            Effect: Allow
+            Sid: CreateTagsDeleteSnapShot
+          - Action:
+              - ec2:CreateImage
+              - ec2:DeregisterImage
+            Resource: "*"
+            Effect: Allow
+            Sid: CreateImage
+          - Action:
+              - ec2:CreateTags
+            Resource: arn:aws:ec2:*:*:image/*
+            Effect: Allow
+            Sid: CreateTags
+          - Action:
+              - ec2:DescribeSnapshots
+              - ec2:DescribeTags
+              - ec2:DescribeImages
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceAttribute
+              - ec2:DescribeInstanceCreditSpecifications
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeElasticGpus
+              - ec2:DescribeSpotInstanceRequests
+            Resource: "*"
+            Effect: Allow
+            Sid: SnapShotDescribe
+          - Action:
+              - backup:DescribeBackupVault
+              - backup:CopyIntoBackupVault
+            Resource: arn:aws:backup:*:*:backup-vault:*
+            Effect: Allow
+            Sid: BackupVault
+          - Action:
+              - elasticfilesystem:Backup
+              - elasticfilesystem:DescribeTags
+            Resource: arn:aws:elasticfilesystem:*:*:file-system/*
+            Effect: Allow
+            Sid: ElasticFileSystem
+          - Action:
+              - ec2:CreateSnapshot
+              - ec2:DeleteSnapshot
+              - ec2:DescribeVolumes
+              - ec2:DescribeSnapshots
+            Resource:
+              - arn:aws:ec2:*::snapshot/*
+              - arn:aws:ec2:*:*:volume/*
+            Effect: Allow
+            Sid: Volume
+          - Action:
+              - kms:DescribeKey
+            Resource: "*"
+            Effect: Allow
+            Sid: Key
+          - Condition:
+              Bool:
+                kms:GrantIsForAWSResource: "true"
+            Action:
+              - kms:CreateGrant
+            Resource: "*"
+            Effect: Allow
+            Sid: Grant
+          - Condition:
+              StringLike:
+                kms:ViaService: kms:ViaService
+            Action:
+              - kms:GenerateDataKeyWithoutPlaintext
+            Resource: arn:aws:kms:*:*:key/*
+            Effect: Allow
+            Sid: KmsKey
+          - Action:
+              - tag:GetResources
+            Resource: "*"
+            Effect: Allow
+            Sid: ResourceGet
+          - Action: # Added for DynamoDB backup
+              - dynamodb:CreateBackup
+            Resource: '*'
+            Effect: Allow
+            Sid: AllowDynamoBackup
+
+  CustomRestorePolicyForAWSBackup:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Managed policy for making restores for AWS Backup'
+      ManagedPolicyName: 'CustomRestorePolicyForAWSBackup'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:DescribeTable
+            Resource: arn:aws:dynamodb:*:*:table/*
+            Effect: Allow
+            Sid: DynamoDb
+          - Action:
+              - dynamodb:RestoreTableFromBackup
+              - dynamodb:RestoreTableFromAwsBackup
+            Resource: arn:aws:dynamodb:*:*:table/*
+            Effect: Allow
+            Sid: DynamoDbAccess
+          - Action:
+              - ec2:CreateVolume
+              - ec2:DeleteVolume
+            Resource:
+              - arn:aws:ec2:*::snapshot/*
+              - arn:aws:ec2:*:*:volume/*
+            Effect: Allow
+            Sid: EC2
+          - Action:
+              - ec2:DescribeSnapshots
+              - ec2:DescribeVolumes
+            Resource: "*"
+            Effect: Allow
+            Sid: EC2SnapShot
+          - Action:
+              - storagegateway:DeleteVolume
+              - storagegateway:DescribeCachediSCSIVolumes
+              - storagegateway:DescribeStorediSCSIVolumes
+            Resource: arn:aws:storagegateway:*:*:gateway/*/volume/*
+            Effect: Allow
+            Sid: StorageGateway
+          - Action:
+              - storagegateway:DescribeGatewayInformation
+              - storagegateway:CreateStorediSCSIVolume
+              - storagegateway:CreateCachediSCSIVolume
+            Resource: arn:aws:storagegateway:*:*:gateway/*
+            Effect: Allow
+            Sid: Storage
+          - Action:
+              - storagegateway:ListVolumes
+            Resource: arn:aws:storagegateway:*:*:*
+            Effect: Allow
+            Sid: StorageGatewayVolume
+          - Action:
+              - rds:DescribeDBInstances
+              - rds:DescribeDBSnapshots
+              - rds:ListTagsForResource
+              - rds:RestoreDBInstanceFromDBSnapshot
+              - rds:DeleteDBInstance
+              - rds:AddTagsToResource
+            Resource: "*"
+            Effect: Allow
+            Sid: RDS
+          - Action:
+              - elasticfilesystem:Restore
+              - elasticfilesystem:CreateFilesystem
+              - elasticfilesystem:DescribeFilesystems
+              - elasticfilesystem:DeleteFilesystem
+            Resource: arn:aws:elasticfilesystem:*:*:file-system/*
+            Effect: Allow
+            Sid: EFS
+          - Action:
+              - kms:DescribeKey
+            Resource: "*"
+            Effect: Allow
+            Sid: KMS
+          - Action:
+              - iam:PassRole
+            Resource: "*"
+            Effect: Allow
+            Sid: IamPassRole
+          - Condition:
+              StringLike:
+                kms:ViaService:
+                  - dynamodb.*.amazonaws.com
+                  - ec2.*.amazonaws.com
+                  - elasticfilesystem.*.amazonaws.com
+                  - rds.*.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:Encrypt
+              - kms:GenerateDataKey
+              - kms:ReEncryptTo
+              - kms:ReEncryptFrom
+            Resource: "*"
+            Effect: Allow
+            Sid: KmsKey
+          - Condition:
+              Bool:
+                kms:GrantIsForAWSResource: "true"
+            Action:
+              - kms:CreateGrant
+            Resource: "*"
+            Effect: Allow
+            Sid: KMSGrant
+          - Action:
+              - ec2:RunInstances
+            Resource:
+              - "*"
+            Effect: Allow
+            Sid: EC2Running
+          - Action:
+              - ec2:TerminateInstances
+            Resource: arn:aws:ec2:*:*:instance/*
+            Effect: Allow
+            Sid: EC2Terminate
+  
+          

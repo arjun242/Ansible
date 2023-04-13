@@ -1,0 +1,23 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Export of GR created resources accounts.
+
+Parameters:
+  TestName:
+    Description: example Name
+    Type: String
+    Default: Stackset
+Conditions:
+  HasNot: !Equals [ 'true', 'false' ]
+ 
+# dummy (null) resource, never created
+Resources:
+  NullResource:
+    Type: 'Custom::NullResource'
+    Condition: HasNot
+
+Outputs:
+  ExportTestname:
+    Value: !Ref TestName
+    Export:
+      Name: "Test"

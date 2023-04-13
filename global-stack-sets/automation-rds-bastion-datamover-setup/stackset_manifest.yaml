@@ -1,0 +1,26 @@
+custom_resources:
+#   - name: rds-datamover-setup
+#     custom_stackset_name: rds-datamover-setup
+#     description: Datamover setup for rds
+#     template_file: templates/datamover.yml
+#     adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+#     execution_role_name: gp-stackset-execution
+#     deploy_to:
+#       - account: pp-steam-eu-west
+#         regions:
+#           - eu-west-1
+#       - account: gp-power-us-east
+#         regions:
+#           - us-east-1
+#       - account: gp-us-east-gr
+#         regions:
+#           - us-east-1
+#       - account: gp-aws3-b
+#         regions:
+#           - us-east-1
+#       - account: gp-aws4-b
+#         regions:
+#           - us-east-1
+#       - account: gp-aws5-d
+#         regions:
+#           - us-east-1

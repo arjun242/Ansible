@@ -1,0 +1,4 @@
+--- 
+- hosts: all
+  roles:
+    - encryption_at_host

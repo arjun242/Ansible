@@ -1,0 +1,119 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Template will provision Lambda Function Ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-function.html#cfn-lambda-function-runtime"
+
+Parameters:
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: "uai[0-9]*"
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3027632
+
+  AppName:
+    Type: String
+    MaxLength: 20
+    AllowedPattern: "[a-z0-9\\-]*"
+    Description: AppName, keep to 15 characters or less.
+    Default: pw-sec-automation
+
+  AppInstance:
+    Type: String
+    Description: "App Instance for ex: app, web"
+    Default: lambda
+
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    AllowedValues:
+    - dev
+    - qa
+    - prd
+    Default: prd
+
+  ModuleName:
+    Type: String
+    Description: "Module Nmae of lambda Function Used in Handler as ${ModuleName}.handler"
+    Default: index
+
+  LambdaCodeS3Bucket:
+    Description: S3 bucket Name of lambda function
+    Type: String
+    Default: uai3027632-pw-sec-automation-gp-ops
+
+  LambdaCodeZipKey:
+    Description: S3 bucket lambda function object zip key
+    Type: String
+    Default: ssmLambda.zip
+
+  LambdaCodeZipObjectVersion:
+    Description: S3 bucket zip object version. This parameter must be updated everytime the function code is altered.
+    Type: String
+    Default: .6t9WW4ntC7XZAlrPznYqI3M3GLLg4P.
+
+  LambdaRunTime:
+    Description: "Runtime of the Lmabda Function dotnetcore2.1 | go1.x | java11 | java8 | nodejs10.x | nodejs12.x | provided | python2.7 | python3.6 | python3.7 | python3.8 | ruby2.5 | ruby2.7"
+    Type: String
+    Default: nodejs14.x
+
+Resources:
+
+  LambdaFunction: 
+    Type: "AWS::Lambda::Function"
+    DependsOn:
+      - LambdaSecurityGroup
+    Properties:
+      FunctionName: !Sub "${UAI}-${AppName}-${Env}-${AppInstance}-evm-ssm"
+      Description: "Lambda to create maintenance windows and run command tasks according to EVM scope json input. "
+      Handler: !Sub "${ModuleName}.handler"
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/app/uai3027632/uai3027632-pw-sec-automation-prd-lambdaSSMrole"
+      Runtime: !Ref LambdaRunTime
+      Code: 
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeZipKey
+        S3ObjectVersion: !Ref LambdaCodeZipObjectVersion
+      MemorySize: 2048
+      Timeout: 500
+      Tags:
+        - Key: Name
+          Value: !Sub '${UAI}-${AppName}-${Env}-${AppInstance}-evm-ssm'
+        - Key: AppName
+          Value: !Ref AppName
+        - Key: uai
+          Value: !Ref UAI
+        - Key: env
+          Value: !Ref Env
+      VpcConfig:  # use this if subnet need to be attached to Lamda Function
+        SecurityGroupIds:
+          - !GetAtt LambdaSecurityGroup.GroupId
+        SubnetIds:
+          - !ImportValue app-az1
+          - !ImportValue app-az2
+
+  LambdaSecurityGroup:   # required only if lambda function is deployed inside the  VPC
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub 'SG for EVM SSM Lambda Function ${UAI}-${AppName}-${Env}'
+      GroupName: !Sub "${UAI}-${AppName}-${Env}-evm-ssm-lambda"
+      VpcId: !ImportValue vpcid
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${Env}-evm-ssm-lambda-SG"
+        - Key: uai
+          Value: !Ref UAI  
+
+# ****UNCOMMENT ONCE THIS LAMBDA IS CREATED, AND RUN UPDATE********
+  S3BucketPermissions:
+    Type: AWS::Lambda::Permission
+    DependsOn: 
+      - LambdaFunction
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Sub "${UAI}-${AppName}-${Env}-${AppInstance}-evm-ssm"
+      Principal: s3.amazonaws.com
+      SourceAccount: '325381443140'
+      SourceArn: "arn:aws:s3:::uai3027632-pw-sec-automation-gp-ops"

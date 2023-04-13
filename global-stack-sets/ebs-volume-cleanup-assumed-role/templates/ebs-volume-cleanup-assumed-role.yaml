@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CF template for ebs volume cleanup assumed role
+
+Resources:
+  EBSVolumeCleanupAssumedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EBSVolumeCleanupAssumedRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            AWS: 
+              - 'arn:aws:iam::325381443140:role/EBSVolumeCleanupExecutionRole'
+          Sid: ''
+        Version: '2012-10-17'
+      Policies:
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: EC2Actions
+            Action:
+            - ec2:DescribeInstances
+            - ec2:DescribeVolumes
+            - ec2:DeleteVolume
+            - iam:ListAccountAliases
+            Effect: Allow
+            Resource: "*"
+        PolicyName: AssumedPolicy
+      Tags:
+        - Key: "UAI"
+          Value: "UAI3037033"
+        - Key: "appname"
+          Value: "gp-policydefectremediation"
+        - Key: "env"
+          Value: "prd"
+
+Outputs:
+  EBSVolumeCleanupAssumedRole:
+    Description: "IAM Assumed Role created for ebs volume cleanup function"
+    Value: !GetAtt EBSVolumeCleanupAssumedRole.Arn

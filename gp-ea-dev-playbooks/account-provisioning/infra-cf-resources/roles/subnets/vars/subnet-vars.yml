@@ -1,0 +1,37 @@
+aws_region: "us-east-1"
+resource_folder: subnets
+subnet:
+  AppRouteTableExportName: rt-AppId
+  InternetRouteTableExportName: rt-InternetId
+  AppNaclExportName: app-nacl
+  DBNaclExportName: db-nacl
+  ExtNaclExportName: ext-nacl
+  EpNaclExportName: ep-nacl
+  IgrNaclExportName: igr-nacl
+  RbNaclExportName: rb-nacl
+  stackNames:
+    appAz1: gp-us-ApplicationSubnet1
+    appAz2: gp-us-ApplicationSubnet2
+    db1: gp-us-DatabaseSubnet1
+    db2: gp-us-DatabaseSubnet2
+    ext1: gp-us-ExtSubnet1
+    ext2: gp-us-ExtSubnet2
+    rb1: gp-us-RBSubnet1
+    rb2: gp-us-RBSubnet2
+    igr1: gp-us-IntegrationSubnet1
+    igr2: gp-us-IntegrationSubnet2
+    ep1: gp-us-EndpointSubnet1
+    ep2: gp-us-EndpointSubnet2
+  subnetNames:
+    appAz1: app-az1
+    appAz2: app-az2
+    db1: db-az1
+    db2: db-az2
+    ext1: ext-az1
+    ext2: ext-az2
+    rb1: rb-az1
+    rb2: rb-az2
+    igr1: igr-az1
+    igr2: igr-az2
+    ep1: ep-az1
+    ep2: ep-az2

@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: GP Managed Audit Policy and fed role
+
+Parameters:
+  JenkinsRoleArn:
+      Type: String
+      Description: Name of the Admin Role...
+      Default: 'arn:aws:iam::325381443140:role/inf/ops-master-jenkins'
+  JenkinsNonProdRoleArn:
+      Type: String
+      Description: Name of the Admin Role...
+      Default: 'arn:aws:iam::665129569626:role/inf/dev-infra-master-jenkins'
+  AnsibleProdTowerRoleArn:
+      Type: String
+      Description: Name of the instance profile role for Prod Tower EC2...
+      Default: 'arn:aws:iam::325381443140:role/app/uai3047316/gp-ansible-app-prd-ec2'
+      
+Resources:
+  AuditFedRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "audit-fed"
+      Path: '/hq/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref JenkinsRoleArn
+                - !Ref JenkinsNonProdRoleArn
+                - !Ref AnsibleProdTowerRoleArn
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+
+  AuditFedPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: 'GP-Audit-Policy'
+      Roles:
+        - !Ref AuditFedRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'SNSTopic'
+            Effect: Allow
+            Action: 
+              - sns:CreateTopic
+              - sns:ListTopics
+              - sns:Unsubscribe
+            Resource:
+              - "*"
+
+          - Sid: 'SNSSubscribe'
+            Effect: Allow
+            Action: 
+              - sns:Subscribe
+            Condition:
+              StringLike:
+                sns:Endpoint: "*ge.com"
+              StringEquals:
+                sns:Protocol: 
+                  - "email"
+                  - "email-json"
+            Resource: 
+              - !Sub "arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:AccountAudit*"
+
+          - Sid: 'SNSOther'
+            Effect: Allow
+            Action:
+              - sns:DeleteTopic
+              - sns:Publish
+              - sns:ListSubscriptionsByTopic
+              - sns:ConfirmSubscription
+            Resource: 
+              - !Sub "arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:AccountAudit*"
+            
+          - Sid: 'AccessToSSMParameters'
+            Effect: Allow
+            Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation*"
+          
+Outputs:
+  
+  FederatedRoleName:
+    Value: !Ref AuditFedRole
+  FederatedRoleArn:
+    Value: !GetAtt AuditFedRole.Arn

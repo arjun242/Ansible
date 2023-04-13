@@ -1,0 +1,68 @@
+# Include variables for directory path & github + IDM api secrets.
+- name: Include vars file
+  include_vars: templates-directory.yml
+- name: Include secret vars
+  include_vars: secret.yml
+  no_log: true
+
+# Install JQ for JSON Object Manipulation
+- name: Install JQ Version 1.6
+  package:
+    name: jq-1.6
+    state: present
+
+# Creating directory to invoke script
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/"
+
+# Clone IDM API code repo to local environment
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-ops/gp-jenkins-selfservice"
+    dest: "{{source_directory}}/{{resource_folder}}/"
+    clone: yes
+    recursive: yes
+    version: "master"
+
+# Append Record to JSON Using JQ API Script
+# Write output to {{source_directory}}/{{resource_folder}}/git-org-scripts/base_config/azure/orgs/orgs.json 
+- name: Update orgs.json to contain newest (user-provided) organization
+  shell: |
+    cp orgs.json orgs_copy.json
+    jq '. |= .+ [{ "orgName": "{{deployment_name}}", "orgPipelineUrl":"{{pipeline_url}}/{{deployment_name}}" }]' orgs_copy.json > orgs.json
+  args:
+    chdir: "{{source_directory}}/{{resource_folder}}/git-org-scripts/base_config/{{cloud}}/orgs"
+  when: lookup('vars','cloud') == "azure"
+
+# Append Record to JSON Using JQ API Script
+# Write output to {{source_directory}}/{{resource_folder}}/git-org-scripts/base_config/aws/orgs/orgs.json
+- name: Update orgs.json to contain newest (user-provided) organization
+  shell: |
+    cp orgs.json orgs_copy.json
+    jq '. |= .+ [{ "aws_acct_number": "{{deployment_number}}", "orgName": "{{deployment_name}}", "orgPipelineUrl":"" }]' orgs_copy.json > orgs.json
+  args:
+    chdir: "{{source_directory}}/{{resource_folder}}/git-org-scripts/base_config/aws/orgs"
+  when: lookup('vars','cloud') == "aws"
+
+# Commit newly created/copied file to remote github
+# Write .pem to secrets vault
+- name: Commit newly created/copied file to remote github
+  command: "{{ item }}"
+  no_log: true
+  args:
+    chdir: "{{source_directory}}/{{resource_folder}}"
+  with_items:
+    - git config --global user.email '502813500@ge.com'
+    - git config --global user.name 'github-functional-sso'
+    - git checkout -b "enrollment-proposal"
+    - git add {{source_directory}}/{{resource_folder}}/git-org-scripts/base_config/{{cloud}}/orgs/orgs.json
+    - git commit -m 'Committing newly supplied organization instance into orgs.json'
+    - git push origin enrollment-proposal
+
+# Delete Local Project directory
+- name: Delete directory for parameter file
+  file:
+    state: absent
+    path: "{{source_directory}}/{{resource_folder}}/"

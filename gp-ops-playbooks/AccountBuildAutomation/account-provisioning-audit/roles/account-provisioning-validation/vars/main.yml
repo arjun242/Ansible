@@ -1,0 +1,7 @@
+dest_directory: /tmp/account-automation-folder/account-audit-service/
+main_file_path: /tmp/account-automation-folder/account-audit-service/src/main.py
+output_dir: /tmp/account-automation-folder/account-audit-service/output
+config_dir: /tmp/account-automation-folder/account-audit-service/config
+src_dir: /tmp/account-automation-folder/account-audit-service/src
+file_attachment_path: /tmp/account-automation-folder/account-audit-service/output/account-audit-summary.xlsx
+account_config_file_path: /tmp/account-automation-folder/account-audit-service/config/account.yml

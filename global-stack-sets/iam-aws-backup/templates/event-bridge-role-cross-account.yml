@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Event bridge role for sending events to custom event bus
+Resources:
+  EventBridgeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 'uai3037033-AWSBackup-TagRestore-EventBridge-Role'
+      Path: '/inf/'
+      Tags:
+        - Key: UAI
+          Value: uai3037033
+        - Key: appname
+          Value: AWSBackup-TagRestore
+        - Key: env
+          Value: prod
+        - Key: toCentralBus
+          Value: "true"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: "events.amazonaws.com"
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: PutEventsCustomEventBus
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource:
+                  - arn:aws:events:us-east-1:325381443140:event-bus/uai3037033-AWSBackup-TagRestore-prod-eventbus

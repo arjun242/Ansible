@@ -1,0 +1,158 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Template will provision Lambda Function Ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-function.html#cfn-lambda-function-runtime"
+
+Parameters:
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: "uai[0-9]*"
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3027632
+
+  AppName:
+    Type: String
+    MaxLength: 20
+    AllowedPattern: "[a-z0-9\\-]*"
+    Description: AppName, keep to 15 characters or less.
+    Default: pw-sec-automation
+
+  AppInstance:
+    Type: String
+    Description: "App Instance for ex: app, web"
+    Default: lambda
+
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    AllowedValues:
+    - dev
+    - qa
+    - prd
+    Default: prd
+
+Resources:
+
+  lambdarole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - !Join 
+          - ''
+          - - 'arn:'
+            - !Ref 'AWS::Partition'
+            - ':iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Path: !Sub '/app/${UAI}/'
+      RoleName: !Sub ${UAI}-${AppName}-${Env}-lambdaSSMrole
+      Tags:
+        - Key: AppName
+          Value: !Ref AppName 
+        - Key: env
+          Value: !Ref Env
+        - Key: uai
+          Value: !Ref UAI
+
+  lambdarolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement: 
+          - Sid: S3BucketAccess
+            Action: 
+              - 's3:Get*'
+              - 's3:List*'
+              - 's3:GetBucketVersioning'
+              - 's3:PutLifecyleConfiguration'     
+            Effect: Allow
+            Resource: 
+              - !Sub "arn:${AWS::Partition}:s3:::${UAI}*"
+              - "arn:aws:s3:::uai3027632-pw-sec-automation-gp-ops"
+              - "arn:aws:s3:::uai3027632-pw-sec-automation-gp-ops/*"             
+          - Sid: KMSDecrypt
+            Action: 'kms:Decrypt'
+            Effect: Allow
+            Resource:
+              - "arn:aws:kms:us-east-1:325381443140:key/c01efb8d-05ab-4a8e-af3a-e42302467d49"
+          - Sid: SystemsManagerMaintenanceWindowCreation
+            Action:
+              - 'ssm:CreateMaintenanceWindow'
+              - 'ssm:RegisterTaskWithMaintenanceWindow'
+            Effect: Allow
+            Resource: "*"
+              # - !Sub: "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:maintenancewindow/${UAI}${ResourceId}"
+              # This action has no resources specified, to which AWS says one must specify all resources ("*") in the Resource element of one's policy statement.
+            Condition:
+              ForAllValues:StringLike:
+                aws:RequestTag/uai: uai3027632
+          - Sid: SystemsManagerMaintenanceWindowAccess
+            Action:
+              - 'ssm:DescribeMaintenanceWindows'
+              - 'ssm:DescribeMaintenanceWindowTasks'
+              - 'ssm:UpdateMaintenanceWindowTask' 
+            Effect: Allow
+            Resource: "*" 
+              # - !Sub: "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:windowtask/${UAI}${WindowTaskId}"
+            Condition:
+              ForAllValues:StringLike:
+                aws:ResourceTag/uai: uai3027632
+          - Sid: SystemsManagerInventory
+            Action:
+              - 'ssm:GetInventory'
+            Effect: Allow
+            Resource: "*"
+          - Sid: SystemsManagerWindowTagging
+            Action:
+              - 'ssm:AddTagsToResource'
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:*"
+          - Sid: MaintenanceWindowServiceLinkedRole
+            Action:
+              - 'iam:CreateServiceLinkedRole'
+            Effect: Allow
+            Resource: "arn:aws:iam::*:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM"
+            Condition:
+              StringLike:
+                  iam:AWSServiceName: ssm.amazonaws.com
+            # https://docs.aws.amazon.com/systems-manager/latest/userguide/using-service-linked-roles-service-action-1.html
+            # https://docs.aws.amazon.com/IAM/latest/UserGuide/using-service-linked-roles.html#create-service-linked-role
+          - Sid: ServiceLinkedRolePolicyAttachment
+            Action:
+              - "iam:AttachRolePolicy"
+              - "iam:PutRolePolicy"
+            Effect: Allow
+            Resource: "arn:aws:iam::*:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM"
+          - Sid: LogGroupAccess
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${UAI}*"
+          - Sid: ENIaceess
+            Action:
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DescribeInstances'
+              - 'ec2:AttachNetworkInterface'
+            Effect: Allow
+            Resource: "*"
+          - Sid: LambdaExecutionAccess
+            Action: 'lambda:InvokeFunction'
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${UAI}*"
+        Version: "2012-10-17"
+      PolicyName: !Sub ${AppName}-${Env}-lambdaPolicy
+      Roles:
+        - !Ref lambdarole

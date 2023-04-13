@@ -1,0 +1,69 @@
+---
+- name: Include vars file
+  include_vars: main.yml
+
+- name: "Create IAM role for Ansible account automation"
+  iam_role:
+    name: "{{automation_role}}"
+    assume_role_policy_document: "{{ lookup('file','ansible-service-assumerolepolicy.json') }}"
+    description: This Role is used by ansible account provision automation
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+  register: account_temp_role
+
+# Create a policy to ansible automation role
+- name: Assign policy ansible automation service role
+  iam_policy:
+    iam_type: role
+    iam_name: "{{automation_role}}"
+    policy_name: ansible-vpc-details-policy
+    state: present
+    policy_json: "{{ lookup( 'file', 'ansible-service-policy.json') }} "
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}" 
+
+- name: AssumeRole
+  sts_assume_role:
+    role_arn: "{{ account_temp_role.iam_role.arn }}"
+    role_session_name: "RoleSession"
+    region: "{{ aws_region }}"
+  register: assumed_role
+
+- name: Get VPC details
+  ec2_vpc_net_info:
+    aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    security_token: "{{ assumed_role.sts_creds.session_token }}"
+    region: "{{aws_region}}"
+  register: vpc_info
+
+- name: Get subnet details
+  ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{%if vpc_info.vpcs[0].is_default == false %}{{vpc_info.vpcs[0].vpc_id}}{%elif vpc_info.vpcs[1].is_default == false %}{{vpc_info.vpcs[1].vpc_id}}{% endif %}"
+    aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    security_token: "{{ assumed_role.sts_creds.session_token }}"
+    region: "{{aws_region}}"
+
+- name: Delete IAM policy
+  iam_policy:
+    iam_type: role
+    iam_name: "{{automation_role}}"
+    policy_name: ansible-vpc-details-policy
+    state: absent
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}" 
+
+- name: Delete IAM role
+  iam_role:
+    name: "{{automation_role}}"
+    state: absent 
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+  register: account_temp_role
+

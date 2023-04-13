@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InfraProvisionAccess",
+      "Effect": "Allow",
+      "Action": [
+        "vpc:*",
+        "cloudformation:*",
+        "ec2:*",
+        "rds:*",
+        "iam:*",
+        "dlm:*",
+        "codestar-connections:*",
+        "codepipeline:*",
+        "s3:*",
+        "secretsmanager:*",
+        "servicequotas:RequestServiceQuotaIncrease",
+        "kms:DescribeKey"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}

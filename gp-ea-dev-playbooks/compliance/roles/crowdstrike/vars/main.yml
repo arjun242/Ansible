@@ -1,0 +1,14 @@
+---
+# vars file for CrowdStrike Linux
+BucketName: 'gp-us-east-ops-automation-common-tools'
+installer_dir_linux: '/tmp/agents'
+crowdstrike_package_linux: 'falcon-sensor.{{ exeOs }}.x86_64.rpm'
+crowdstrike_downloaded_dir: '/tmp/crowdstrike'
+version_linux: '5.12.0'
+
+#additional vars for Crowdstrike Windows
+crowdstrike_package_windows: 'WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe'
+installer_dir_windows: 'C:\Windows\Temp\'
+reg: 'us-east-1'
+cid: 'D96C92BDFB0946B589727FF82FB4601A-9E'
+update: 'no'

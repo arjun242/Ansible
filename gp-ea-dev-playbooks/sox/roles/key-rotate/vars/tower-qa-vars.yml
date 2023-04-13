@@ -1,0 +1,7 @@
+new_credential_name: GP-LINUX-CREDS-TEMP-QA
+org_to_be_created_in: GP-AWS-NON-PROD-OPS
+new_job_template_name: SOX-Ping-Check-Linux-JT
+new_inventory_name: SOX-Ping-Check-Linux-Inventory
+existing_project_name: dev-proj
+playbook_path: ping.yml
+base_tower_url: https://qa-ansible-tower.power.ge.com/api/v2

@@ -1,0 +1,22 @@
+---
+# vars file for qualys role
+
+#vars for Qualys Linux 
+installer_dir_linux: '/tmp/qaagents'
+version_linux: '1.7.1'
+#version_linux: '4.6.0'
+qualys_package_linux: 'qualys-cloud-agent.x86_64_1.7.1.37.rpm'
+#qualys_package_linux: 'qualys-cloud-agent-4.6.0-56.x86_64.rpm'
+BucketName: 'gp-us-east-ops-automation-common-tools'
+reg: 'us-east-1'
+qualys_download_dir: '/tmp/qualys'
+
+#vars for Qualys Windows 
+current_win_version: '4.4.1.7'
+qualys_package_windows: 'QualysCloudAgent.exe'
+installer_dir_windows: 'C:\temp\'
+update: 'yes'
+
+#CID & ACTID
+QualysActivationId: 346faac7-8411-41aa-a235-105652a8064b
+QualysCustomerId: 9c0e25de-0221-5af6-e040-10ac13043f6a

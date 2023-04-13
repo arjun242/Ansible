@@ -1,0 +1,12 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+stacksets:
+- name: iam-EAAdmin-setup
+- name: iam-cldsa-admin-fed
+- name: iam-ops-fed-role
+- name: iam-secops-fed
+- name: iam-cldarch-fed-role
+- name: iam-dba-admin-role
+- name: iam-dba-devops-role
+- name: audit-fed

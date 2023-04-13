@@ -1,0 +1,194 @@
+description: Add windows Ec2 under the AD.
+schemaVersion: '0.3'
+parameters:
+  InstanceId:
+    type: String
+    description: (Required) The EC2 Instance ID
+  InstanceIamRole:
+    type: String
+    default: ec2-ami-instance-profile
+    description: >-
+      (Required) The name of the role that enables Systems Manager (SSM) to
+      manage the instance.
+  AutomationAssumeRole:
+    type: String
+    default: 'arn:aws:iam::325381443140:role/inf/ssm-ami'
+    description: >-
+      (Required) The ARN of the role that allows Automation to perform the
+      actions on your behalf.
+  AddGrp:
+    type: String
+    description: Add net groups to the server
+    default: '{{ssm:/automation/win/NetGroup}}'
+mainSteps:
+  - name: ARSEntry
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: Abort
+    inputs:
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds:
+        - '{{InstanceId}}'
+      Parameters:
+        executionTimeout: '3600'
+        commands:
+          - >-
+            $password = (Get-SSMParameterValue -Name
+            /automation/domainJoinPassword -WithDecryption
+            $True).Parameters[0].Value | ConvertTo-SecureString -asPlainText
+            -Force
+          - $domain="mgmt.cloud.ds.ge.com"
+          - >-
+            $username = (Get-SSMParameterValue -Name
+            /automation/domainJoinUserName).Parameters[0].Value
+          - '$hostname = $env:COMPUTERNAME'
+          - >-
+            $credential = New-Object
+            System.Management.Automation.PSCredential($username,$password)
+          - $contenttype = "text/xml; charset=UTF-8"
+          - $body = '<?xml version="1.0" encoding="utf-8"?>
+          - >-
+            <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          - '<soap:Body>'
+          - >-
+            <addRequest xmlns="urn:oasis:names:tc:SPML:2:0"
+            returnData="nothing">
+          - >-
+            <containerID
+            ID="OU=Unclaimed,OU=Computers,OU=Enterprise,DC=mgmt,DC=cloud,DC=ds,DC=ge,DC=com"
+            />
+          - <data>
+          - '<attr name="cn" xmlns="urn:oasis:names:tc:DSML:2:0:core">'
+          - <value>changehostname</value>
+          - </attr>
+          - >-
+            <attr name="sAMAccountName"
+            xmlns="urn:oasis:names:tc:DSML:2:0:core">
+          - <value>changehostname$</value>
+          - </attr>
+          - '<attr name="objectClass" xmlns="urn:oasis:names:tc:DSML:2:0:core">'
+          - <value>computer</value>
+          - </attr>
+          - >-
+            <attr name="edsaJoinComputerToDomain"
+            xmlns="urn:oasis:names:tc:DSML:2:0:core">
+          - <value>CC-MGMT\DEL_GE009000000_SVR_Join_Domain</value>
+          - </attr>
+          - >-
+            <attr name="GEHRINDUSTRYGROUPID"
+            xmlns="urn:oasis:names:tc:DSML:2:0:core">
+          - <value>1147425</value>
+          - </attr>
+          - '<attr name="GEVSVRTYPE" xmlns="urn:oasis:names:tc:DSML:2:0:core">'
+          - <value>Windows</value>
+          - </attr>
+          - >-
+            <attr name="GEVSVRSUPPORTEDBY"
+            xmlns="urn:oasis:names:tc:DSML:2:0:core">
+          - <value>GE009000000</value>
+          - </attr>
+          - >-
+            <attr name="otherManagedBy"
+            xmlns="urn:oasis:names:tc:DSML:2:0:core">
+          - >-
+            <value>CN=105026584,OU=Standard,OU=Users,OU=Enterprise,DC=Logon,DC=DS,DC=GE,DC=COM</value>
+          - </attr>
+          - </data>
+          - </addRequest>
+          - '</soap:Body>'
+          - '</soap:Envelope>'''
+          - '$body = $body.Replace(''changehostname'', $hostname)'
+          - >-
+            Invoke-RestMethod -Method 'POST' -Uri
+            https://ars.cloudad.tools.ds.ge.com/spml/SPMLProvider.asmx
+            -Credential $credential -ContentType $contenttype -Body $body
+          - sleep 30
+  - name: stopInstance1
+    action: 'aws:changeInstanceState'
+    maxAttempts: 3
+    timeoutSeconds: 1200
+    onFailure: Abort
+    inputs:
+      InstanceIds:
+        - '{{InstanceId}}'
+      DesiredState: stopped
+  - name: startInstance1
+    action: 'aws:changeInstanceState'
+    maxAttempts: 3
+    timeoutSeconds: 1200
+    onFailure: Abort
+    inputs:
+      InstanceIds:
+        - '{{InstanceId}}'
+      DesiredState: running
+  - name: ADRegistration
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: Abort
+    inputs:
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds:
+        - '{{InstanceId}}'
+      Parameters:
+        executionTimeout: '3600'
+        commands:
+          - >-
+            $password = (Get-SSMParameterValue -Name
+            /automation/domainJoinPassword -WithDecryption
+            $True).Parameters[0].Value | ConvertTo-SecureString -asPlainText
+            -Force
+          - $domain="mgmt.cloud.ds.ge.com"
+          - >-
+            $username = (Get-SSMParameterValue -Name
+            /automation/domainJoinUserName).Parameters[0].Value
+          - '$hostname = $env:COMPUTERNAME'
+          - >-
+            $credential = New-Object
+            System.Management.Automation.PSCredential($username,$password)
+          - Add-Computer -DomainName $domain -Credential $credential
+          - sleep 20
+  - name: stopInstance2
+    action: 'aws:changeInstanceState'
+    maxAttempts: 3
+    timeoutSeconds: 1200
+    onFailure: Abort
+    inputs:
+      InstanceIds:
+        - '{{InstanceId}}'
+      DesiredState: stopped
+  - name: startInstance2
+    action: 'aws:changeInstanceState'
+    maxAttempts: 3
+    timeoutSeconds: 1200
+    onFailure: Abort
+    inputs:
+      InstanceIds:
+        - '{{InstanceId}}'
+      DesiredState: running
+  - name: GroupAddition
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: Abort
+    inputs:
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds:
+        - '{{InstanceId}}'
+      Parameters:
+        executionTimeout: '3600'
+        commands:
+          - (Get-WmiObject -class Win32_TSGeneralSetting -Namespace root\cimv2\terminalservices -ComputerName $env:COMPUTERNAME -Filter "TerminalName='RDP-tcp'").SetUserAuthenticationRequired(0)
+          - 'if (Test-Path -LiteralPath "C://NetGroup.txt") {'
+          - 'echo ''netgroup is existed'' }'
+          - 'else {'
+          - '$groups = @({{AddGrp}})'
+          - 'foreach ($grp in $groups) {'
+          - $domain = "mgmt.cloud.ds.ge.com"
+          - $admin_group = $grp
+          - net localgroup administrators $domain $admin_group /ADD
+          - 'echo "server group for domain access = $admin_group" }'
+          - 'New-Item C://NetGroup.txt }'

@@ -1,0 +1,28 @@
+custom_resources:
+  - name: iam-common-ecsautoscalingsvcrole
+    custom_stackset_name: iam-common-ecsautoscalingsvcrole
+    description: Common Service role for ecs autoscaling.
+    template_file: templates/iam-ECSAutoScalingRole.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+          
+  - name: iam-common-ssm-instanceprofile
+    custom_stackset_name: iam-common-ssm-instanceprofile
+    description: Used for all EC2 that don't require custom instance profiles
+    template_file: templates/iam-EC2InstanceProfileRole.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+
+  - name: iam-qualys-cloudview-role
+    custom_stackset_name: iam-qualys-cloudview-role
+    description: Service role used to configure Qualys connector to monitor the infrastructure created for the VPC.
+    template_file: templates/iam-QualysCloudViewRole.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - name: iam-ssm-custom-service-role
+    custom_stackset_name: iam-ssm-custom-service-role
+    description: Service role for ssm association documnets
+    template_file: templates/iam-ssm-custom-servicerole.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

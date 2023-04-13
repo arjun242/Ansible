@@ -1,0 +1,13 @@
+- name: Add tower inventory source
+  tower_inventory_source:
+    name: Inventory source test
+    description: My Inventory source
+    source_project: GP-EVM-COMPLIANCE
+    #inventory: My inventory
+    #credential: Devstack_credential
+    source: scm
+    update_on_launch: true
+    overwrite: true
+    #source_vars: '{ private: false }'
+    state: present
+    validate_certs: false

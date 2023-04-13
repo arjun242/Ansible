@@ -1,0 +1,35 @@
+custom_resources:
+  - 
+    custom_stackset_name: iam-common-managed-policy-fed-role
+    description: Common Managed Policy for all Fed Roles.
+    template_file: templates/fed-role-managed-policy.yml 
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution 
+
+  - 
+    custom_stackset_name: iam-common-managed-policy-deploy-role
+    description: Common Managed Policy for all Deploy Roles.
+    template_file: templates/deploy-role-managed-policy.yml 
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution 
+
+  - 
+    custom_stackset_name: iam-ssm-common-managed-policies
+    description: Common Managed SSM Session Policies
+    template_file: templates/iam-ssm-policy-managed-policy.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution 
+
+  - 
+    custom_stackset_name: iam-gesos-ecr-access-policy
+    description: Common managed policy that gives GESOS image repository access.
+    template_file: templates/ecr-gesos-managed-policy.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution 
+
+  - 
+    custom_stackset_name: deny-get-secret
+    description: Common managed policy that denies aws role the ability to get secrets
+    template_file: templates/deny-get-secret.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution 

@@ -1,0 +1,11 @@
+{
+    "Content": "file://app-get-latest-ami.yml", 
+    "Name": "app-get-latest-ami", 
+    "VersionName": "1.0",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

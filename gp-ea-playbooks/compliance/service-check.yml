@@ -1,0 +1,40 @@
+---
+- hosts: all
+  tasks:
+  
+    - name: Gather the package facts
+      package_facts:
+       manager: auto
+    
+    - name: Gather service facts
+      service_facts:
+  
+    - name: Trigger the splunk role
+      include_role:
+        name: splunk
+      when: (not 'splunkforwarder' in ansible_facts.packages) or (not ansible_facts.services['SplunkForwarder.service'] is defined)
+      register: splunk_result
+
+    - name: Trigger the crowdStrike role
+      include_role:
+        name: crowdstrike
+      when: (not 'falcon-sensor' in ansible_facts.packages) or (not ansible_facts.services['falcon-sensor.service'] is defined)
+      register: crowd_result
+
+    - name: Trigger the qualys role
+      include_role:
+        name: qualys
+      when: (not 'qualys-cloud-agent' in ansible_facts.packages) or (not ansible_facts.services['qualys-cloud-agent.service'] is defined)
+      register: qualys_result  
+      
+    - debug:
+        msg: "splunk is already installed and running"
+      when: splunk_result is skipped
+      
+    - debug:
+        msg: "qualys is already installed and running"
+      when: qualys_result is skipped
+
+    - debug:
+        msg: "crowd strike is already installed and running"
+      when: crowd_result is skipped

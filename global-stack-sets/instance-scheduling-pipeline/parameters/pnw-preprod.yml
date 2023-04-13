@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "StackName",
+    "ParameterValue": "uai3037033-gp-instancescheduling-prd"
+  },
+  {
+    "ParameterKey": "UAI",
+    "ParameterValue": "uai3037033"
+  },
+  {
+    "ParameterKey": "AppName",
+    "ParameterValue": "InstanceScheduling"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prd"
+  },
+  {
+    "ParameterKey": "ConnectionARN",
+    "ParameterValue": "arn:aws:codestar-connections:us-east-1:930136447543:connection/0e10a673-9083-4aa2-9814-d01db3afa3f7"
+  },
+  {
+    "ParameterKey": "RepositoryId",
+    "ParameterValue": "gp-ops/InstanceScheduling"
+  }
+]

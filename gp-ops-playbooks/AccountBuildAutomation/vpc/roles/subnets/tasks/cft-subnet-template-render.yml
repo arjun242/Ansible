@@ -1,0 +1,51 @@
+- name: Create a new directory for stack_master templates
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Create a new directory for stack_master parameters
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/parameters"
+
+- name: Copy stack-master.yml
+  template:
+    src: "stack_master.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/stack_master.yml"
+
+- name: Copy gp-subnet.yml to templates
+  copy:
+    src: "{{role_path}}/files/gp-subnet.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Copy appAz1, appAz2, db1, db2, ep1, ep2 parameters files
+  template:
+    src: "{{ item.srcName }}"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{ item.destName }}"
+  loop:
+    - { srcName: gp_us_ApplicationSubnet1.yml , destName: "{{ (prefix + subnet.stackNames.appAz1) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_ApplicationSubnet2.yml , destName: "{{ (prefix + subnet.stackNames.appAz2) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_DatabaseSubnet1.yml , destName: "{{ (prefix + subnet.stackNames.db1) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_DatabaseSubnet2.yml , destName: "{{ (prefix + subnet.stackNames.db2) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_EndpointSubnet1.yml , destName: "{{ (prefix + subnet.stackNames.ep1) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_EndpointSubnet2.yml , destName: "{{ (prefix + subnet.stackNames.ep2) | replace('-','_') }}.yml" }
+
+- name: Copy ext1, ext2, rb1, rb2 parameters files
+  template:
+    src: "{{ item.srcName }}"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{ item.destName }}"
+  loop:
+    - { srcName: gp_us_ExtSubnet1.yml , destName: "{{ (prefix + subnet.stackNames.ext1) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_ExtSubnet2.yml , destName: "{{ (prefix + subnet.stackNames.ext2) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_RBSubnet1.yml , destName: "{{ (prefix + subnet.stackNames.rb1) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_RBSubnet2.yml , destName: "{{ (prefix + subnet.stackNames.rb2) | replace('-','_') }}.yml" }
+  when: lookup('vars', 'extSubnetCIDR') != "NA" and lookup('vars','rbSubnetCIDR') != "NA"
+
+- name: Copy igr1, igr2 parameters files
+  template:
+    src: "{{ item.srcName }}"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{ item.destName }}"
+  loop:
+    - { srcName: gp_us_IntegrationSubnet1.yml , destName: "{{ (prefix + subnet.stackNames.igr1) | replace('-','_') }}.yml" }
+    - { srcName: gp_us_IntegrationSubnet2.yml , destName: "{{ (prefix + subnet.stackNames.igr2) | replace('-','_') }}.yml" }
+  when: igrSubnetCIDR != "NA"

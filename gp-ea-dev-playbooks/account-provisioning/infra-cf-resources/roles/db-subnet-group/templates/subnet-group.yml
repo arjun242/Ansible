@@ -1,0 +1,26 @@
+--- 
+# History:
+  # 03-10-2020 : Initial subnet group Setup
+
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources: 
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"  
+    Properties: 
+      DBSubnetGroupDescription: db sunbets list
+      SubnetIds: 
+      - !ImportValue {{prefix}}db-az1
+      - !ImportValue {{prefix}}db-az2
+      Tags: 
+        - 
+          Key: Name
+          Value: {{prefix}}DBSubnetGroup
+        - Key: uai
+          Value: "uai3047029"
+Outputs:
+  DBSubnetGroup:
+    Description: rds subnet-group
+    Value: !Ref DBSubnetGroup
+    Export:
+      Name: "{{prefix}}db-subnetgroup"

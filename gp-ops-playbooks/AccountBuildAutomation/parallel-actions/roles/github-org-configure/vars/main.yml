@@ -1,0 +1,4 @@
+# use aws or azure 
+deployment_cloud: aws
+# aws_account_name: "gp-aws5-dr"
+# aws_account_id: "935191336473"

@@ -1,0 +1,3 @@
+---
+- name: Git Repo Remove Playbook
+  import_tasks: git-remove.yml

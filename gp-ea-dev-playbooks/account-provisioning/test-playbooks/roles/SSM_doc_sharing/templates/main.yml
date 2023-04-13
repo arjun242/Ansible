@@ -1,0 +1,2 @@
+region_name: "{{ region_name }}"
+account_ids: "{{ aws_account_id }}"

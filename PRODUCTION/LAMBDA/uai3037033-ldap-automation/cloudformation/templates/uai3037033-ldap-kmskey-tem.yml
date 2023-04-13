@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create KMS Key for lpm"
+
+Parameters:
+  UAI:
+    Type: String
+    Default: uai3037033
+
+  AppName:
+    Type: String
+    Default: ldap
+
+  Env:
+    Type: String
+    Default: prd
+
+  Keyname:
+    Type: String
+    
+Resources:
+  ldapcommonKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Sid: EnableKeyAccessforRootUser
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+          # - Sid: EnableKeyUserAccess
+          #   Effect: Allow
+          #   Principal:
+          #     AWS:
+          #       - !Sub "arn:aws:iam::987201782067:role/app/uai3031569/gscsf-iot-fed"           
+          #       # Include the list of role arns to have usage access
+          #   Action:
+          #     - 'kms:CreateGrant'
+          #     - 'kms:Encrypt'
+          #     - 'kms:Decrypt'
+          #     - 'kms:ReEncrypt*'
+          #     - 'kms:GenerateDataKey'
+          #     - 'kms:GenerateDataKey*'
+          #     - 'kms:DescribeKey'
+          #   Resource: '*'
+          - Sid: EnableKeyUserAccess
+            Effect: Allow
+            Principal:
+              AWS:
+                - "arn:aws:iam::325381443140:role/app/uai3037033-ldap-lambda-execution-role"
+                - "arn:aws:iam::325381443140:role/app/uai3037033/uai3037033-ldap-task-prd"
+                - "arn:aws:iam::325381443140:role/app/uai3047316/gp-ansible-app-prd-ec2"
+                # Include the list of role arns to have usage access
+            Action:
+              - 'kms:CreateGrant'
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:GenerateDataKey'
+              - 'kms:DescribeKey'
+            Resource: '*'
+          - Sid: Denyallaccessdelete
+            Effect: Deny
+            Principal:
+              AWS: '*'
+            Action:
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:DisableKey
+            Resource: '*'
+
+          - Sid: Eventrulepermission
+            Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action:
+              - 'kms:CreateGrant'
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:GenerateDataKey'
+              - 'kms:DescribeKey'
+            Resource: '*'
+
+            #Need to modify line 64  
+        Version: "2012-10-17"
+      Description: KMS key for LDAP Automation Infra
+      EnableKeyRotation: false
+      Tags:
+        - Key: appname
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+        - Key: uai
+          Value: !Ref UAI
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+  ldapKeyAlias9AAB4BED:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Ref Keyname
+      TargetKeyId:
+        Fn::GetAtt:
+          - ldapcommonKey
+          - Arn
+
+Outputs:
+  ldapcommonKeyarn:
+    Description: A reference to the created KMSKeyarn
+    Value:
+      Fn::GetAtt:
+        - ldapcommonKey
+        - Arn
+    Export:
+      Name: ldapcommonkmskeyarn
+  ldapcommonKeyvalue:
+    Description: A reference to the created KMSKeyarn
+    Value: !Ref ldapcommonKey
+    Export:
+      Name: ldapcommonkmskeyname

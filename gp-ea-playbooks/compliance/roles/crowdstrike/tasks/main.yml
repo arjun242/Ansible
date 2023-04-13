@@ -1,0 +1,9 @@
+#The main.yml file executes the imported tasks depending the OS distribution condition
+---
+  - name: CrowdStrike Installation for Linux
+    import_tasks: crowdstrike_linux.yml
+    when:  ansible_os_family != "Windows"
+
+  - name: CrowdStrike Installation for Windows
+    import_tasks: crowdstrike_windows.yml
+    when:  ansible_os_family ==  "Windows"

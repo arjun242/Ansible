@@ -1,0 +1,122 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create an ECR for database hardening
+                Last version from 10-Nov-2019
+
+ ## History:
+  # 07-Oct-2019: Initial release
+
+Parameters:
+  VPCAlias:
+    Type: String    
+    Description: Application Name
+    Default: 'dbss'
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' in upper case followed by 7 digits
+    AllowedPattern: '^(UAI|uai)[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'uai3036792'
+  Platform:
+    Type: String
+    Description: Name of the Task Definition
+    # Default: postgres #For PostgreSQL insrance. It's not postgresql
+
+Resources:
+  DBHardeningRepo:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      RepositoryName: !Sub '${VPCAlias}/db-hardening-${Platform}'
+      RepositoryPolicyText:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowFromWorkstationAccounts
+            Effect: Allow
+            Principal:
+              AWS:
+                - arn:aws:iam::325381443140:root
+                - arn:aws:iam::538462866776:root
+                - arn:aws:iam::372444449616:root
+                - arn:aws:iam::564772463473:root
+                - arn:aws:iam::523084324983:root
+                - arn:aws:iam::665129569626:root
+                - arn:aws:iam::755730821424:root
+                - arn:aws:iam::951854665038:root
+                - arn:aws:iam::821735935111:root
+                - arn:aws:iam::930136447543:root
+                - arn:aws:iam::762713699569:root
+                - arn:aws:iam::464798753408:root
+                - arn:aws:iam::322870840626:root
+                - arn:aws:iam::988201728534:root
+                - arn:aws:iam::322870840626:root
+                - arn:aws:iam::464798753408:root
+                - arn:aws:iam::935909890532:root
+            Action:
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:BatchGetImage'
+              - 'ecr:BatchCheckLayerAvailability'
+              - 'ecr:Describe*'
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:ListImages'
+              - 'ecr:GetAuthorizationToken'
+      LifecyclePolicy:
+        LifecyclePolicyText: !Sub
+          - |
+            {
+              "rules": [
+                {
+                  "rulePriority": 1,
+                  "description": "Only keep untagged images for ${DaysToRetainUntaggedContainerImages} days",
+                  "selection": {
+                    "tagStatus": "untagged",
+                    "countType": "sinceImagePushed",
+                    "countUnit": "days",
+                    "countNumber": ${DaysToRetainUntaggedContainerImages}
+                  },
+                  "action": { "type": "expire" }
+                },
+                {
+                  "rulePriority": 2,
+                  "description": "Keep only ${MaxTaggedContainerImagesToRetain} tagged images, expire all others",
+                  "selection": {
+                    "tagStatus": "any",
+                    "countType": "imageCountMoreThan",
+                    "countNumber": ${MaxTaggedContainerImagesToRetain}
+                  },
+                  "action": { "type": "expire" }
+                }
+              ]
+            }
+          - DaysToRetainUntaggedContainerImages: 7
+            MaxTaggedContainerImagesToRetain: 3
+      Tags:
+        - Key: 'Name'
+          Value: !Sub '${VPCAlias}-db-hardening-${Platform}'
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: !Sub 'ECR repo to store docker image for automation of ${Platform} databases'
+Outputs:
+  DBHardeningRepoArn:
+    Description: "Arn of ECR repo, that will store docker image used for database hardening"
+    Value: !GetAtt 
+      - DBHardeningRepo
+      - Arn
+    Export:
+        Name: !Sub "ecr:${VPCAlias}:hardening-repo-${Platform}:arn"
+  DBHardeningImageArn:
+    Description: "Arn of docker image, that will be used to execute database hardening scripts"
+    Value: !Sub
+            - '${Account}.dkr.ecr.${Region}.amazonaws.com/${VPCAlias}/db-hardening-${Platform}:latest'  #for Non Nexus accounts
+            - {
+                Account: !Ref 'AWS::AccountId',
+                Region: !Ref 'AWS::Region'
+              }
+    Export:
+        Name: !Sub "ecr:${VPCAlias}:hardening-image-${Platform}:arn"

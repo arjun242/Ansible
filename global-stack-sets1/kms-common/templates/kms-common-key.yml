@@ -1,0 +1,123 @@
+---
+  AWSTemplateFormatVersion: "2010-09-09"
+  Description: KMS key will be used to encrypt AMIs
+
+################################################################################
+# Resources Section
+################################################################################
+
+  Resources:
+   
+    KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: "Key used to encrypt EC2 root volumes"
+        Enabled: true
+        EnableKeyRotation: true        
+        KeyPolicy: 
+          Version: "2012-10-17"
+          Id: "automation-key"
+          Statement:
+            - Sid: "Enable IAM User Permissions"
+              Effect: "Allow"
+              Principal: 
+                AWS: 
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              Action: "kms:*"
+              Resource: "*"
+            - Sid: "Enable Key Access for Admins"
+              Effect: "Allow"
+              Principal:
+                AWS: 
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed"
+              Action: 
+                - kms:CreateGrant
+                - kms:Create*
+                - kms:Describe*
+                - kms:Enable*
+                - kms:List*
+                - kms:Put*
+                - kms:Update*
+                - kms:Revoke*
+                - kms:Disable*
+                - kms:Get*
+                - kms:Delete*
+                - kms:TagResource
+                - kms:UntagResource
+                - kms:ScheduleKeyDeletion
+                - kms:CancelKeyDeletion"            
+              Resource: "*"
+            - Sid: "Enable Key Access"
+              Effect: "Allow"
+              Principal:
+                AWS: #Add principals here when additional roles are created.
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldarch-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/cldarch-jenkins-execution"
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling'
+                 
+              Action: 
+                - kms:CreateGrant
+                - kms:Encrypt
+                - kms:Decrypt
+                - kms:ReEncrypt*
+                - kms:GenerateDataKey*
+                - kms:DescribeKey
+              Resource: "*"
+            # Madhu's Proposed KMS Key Update
+            - Sid: "Allow access through Amazon DynamoDB for all principals in the account that are
+                authorized to use Amazon DynamoDB"
+              Effect: Allow
+              Principal:
+                AWS: "*"
+              Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:DescribeKey
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  'kms:ViaService': !Sub 'dynamodb.${AWS::Region}.amazonaws.com'
+                  'kms:CallerAccount': !Sub '${AWS::AccountId}'
+            - Sid: "Allow access through Amazon EC2 for all principals in the account that are authorized to use Amazon EC2"
+              Effect: Allow
+              Principal:
+                AWS: "*"
+              Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:DescribeKey
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  'kms:ViaService': !Sub 'ec2.${AWS::Region}.amazonaws.com'
+                  'kms:CallerAccount': !Sub '${AWS::AccountId}'
+            
+          
+    KMSAlias:
+      Type: AWS::KMS::Alias
+      Properties: 
+        AliasName: alias/common-kms-key
+        TargetKeyId: !Ref KMSKey
+
+  Outputs:
+    ExportCommonKMSID:
+      Value: !Ref KMSKey
+      Export:
+        Name: "CommonKSMKeyID"
+    
+    ExportCommonKMSArn:
+      Value: !GetAtt KMSKey.Arn
+      Export: 
+        Name: "CommonKMSKeyArn"
+    
+    ExportCommonKMSAlias:
+      Value: !Ref KMSAlias
+      Export:
+        Name: "CommonKMSKeyAlias"

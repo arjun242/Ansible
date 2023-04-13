@@ -1,0 +1,24 @@
+custom_resources:
+
+  - name: gp-maintenance-window-role
+    custom_stackset_name: gp-patching-maintenance-window-role
+    description: iam role for maintenance window execution
+    template_file: templates/maintenance-window-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/maintenance-window-role-param.yml
+        regions:
+          - us-east-1
+
+  - name: gp-patching-s3-bucket-policy
+    custom_stackset_name: gp-patching-s3-bucket
+    description: Bucket policy and sns notifications for maintenance window
+    template_file: templates/gp-patching-bucket-policy.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1

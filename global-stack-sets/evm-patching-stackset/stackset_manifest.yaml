@@ -1,0 +1,18 @@
+custom_resources:
+  - custom_stackset_name: uai3027632-power-security-automation-fedrole
+    description: iam fed role for evm team for manual patching tasks and troubleshooting
+    template_file: templates/evm-fed-role-app.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value 
+
+  - custom_stackset_name: uai3027632-power-security-automation-ssm-lambda-svc-role
+    description: ssm lambda function service role for evm patching automation on EC2s
+    template_file: templates/ssm-lambda-svc-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value
+    
+  - custom_stackset_name: uai3027632-power-security-automation-ssm-lambda-fun
+    description: ssm lambda function for evm patching automation on EC2s
+    template_file: templates/ssm-lambda-function.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value

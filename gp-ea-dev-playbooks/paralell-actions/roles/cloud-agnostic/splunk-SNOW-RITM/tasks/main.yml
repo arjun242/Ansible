@@ -1,0 +1,20 @@
+---
+# Create a Service Now Request (RITM) for Splunk whitelisting
+
+- name: Open a Service Now Request for Splunk white listing
+  uri:
+    url: "{{ snow_api_create_ritm }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 201
+    timeout: 30
+    headers:
+      Authorization: "Bearer {{ oauth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: "{{ lookup('template','splunk_whitelist_req_payload.j2') }}"
+  register: snow_api_response

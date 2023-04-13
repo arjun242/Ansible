@@ -1,0 +1,65 @@
+---
+- name: Deleting Application Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-app-nacl"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Deleting DB Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-db-nacl"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Deleting EP Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-ep-nacl"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  
+- name: Deleting EXT Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-ext-nacl"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Deleting RB Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-rb-nacl"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Deleting IGR Subnet NACL CFT
+  cloudformation:
+    stack_name: "{{prefix}}gp-igr-nacl"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Call Git role
+  include_role:
+    name: git-delete
+  vars:
+    github_enterprise_org: gp-ops-non-prod
+    github_enterprise_repo: cft-infra-nacl
+    message: "Ansible deleting NACLs"
+    folder_name: ""
+
+    # all variables can be used directly in conditionals without double curly braces

@@ -1,0 +1,187 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the option groups (and default parameter groups) that are neccessary for builds of RDS instances.
+              It must be created prior to any RDS Instances
+              Last version 04-Dec-2018
+
+ # History:
+  # 04-Dec-2018: F1332.US7172: Updated to separate options and parameters into separate files
+  # 12-Nov-2018: F1322.US7175: Updated to include multi-vpc support based on VPCAlias parameter
+  # 26-Jun-2018: Add default AWS::RDS::DBParameterGroup for mySQL 5.6 and 5.7
+  # 12-Jul-2018: Add init_connect parameter to default parameter groups for mySQL 5.6 and 5.7
+  # 29th May 2020 - Added VPC ALIAS to parameter and exported the same
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+
+Resources:
+
+  rdsmysqldefault57:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: 'mysql'
+      MajorEngineVersion: 5.7
+      OptionGroupDescription: 'MySQL 5.7 Default Risk Profile'
+      OptionConfigurations:
+        -
+          OptionName: MARIADB_AUDIT_PLUGIN
+          OptionSettings:
+            -
+              Name: SERVER_AUDIT_FILE_ROTATIONS
+              Value: 50
+            -
+              Name: SERVER_AUDIT_EVENTS
+              Value: CONNECT
+            -
+              Name: SERVER_AUDIT_FILE_ROTATE_SIZE
+              Value: 524288
+            -
+              Name: SERVER_AUDIT_EXCL_USERS
+              Value: rdsadmin
+
+  rdsmysqliso57:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: 'mysql'
+      MajorEngineVersion: 5.7
+      OptionGroupDescription: 'MySQL 5.7 ISO Risk Profile'
+      OptionConfigurations:
+        -
+          OptionName: MARIADB_AUDIT_PLUGIN
+          OptionSettings:
+            -
+              Name: SERVER_AUDIT_FILE_ROTATIONS
+              Value: 50
+            -
+              Name: SERVER_AUDIT_EVENTS
+              Value: CONNECT
+            -
+              Name: SERVER_AUDIT_FILE_ROTATE_SIZE
+              Value: 524288
+            -
+              Name: SERVER_AUDIT_EXCL_USERS
+              Value: rdsadmin
+
+
+  rdsmysqlsox57:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: 'mysql'
+      MajorEngineVersion: 5.7
+      OptionGroupDescription: 'MySQL 5.7 SOx Risk Profile'
+      OptionConfigurations:
+        -
+          OptionName: MARIADB_AUDIT_PLUGIN
+          OptionSettings:
+            -
+              Name: SERVER_AUDIT_FILE_ROTATIONS
+              Value: 50
+            -
+              Name: SERVER_AUDIT_EVENTS
+              Value: CONNECT,QUERY,TABLE
+            -
+              Name: SERVER_AUDIT_FILE_ROTATE_SIZE
+              Value: 524288
+            -
+              Name: SERVER_AUDIT_EXCL_USERS
+              Value: rdsadmin
+
+
+  rdsmysqldod57:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: 'mysql'
+      MajorEngineVersion: 5.7
+      OptionGroupDescription: 'MySQL 5.7 DoD Risk Profile'
+      OptionConfigurations:
+        -
+          OptionName: MARIADB_AUDIT_PLUGIN
+          OptionSettings:
+            -
+              Name: SERVER_AUDIT_FILE_ROTATIONS
+              Value: 50
+            -
+              Name: SERVER_AUDIT_EVENTS
+              Value: CONNECT,QUERY,TABLE
+            -
+              Name: SERVER_AUDIT_FILE_ROTATE_SIZE
+              Value: 524288
+            -
+              Name: SERVER_AUDIT_EXCL_USERS
+              Value: rdsadmin
+              
+
+  rdsmysqlgxp57:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: 'mysql'
+      MajorEngineVersion: 5.7
+      OptionGroupDescription: 'MySQL 5.7 GxP Risk Profile'
+      OptionConfigurations:
+        -
+          OptionName: MARIADB_AUDIT_PLUGIN
+          OptionSettings:
+            -
+              Name: SERVER_AUDIT_FILE_ROTATIONS
+              Value: 50
+            -
+              Name: SERVER_AUDIT_EVENTS
+              Value: CONNECT,QUERY,TABLE
+            -
+              Name: SERVER_AUDIT_FILE_ROTATE_SIZE
+              Value: 524288
+            -
+              Name: SERVER_AUDIT_EXCL_USERS
+              Value: rdsadmin
+ 
+  
+  rdsmysqldefault80:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: 'mysql'
+      MajorEngineVersion: 8.0
+      OptionGroupDescription: 'MySQL 8.0 Default Risk Profile'
+      
+      
+Outputs:
+ ## OPTION GROUPS
+ #  Note: Option groups are VPC-bound
+  
+  rdsmysqldefault80:
+    Description: "RDS Option Group that stores default auditing preferences for MySQL 8.0"
+    Value: !Ref rdsmysqldefault80
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:mysql:default:80'
+
+  rdsmysqldefault57:
+    Description: "RDS Option Group that stores default auditing preferences for MySQL 5.7"
+    Value: !Ref rdsmysqldefault57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:mysql:default:57'
+
+  rdsmysqliso57:
+    Description: "RDS Option Group that stores ISO auditing preferences for MySQL 5.7"
+    Value: !Ref rdsmysqliso57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:mysql:iso:57'
+
+  rdsmysqlsox57:
+    Description: "RDS Option Group that stores SOx auditing preferences for MySQL 5.7"
+    Value: !Ref rdsmysqlsox57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:mysql:sox:57'
+
+  rdsmysqldod57:
+    Description: "RDS Option Group that stores DoD auditing preferences for MySQL 5.7"
+    Value: !Ref rdsmysqldod57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:mysql:dod:57'
+
+  rdsmysqlgxp57:
+    Description: "RDS Option Group that stores GxP auditing preferences for MySQL 5.7"
+    Value: !Ref rdsmysqlgxp57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:mysql:gxp:57'

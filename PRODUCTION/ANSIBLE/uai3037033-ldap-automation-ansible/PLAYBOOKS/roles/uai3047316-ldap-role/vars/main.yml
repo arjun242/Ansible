@@ -1,0 +1,76 @@
+---
+# vars file for ldap_radius_2fa
+
+dependencies:
+  - authconfig
+  - compat-openldap
+  - oddjob-mkhomedir
+  - openldap-clients
+  - openssh-clients
+  - openssh-server
+  - sssd
+  - sssd-client
+  - ksh
+  - pam_radius
+  - unzip
+ 
+config_dirs:   
+  - /etc/openldap/cacerts
+  - /etc/openldap/certs
+  - /etc/raddb
+  - /etc/security
+  - /etc/sssd
+  - /etc/sysconfig
+  - /lib64/security
+  - /lib/security
+  - /etc/pam.d
+  
+change_permissions:
+  - /etc/openldap/cacerts/GE_trusted_root_issuing_cert.cert
+  - /etc/openldap/cacerts/GE_trusted_root.cert
+  - /etc/openldap/certs/key3.db
+  - /etc/openldap/certs/cert8.db
+  - /etc/openldap/cacerts/2020_trusted_root.cert
+  - /etc/openldap/cacerts/2020_trusted_auth.cert
+  - /etc/sysconfig/authconfig
+  - /lib64/security/pam_radius_auth.so
+  - /etc/openldap/ldap.conf
+  - /etc/nsswitch.conf
+
+default_netgroups: 
+  - "@CA_AWSENTC_NC_PW_CLDOPS_ADMINS"
+web_netgroups: 
+  - "@CA_AWSENTC_NC_PW_WEB_ADMINS"
+  - "@CA_AWSENTC_NC_PW_WEB_SUPPORT"
+app_netgroups:
+
+raddb_servers: 
+  - 10.152.60.21:1812
+  - 10.152.60.22:1812
+ldap_protocol: 
+  '930136447543': 'ldap'
+  '951854665038': 'ldap'
+  'common': 'ldaps'
+
+ldap_uri:
+  '930136447543':
+    - ghisrvdsrwp01.corporate.ge.com:8389
+    - ghisrvdsrwp02.corporate.ge.com:8389
+    - ghisrvdsrwp03.corporate.ge.com:8389
+  '951854665038':
+    - ghisrvdsrwp01.corporate.ge.com:8389
+    - ghisrvdsrwp02.corporate.ge.com:8389
+    - ghisrvdsrwp03.corporate.ge.com:8389
+  'common':
+    - corpldapvipcin.ldap.ds.ge.com:636
+    - corpldapvipalp.ldap.ds.ge.com:636
+    # - corpldapviplon.ldap.ds.ge.com:389
+    # - corpldapvipams.ldap.ds.ge.com:389
+ldap_bind_dn:
+  '930136447543': "cn=CA_AWSENTC_NC_PW_USPreProd,ou=profile,dc=nixauth"
+  '951854665038': "cn=CA_AWSENTC_NC_PW_EUPreProd,ou=profile,dc=nixauth"
+  'common': "cn= gp_aws_cloud_us_vm_admins,ou=profile,o=ge.com"
+ldap_search_base:
+  '930136447543': 'dc=nixauth'
+  '951854665038': 'dc=nixauth'
+  'common': 'o=ge.com'

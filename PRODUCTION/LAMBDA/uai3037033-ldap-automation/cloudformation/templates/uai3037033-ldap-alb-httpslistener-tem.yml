@@ -1,0 +1,155 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to create an ALB listener
+Parameters:
+  PortToUse:
+    Type: Number
+    Description: Port to receive traffic
+  ProtocolToUse:
+    Type: String
+    AllowedValues:
+    - HTTP
+    - HTTPS
+    Default: HTTPS
+    Description: ALB protocol - should be either HTTP or HTTPS.
+  CertificateName:
+    Type: String
+    Description: Certificate needed if protocol is https, provide the certificate name, i.e. star.power.ge.com
+  SchemeToUse:
+    Type: String
+    Description: Define the scheme to use and create base cf template
+    AllowedValues: 
+      - internal
+      - internet-facing
+  issuerToUse: 
+    Type: String
+    Description: Issuer url to use, Include https://
+    Default: https://fssfed.ge.com/fss
+  authEndpointToUse:
+    Type: String
+    Description: authEndpoint url to use, Include https://
+    Default: https://fssfed.ge.com/fss/as/authorization.oauth2
+  tokenEndpointToUse:
+    Type: String
+    Description: tokenEndpoint url to use, Include https://
+    Default: https://fssfed.ge.com/fss/as/token.oauth2
+  userInfoEndpointToUse:
+    Type: String
+    Description: userInfoEndpoint url to use, Include https://
+    Default: https://fssfed.ge.com/fss/idp/userinfo.openid
+  ClientIdToUse:
+    Type: String
+    Description: Client id to uses for authentication
+  SecretToUse:
+    Type: String
+    Description: Client Secret to use
+  scopeToUse:
+    Type: String
+    Description: Scope to use, use '' and place all scopes to use seperated by space
+    Default: 'openid profile'
+  PathPatternToUse:
+    Type: String
+    Description: Context path pattern to use ECS service
+Conditions:
+  HttpsUsed: !Equals [!Ref ProtocolToUse, "HTTPS"]
+  CreateInternalAlb: !Equals [ !Ref SchemeToUse, internal ]
+  CreateExternalAlb: !Equals [ !Ref SchemeToUse, internet-facing ]
+Resources:
+  #Internal ALB which requires cert if https is used, forwards to targetgroupui from port specified
+  TGListenerInternalALB:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: CreateInternalAlb
+    Properties:
+      Certificates: !If [HttpsUsed, [CertificateArn: !Sub '${CertificateName}'], !Ref "AWS::NoValue"]
+      DefaultActions:
+      - Type: 'authenticate-oidc' 
+        AuthenticateOidcConfig:
+          OnUnauthenticatedRequest: 'authenticate'
+          Issuer: !Ref issuerToUse
+          AuthorizationEndpoint: !Ref authEndpointToUse
+          TokenEndpoint: !Ref tokenEndpointToUse
+          UserInfoEndpoint: !Ref userInfoEndpointToUse
+          ClientId: !Ref ClientIdToUse
+          ClientSecret: !Ref SecretToUse
+          Scope: !Ref scopeToUse
+        Order: 1
+      - Type: 'forward'
+        ForwardConfig:
+          TargetGroups:
+          - TargetGroupArn: !ImportValue ldapTargetgroupUi
+        Order: 2
+      LoadBalancerArn: !ImportValue ldapLoadBalancerArn
+      Port: !Ref PortToUse
+      Protocol: !Ref ProtocolToUse
+  
+  #Internet facing ALB which mandates cert and forces https, forwards to targetgroupui from port specified
+  TGListenerInternal80ALB:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: CreateExternalAlb
+    Properties:          
+      DefaultActions:
+      - Type: redirect
+        RedirectConfig:
+          Protocol: "HTTPS"
+          Port: "443"
+          Host: "#{host}"
+          Path: "/#{path}"
+          Query: "#{query}"
+          StatusCode: "HTTP_301"
+        Order: 1
+      LoadBalancerArn: !ImportValue ldapLoadBalancerArn
+      Port: 80
+      Protocol: HTTP
+
+  #nahui rule
+  TGListenerRule1:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+      - Type: 'authenticate-oidc'
+        AuthenticateOidcConfig:
+          OnUnauthenticatedRequest: 'authenticate'
+          Issuer: !Ref issuerToUse
+          AuthorizationEndpoint: !Ref authEndpointToUse
+          TokenEndpoint: !Ref tokenEndpointToUse
+          UserInfoEndpoint: !Ref userInfoEndpointToUse
+          ClientId: !Ref ClientIdToUse
+          ClientSecret: !Ref SecretToUse
+          Scope: !Ref scopeToUse
+        Order: 1
+      - Type: forward
+        TargetGroupArn: !ImportValue ldapTargetgroupBackendnew
+        Order: 2
+      Conditions:
+      - Field: path-pattern
+        Values:
+        - !Sub ${PathPatternToUse}netgroup/*
+      ListenerArn: !Ref TGListenerInternalALB
+      Priority: 1      
+
+  #visnui rule
+  TGListenerRule2:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+      - Type: 'authenticate-oidc'
+        AuthenticateOidcConfig:
+          OnUnauthenticatedRequest: 'authenticate'
+          Issuer: !Ref issuerToUse
+          AuthorizationEndpoint: !Ref authEndpointToUse
+          TokenEndpoint: !Ref tokenEndpointToUse
+          UserInfoEndpoint: !Ref userInfoEndpointToUse
+          ClientId: !Ref ClientIdToUse
+          ClientSecret: !Ref SecretToUse
+          Scope: !Ref scopeToUse
+        Order: 1
+      - Type: forward
+        TargetGroupArn: !ImportValue ldapTargetgroupUi
+        Order: 2
+      Conditions:
+      - Field: path-pattern
+        Values:
+        - !Sub ${PathPatternToUse}frontendui/*
+      ListenerArn: !Ref TGListenerInternalALB
+      Priority: 2
+      

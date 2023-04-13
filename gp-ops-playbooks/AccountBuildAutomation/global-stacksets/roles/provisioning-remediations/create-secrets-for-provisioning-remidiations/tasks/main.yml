@@ -1,0 +1,27 @@
+---
+- name: Including secret vars
+  include_vars: vault-secrets.yml
+
+- name: Add OPALAPISecretName in secrets manager
+  aws_secret:
+    name: '{{ UAI }}-gp-provisioningremediations-prd-OPALAPISecret'
+    state: present
+    secret_type: 'string'
+    region: "{{ aws_region }}"
+    description: "OPALAPI Secrets for Provisioning Remediation framework"
+    secret: "{{ provisioningremediations_prd_OPALAPISecret | to_nice_json }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Add SSOAPISecretName in secrets manager
+  aws_secret:
+    name: '{{ UAI }}-gp-provisioningremediations-prd-SSOAPISecret'
+    state: present
+    secret_type: 'string'
+    region: "{{ aws_region }}"
+    description: "SSOAPI Secret for Provisioning Remediation Framework"
+    secret: "{{ provisioningremediations_prd_SSOAPISecret | to_nice_json }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"

@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A stack for provisioning ecs service..
+
+Parameters:
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed.
+    ConstraintDescription: The UAI must be valid, but specified as 'uai' followed by 7 digits.
+    AllowedPattern: '^uai[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    Default: prd
+    AllowedValues:
+    - nonprd
+    - prd
+  ContainerPort:
+    Type: Number
+    Description: Provide the Targate group Port, Default is 80.
+    Default: 80
+  ServiceName:
+    Type: String
+    Description: Service Name
+  TaskName:
+    Type: String
+    Description: Name of the Task Definition which need to map in targetgroup value should be exactly same from the task defination.
+    Default: appserver-task
+  DesiredCount:
+    Description: How many instances of this task should we run across our cluster?
+    Type: Number
+    Default: 1
+  TaskDefinition:
+    Type: String
+    Description: Arn of the Target Group
+  App:
+    Type: String
+    MaxLength: 20
+    AllowedPattern: "[a-z0-9\\-]*"
+    Description: AppName, keep to 15 characters or less.
+
+Resources:    
+  Service:
+   Type: AWS::ECS::Service
+   Properties: 
+       ServiceName: !Ref ServiceName
+       Cluster: !ImportValue ldapuicluster
+       Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref App
+        - Key: env
+          Value: !Ref Env
+       TaskDefinition:  !Ref TaskDefinition
+       DeploymentConfiguration:
+         MinimumHealthyPercent: 100
+         MaximumPercent: 200
+       DesiredCount: !Ref DesiredCount
+       HealthCheckGracePeriodSeconds: 400
+       LaunchType: FARGATE
+       PropagateTags: SERVICE
+       NetworkConfiguration: 
+         AwsvpcConfiguration:
+           AssignPublicIp: DISABLED
+           Subnets:
+            - !ImportValue app-az1   
+            - !ImportValue app-az2
+           SecurityGroups: 
+             - !ImportValue ldapecsServiceSg
+       LoadBalancers:
+       - ContainerName: !Ref TaskName  # value should be anything or exactly the same from the taskname defined in the Taskdefination
+         ContainerPort: !Ref ContainerPort
+         TargetGroupArn: !ImportValue ldapTargetgroupUi
+    

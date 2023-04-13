@@ -1,0 +1,7 @@
+---
+cwa_url_rhel: "https://s3.amazonaws.com/amazoncloudwatch-agent/redhat/amd64/latest/amazon-cloudwatch-agent.rpm"
+cwa_url_windows: "https://s3.amazonaws.com/amazoncloudwatch-agent/windows/amd64/latest/amazon-cloudwatch-agent.msi"
+cwa_url_ubuntu: "https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb"
+cwa_download_dest: "/tmp"
+win_update: 'no'     #update: 'yes' will update the packages, change it to update: 'no' if there are no updates available (USE LOWERCASE VALUES ONLY)
+linux_update: 'no'     #update: 'yes' will update the packages, change it to update: 'no' if there are no updates available (USE LOWERCASE VALUES ONLY)

@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create EventRule in Spoke Account"
+Parameters:
+  UAI:
+    Type: String
+  AppName:
+    Type: String
+  Env:
+    Type: String
+  EventbusArn:
+    Type: String
+
+Resources:
+  EventRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: !Sub ${UAI}-${AppName}-${Env}-ec2create
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/uai3037033-ldap-eventrule-prd
+      Description: "A CloudWatch Event Rule that detects changes to EC2 Instances and publishes change events to an SQS Queue."
+      State: "ENABLED"
+      Targets:
+        - Arn: !Ref EventbusArn
+          Id: "target-id1"
+      EventPattern:
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "ec2.amazonaws.com"
+          eventName:
+            - "RunInstances"

@@ -1,0 +1,14 @@
+{
+    "Content": "file://mail-config.json", 
+    "Name": "mail-config", 
+    "VersionName": "latest",
+    "DocumentType": "Command",
+    "DocumentFormat": "YAML",
+    "TargetType": "/AWS::EC2",
+    "Tags": [
+        {
+            "Key": "OS",
+            "Value": "Linux" 
+        }
+    ]
+ }

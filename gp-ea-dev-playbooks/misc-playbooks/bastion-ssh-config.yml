@@ -1,0 +1,4 @@
+---
+- hosts: all
+  roles:
+    - bastion-ssh-config

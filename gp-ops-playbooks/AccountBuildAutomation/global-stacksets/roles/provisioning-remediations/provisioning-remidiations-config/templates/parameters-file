@@ -1,0 +1,11 @@
+UAI={{ UAI }}
+AppName=ProvisioningRemediations
+Env=prd
+CommonS3LoggingBucket={{ aws_account_name }}-common-log-bucket
+DLEmail=AWS_ProvisioningRemediations_Pipeline_Alerts@ge.com
+OPALAPISecretName={{ UAI }}-gp-provisioningremediations-prd-OPALAPISecret
+OPALAPISecretRegion={{ aws_region }}
+SSOAPISecretName={{ UAI }}-gp-provisioningremediations-prd-SSOAPISecret
+SSOAPISecretRegion={{ aws_region }}
+SourceEmail=GP.Cloud.Ops@ge.com
+ExtraAlertRecipients=""

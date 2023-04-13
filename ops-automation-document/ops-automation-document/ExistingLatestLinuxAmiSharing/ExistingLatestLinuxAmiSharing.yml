@@ -1,0 +1,73 @@
+description: >-
+  Updates AMI with Linux distribution packages and Amazon software. For
+  details,see
+  https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sysman-ami-walkthrough.html
+schemaVersion: '0.3'
+parameters:
+  InstanceId:
+    type: String
+    description: "(Required) The EC2 Instance ID"
+  InstanceIamRole:
+    type: String
+    default: ec2-ami-instance-profile
+    description: >-
+      (Required) The name of the role that enables Systems Manager (SSM) to
+      manage the instance.
+  AutomationAssumeRole:
+    type: String
+    default: 'arn:aws:iam::325381443140:role/inf/ssm-ami'
+    description: >-
+      (Required) The ARN of the role that allows Automation to perform the
+      actions on your behalf.
+  LatestAMI:
+    type: String
+    default: '{{ssm:/automation/ami/centos7}}'
+    description: >-
+      (Required) Value of the latest AMI that needs to be shared across the accounts.
+  AMISharingRegAccList:
+    type: String
+    default: '{{ssm:/automation/region-account}}'
+    description: region and corresponding accounts where AMI needs to be shared
+  TargetAmiName:
+    type: String
+    default: 'SSMLinuxAmi_from_SourceAMIID_on_{{global:DATE_TIME}}'
+    description: >-
+      (Optional) The name of the new AMI that will be created. Default is a
+      system-generated string including the source AMI id, and the creation time
+      and date.
+mainSteps:
+  - name: sharedAMINewAcc
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: 'Abort'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+      - "{{InstanceId}}"
+      Parameters:
+        commands:
+          - set -e
+          - AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+          - REGION=`echo "$AVAIL_ZONE" | sed 's/[a-z]$//'`
+          - yum install jq -y
+          - list='{{AMISharingRegAccList}}'
+          - regions=`echo "$list" | jq 'keys' | tr -d '[],"\n'`
+          - for reg in $regions 
+          - do
+          - if [ "$reg" != "$REGION" ]
+          - then
+          - copy_ami_id=`aws ec2 copy-image --source-image-id {{LatestAMI}} --source-region "$REGION" --region "$reg" --name "{{TargetAmiName}}" | grep "ImageId" | awk -F" " '{print $NF}' | tr -d '"'`
+          - sleep 500
+          - fi
+          - accounts=`echo "$list" | jq --arg reg "$reg" '.[$reg]' | tr -d '[],"\n'`
+          - for acc in $accounts
+          - do
+          - if [ "$reg" != "$REGION" ]
+          - then
+          - aws ec2 modify-image-attribute --image-id "$copy_ami_id" --region "$reg" --launch-permission "Add=[{UserId=\"$acc\"}]" 2> /dev/null
+          - else
+          - aws ec2 modify-image-attribute --image-id {{LatestAMI}} --region "$reg" --launch-permission "Add=[{UserId=\"$acc\"}]" 2> /dev/null
+          - fi
+          - done
+          - done

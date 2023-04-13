@@ -1,0 +1,2 @@
+source_directory: "/tmp/azure_ansible"
+resource_folder: "github_automations"

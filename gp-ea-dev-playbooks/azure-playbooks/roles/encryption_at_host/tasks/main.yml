@@ -1,0 +1,4 @@
+#The main.yml file executes the imported tasks
+---
+  - name: Encryption at Host for Subscription
+    import_tasks: enable_encryption.yml

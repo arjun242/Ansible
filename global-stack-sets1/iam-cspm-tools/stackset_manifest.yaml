@@ -1,0 +1,10 @@
+custom_resources:
+  - custom_stackset_name: iam-cspm-tools-prisma
+    template_file: templates/iam-cspm-tools-prisma.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: iam-cspm-tools-wiz
+    template_file: templates/iam-cspm-tools-wiz.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

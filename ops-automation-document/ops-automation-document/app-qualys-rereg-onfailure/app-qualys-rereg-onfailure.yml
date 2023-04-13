@@ -1,0 +1,49 @@
+ # History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to check qualys registration to EC2 instances..
+parameters:
+    QualysActivationId:
+      type: String
+      description: qualys activation id
+      default: "{{ssm:/automation/qualys/activationid}}"
+    QualysCustomerId:
+      type: String
+      description: qualys activation id
+      default: "{{ssm:/automation/qualys/customerid}}"
+    BucketName:
+      type: String
+      default: '{{ssm:/automation/ami/bucket}}'
+      description: common bucket
+mainSteps:
+- name: ChkQualysReg
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - function reinstallQualys {
+    - rm -rf /etc/qualys/hostid
+    - yum -y remove qualys-cloud-agent
+    - rm -rf /tmp/qaagents
+    - mkdir -p /tmp/qaagents
+    - cd /tmp/qaagents
+    - aws s3 cp s3://{{BucketName}}/qualys-cloud-agent.x86_64_1.7.1.37.rpm /tmp/qaagents
+    - rpm -ivh qualys-cloud-agent.x86_64_1.7.1.37.rpm
+    - /usr/local/qualys/cloud-agent/bin/qualys-cloud-agent.sh ActivationId="{{QualysActivationId}}" CustomerId="{{QualysCustomerId}}"
+    - rm -rf /tmp/qaagents; }
+    - qualys_reg1=`systemctl status qualys-cloud-agent | grep -w 'code=exited'`
+    - qualys_reg2=`ps -ef | grep 'qualys' | grep -v grep`
+    - qualys_reg3=`systemctl status qualys-cloud-agent  | grep 'Stopped Qualys cloud agent'`
+    - if [[ ! -z "$qualys_reg1" || -z "$qualys_reg2" ]]
+    - then
+    - reinstallQualys
+    - fi
+    - command -v /usr/local/qualys/cloud-agent/bin/qualys-cloud-agent.sh >/dev/null || { echo "not installed"; reinstallQualys; }
+    - sleep 10
+    - if [[ ! -z "$qualys_reg3" ]]
+    - then
+    - systemctl start qualys-cloud-agent
+    - fi

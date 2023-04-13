@@ -1,0 +1,10 @@
+---
+ddb_table_name: uai3037033-ldap-automation-prd
+region: us-east-1
+# sqs_url: https://sqs.us-east-1.amazonaws.com/325381443140/uai3037033-ldap-naapisqs2-prd
+sqs_url: https://vpce-04759bb161ff7809e.sqs.us-east-1.amazonaws.com/325381443140/uai3037033-ldap-naapisqs2-prd
+topic_arn_install: arn:aws:sns:us-east-1:325381443140:uai3037033-ldap-install-confirmation
+topic_arn_rollback: arn:aws:sns:us-east-1:325381443140:uai3037033-ldap-installation-rollback-complete
+topic_arn_custom_net: arn:aws:sns:us-east-1:325381443140:uai3037033-ldap-Custom-Netgroup-Addition-confirmation
+topic_arn_event: arn:aws:sns:us-east-1:325381443140:uai3037033-ldap-event-driven-Netgroup-Addition-confirmation
+s3_bucket: uai3037033-ldap-prd

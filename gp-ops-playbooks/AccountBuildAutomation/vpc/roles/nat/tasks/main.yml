@@ -1,0 +1,44 @@
+---
+- set_stats:
+    data:
+      to_be_deleted:
+        - folder_name: nat
+          repo: cft-infra-templates
+          message: "Ansible is deleting NAT-Gateway"
+          stackNames:
+            - "{{prefix}}EIP-Nat-Gateway"
+
+- name: New folder for NAT-Gateway
+  file:
+    state: directory
+    path: "/tmp/account-automation-folder/nat-gateway/"
+
+- name: Set fact
+  set_fact:
+    natSubnet: "{{prefix}}SnInternetAZ2"
+
+- name: Render CF template
+  template:
+    src: eip-nat-cf.yml
+    dest: "/tmp/account-automation-folder/nat-gateway/"
+
+- name: Create NAT-Gateway stack
+  cloudformation:
+    stack_name: "{{prefix}}EIP-Nat-Gateway"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/nat-gateway/eip-nat-cf.yml"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+
+- name: Render CFT files
+  include_tasks: nat-gateway-render.yml
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_org: "{{org}}"
+    github_enterprise_repo: cft-infra-templates
+    message: "Ansible is creating NAT-Gateway"

@@ -1,0 +1,7 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: standard-patch-windows
+  - name: gp-patching-maintenance-window-role

@@ -1,0 +1,7 @@
+Description: Base Security Groups
+DeployTo: https://github.build.ge.com/gp-ops/gr-accounts-setup
+custom_resources:
+  - custom_stackset_name: gp-base-sg
+    template_file: templates/gp-base-sg.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

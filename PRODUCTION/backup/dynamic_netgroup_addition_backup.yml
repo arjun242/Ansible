@@ -1,0 +1,59 @@
+---
+- hosts: all
+  environment:
+    PATH: "{{ lookup('env', 'PATH') }}: /usr/local/bin/aws"
+  tasks:
+  #Check LDAP installattion status with sssd service
+  - include_vars: static_vars.yml
+  - name: Get Service Status
+    systemd:
+      name: "sssd"
+    register: sssd_service_status
+  #Update CustomNetgroups received from UI to target instance, if LDAP already installed
+  - block:    
+    - name: Update CustomNetgroups received from UI to particular instance, if LDAP already installed
+      blockinfile:
+        dest: /etc/security/access.conf
+        marker: "# {mark} OF CUSTOM_NETGROUPS"
+        block: |
+          #MANUAL ENTRIES WILL BE DELETED, UPON CUSTOM NETGROUPS ADDITION FROM WEB UI
+          {% if netgroup is defined and netgroup|trim and netgroup|length %}
+          {% for item in netgroup.split(',') %}
+          {% set custom_netgroup = item %}          
+          + : {{ custom_netgroup }} : ALL
+          {% else %}
+          {% endfor %}
+          {% endif %}
+    #Fetching all existing netgroups from target instance
+    - name: Getting the pre-existing netgroups 
+      shell: |
+        prefix="+ : "
+        suffix=" : ALL"
+        grep -r '+ : @' /etc/security/access.conf |grep -v '#' | sed -e "s/^$prefix//" -e "s/$suffix$//"
+      register: pre_ex_netgrp
+    #defining pre-existing netgroups, fetched from target instance
+    - name: defining pre-existing netgroups
+      set_fact:
+        exist_netgroups: "{{ pre_ex_netgrp.stdout_lines }}"
+    - name: debug existing netgrps
+      debug: 
+        msg: "{{ exist_netgroups|join(', ')}}"    
+    when: 
+      - sssd_service_status.status.LoadError is not defined
+    ignore_errors: yes
+    become: yes
+  #Update DynamoDb table ExistingNetGroups column with existing netgroups of target instance
+  - name: update dynamodb
+    shell: |
+      aws dynamodb update-item --table-name {{ ddb_table_name }} --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"ExistingNetGroups": {"Value": {"S": "{{ exist_netgroups|join(', ') }}"}}}' --region {{ region }}
+    delegate_to: localhost
+    ignore_errors: yes
+  #Send SNS Notification if installattion successfull
+  - name: Send default notification message via SNS
+    sns:
+      msg: "Custom Netgroup was updated on InstanceID:{{ instance_id }}."
+      subject: "Custom Netgroup Updated !"
+      topic: "{{ topic_arn_custom_net }}"
+      region: "{{ region }}"
+    delegate_to: localhost
+    ignore_errors: true

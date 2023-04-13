@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "A stack for provisioning CognitoUserPool Client"
+
+Parameters:
+  AppName:
+    Type: String
+    MaxLength: 25
+    MinLength: 3
+    Description: Short Name of the application, keep to 15 characters or less
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed.
+    ConstraintDescription: The UAI must be valid, but specified as 'uai' followed by 7 digits.
+    AllowedPattern: "^uai[0-9]*$"
+    MinLength: 10
+    MaxLength: 10
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    AllowedValues:
+      - nonprd
+      - prd
+
+Resources:
+  UserPoolResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      Identifier: !Sub "${UAI}-${AppName}-${Env}"
+      Name: !Sub "${UAI}-${AppName}-${Env}-ResourceServer"
+      Scopes:
+        - ScopeName: "ALL"
+          ScopeDescription: "Permission To Access All the Resources"
+      UserPoolId: !ImportValue ldapuserpoolid
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: UserPoolResourceServer
+    Properties:
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - !Sub "${UAI}-${AppName}-${Env}/ALL"
+      ClientName: !Sub "${UAI}-${AppName}-${Env}-client"
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: true
+      PreventUserExistenceErrors: ENABLED
+      RefreshTokenValidity: 30
+      SupportedIdentityProviders:
+        - COGNITO
+      UserPoolId: !ImportValue ldapuserpoolid
+
+Outputs:
+  ClientId:
+    Description: ClientId
+    Value: !Ref UserPoolClient

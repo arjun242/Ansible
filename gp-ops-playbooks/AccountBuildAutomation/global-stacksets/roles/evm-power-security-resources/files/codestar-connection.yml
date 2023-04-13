@@ -1,0 +1,23 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "AWS CodeStarConnection CFT"
+Parameters:
+  HostArn:
+    Type: String
+    Description: The Amazon Resource Name (ARN) of the host associated with the connection.
+  ConnectionName: 
+    Type: String
+    Description: The name of the connection. Connection names must be unique in an AWS user account.
+
+Resources:
+  CodeStarConnection:
+    Type: AWS::CodeStarConnections::Connection
+    Properties: 
+      ConnectionName: !Ref ConnectionName
+      HostArn: !Ref HostArn
+      ProviderType: GitHubEnterpriseServer
+
+Outputs:
+  CodeStarConnectionArn:
+    Description: "CodeStar Connection ARN for the provider GitHubEnterpriseServer"
+    Value: !Ref CodeStarConnection

@@ -1,0 +1,6 @@
+nacl_name: "test-nacl-5"
+region: "us-east-1"
+vpc_id: "vpc-02c95a3c40349cbf1"
+application_name: "gp-nacl-application"
+app_tag: "gp-cloud-common"
+uai: "uai304730"

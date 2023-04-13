@@ -1,0 +1,6 @@
+---
+# Description: To create export vpc stack for initialization of variables in the CF registry, with details of the new VPC createdm
+# Requirements: IAM Admin role access key, secret key and security token 
+- hosts: localhost
+  roles:
+    - export-vpc

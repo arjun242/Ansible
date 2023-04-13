@@ -1,0 +1,33 @@
+---
+- set_stats:
+    data:
+      to_be_deleted:
+        - folder_name: nacl
+          repo: cft-infra-nacl
+          message: "Ansible is deleting NACLs"
+          stackNames:
+            - "{{prefix}}gp-app-nacl"
+            - "{{prefix}}gp-db-nacl"
+            - "{{prefix}}gp-ep-nacl"
+            - "{{prefix}}gp-igr-nacl"
+            - "{{prefix}}gp-ext-nacl"
+            - "{{prefix}}gp-rb-nacl"
+
+- name: Include app-ext-db-vars file
+  include_vars: nacl-vars.yml
+
+- name: Include directory vars file
+  include_vars: templates-directory.yml
+
+- name: Creating Application Nacl CFT
+  include_tasks: cft-nacl-create.yml
+
+- name: Rendering Application Nacl CFT Templates
+  include_tasks: cft-nacl-template-render.yml
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_repo: cft-infra-nacl
+    message: "Ansible is creating NACLs"

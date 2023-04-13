@@ -1,0 +1,320 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the parameter groups that are neccessary for builds of RDS MS Sql Server instances.
+              It must be created prior to any RDS Instances
+              Last version 06-Dec-2018
+
+ # History:
+  # 06-Dec-2018: F1332.US7332: Updated to separate options and parameters into separate files
+  # 06-Dec-2018: F1332.US7332: No option group possible (AWS limitation). No options selected as standard and AWS dont allow blank options groups template. 
+  # 05-Nov-2018: Updated to include multi-vpc support based on VPCAlias parameter
+  #              Naming convention: https://github.build.ge.com/Cloud/ManagedComponents/blob/master/CFEXPORTS.md
+  # 20-Aug-2018: Add SSL parameter
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss' 
+
+Resources:
+  rdssqlserversedefault14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: DEFAULT parameter group for SQLServer SE-2017 
+      Family: 'sqlserver-se-14.0'
+      Parameters:
+           rds.force_ssl: "1"
+
+  rdssqlservereedefault14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: DEFAULT parameter group for SQLServer EE-2017 
+      Family: 'sqlserver-ee-14.0'
+      Parameters:
+           rds.force_ssl: "1"
+           
+  rdssqlserversesox14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2017 with SOx audit enabled
+      Family: 'sqlserver-se-14.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlservereesox14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2017 with SOx audit enabled
+      Family: 'sqlserver-ee-14.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlserversegxp14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2017 with GxP audit enabled
+      Family: 'sqlserver-se-14.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlservereegxp14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2017 with GxP audit enabled
+      Family: 'sqlserver-ee-14.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+           
+  rdssqlserverseiso14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2017 with ISO audit enabled
+      Family: 'sqlserver-se-14.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+ 
+  rdssqlservereeiso14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2017 with ISO audit enabled
+      Family: 'sqlserver-ee-14.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlserversedod14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2017 with DoD audit enabled
+      Family: 'sqlserver-se-14.0'
+      Parameters:
+           "c2 audit mode": "1"
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlservereedod14:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2017 with DoD audit enabled
+      Family: 'sqlserver-ee-14.0'
+      Parameters:
+           "c2 audit mode": "1"
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlserversedefault13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: DEFAULT parameter group for SQLServer SE-2016
+      Family: 'sqlserver-se-13.0'
+      Parameters:
+           rds.force_ssl: "1"
+
+  rdssqlservereedefault13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: DEFAULT parameter group for SQLServer EE-2016
+      Family: 'sqlserver-ee-13.0'
+      Parameters:
+           rds.force_ssl: "1"
+           
+  rdssqlserversesox13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2016 with SOx audit enabled
+      Family: 'sqlserver-se-13.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlservereesox13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2016 with SOx audit enabled
+      Family: 'sqlserver-ee-13.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlserversegxp13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2016 with GxP audit enabled
+      Family: 'sqlserver-se-13.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlservereegxp13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2016 with GxP audit enabled
+      Family: 'sqlserver-ee-13.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+           
+  rdssqlserverseiso13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2016 with ISO audit enabled
+      Family: 'sqlserver-se-13.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+ 
+  rdssqlservereeiso13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2016 with ISO audit enabled
+      Family: 'sqlserver-ee-13.0'
+      Parameters:
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlserversedod13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer SE-2016 with DoD audit enabled
+      Family: 'sqlserver-se-13.0'
+      Parameters:
+           "c2 audit mode": "1"
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+  rdssqlservereedod13:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: parameter group for SQLServer EE-2016 with DoD audit enabled
+      Family: 'sqlserver-ee-13.0'
+      Parameters:
+           "c2 audit mode": "1"
+           rds.sqlserver_audit: "fedramp_hipaa"
+           rds.force_ssl: "1"
+
+Outputs:
+
+  rdssqlserversedefault14:
+    Description: DEFAULT parameter group for SQLServer SE-2017
+    Value: !Ref rdssqlserversedefault14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:default:14'
+
+  rdssqlservereedefault14:
+    Description: DEFAULT parameter group for SQLServer EE-2017
+    Value: !Ref rdssqlservereedefault14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:default:14'
+
+  rdssqlserversesox14:
+    Description: Parameter group for SQLServer SE-2017 with SOx audit enabled
+    Value: !Ref rdssqlserversesox14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:sox:14'
+
+  rdssqlservereesox14:
+    Description: parameter group for SQLServer EE-2017 with SOx audit enabled
+    Value: !Ref rdssqlservereesox14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:sox:14'
+
+  rdssqlserversedod14:
+    Description: parameter group for SQLServer SE-2017 with DoD audit enabled
+    Value: !Ref rdssqlserversedod14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:dod:14'
+
+  rdssqlservereedod14:
+    Description: parameter group for SQLServer EE-2017 with DoD audit enabled
+    Value: !Ref rdssqlservereedod14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:dod:14'
+
+  rdssqlserversegxp14:
+    Description: parameter group for SQLServer SE-2017 with audit enabled
+    Value: !Ref rdssqlserversegxp14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:gxp:14'
+
+  rdssqlservereegxp14:
+    Description: parameter group for SQLServer EE-2017 with audit enabled
+    Value: !Ref rdssqlservereegxp14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:gxp:14'
+      
+  rdssqlserverseiso14:
+    Description: parameter group for SQLServer SE-2017 with audit enabled
+    Value: !Ref rdssqlserverseiso14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:iso:14'
+
+  rdssqlservereeiso14:
+    Description: parameter group for SQLServer EE-2017 with audit enabled
+    Value: !Ref rdssqlservereeiso14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:iso:14'
+
+  rdssqlserversedefault13:
+    Description: DEFAULT parameter group for SQLServer SE-2016
+    Value: !Ref rdssqlserversedefault13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:default:13'
+
+  rdssqlservereedefault13:
+    Description: DEFAULT parameter group for SQLServer EE-2016
+    Value: !Ref rdssqlservereedefault13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:default:13'
+
+  rdssqlserversesox13:
+    Description: SOx parameter group for SQLServer SE-2016 with audit enabled
+    Value: !Ref rdssqlserversesox13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:sox:13'
+
+  rdssqlservereesox13:
+    Description: SOx parameter group for SQLServer EE-2016 with audit enabled
+    Value: !Ref rdssqlservereesox13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:sox:13'
+
+  rdssqlserversedod13:
+    Description: DoD parameter group for SQLServer SE-2016 with audit enabled
+    Value: !Ref rdssqlserversedod13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:dod:13'
+
+  rdssqlservereedod13:
+    Description: parameter group for SQLServer EE-2016 with audit enabled
+    Value: !Ref rdssqlservereedod13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:dod:13'
+
+  rdssqlserversegxp13:
+    Description: parameter group for SQLServer SE-2016 with audit enabled
+    Value: !Ref rdssqlserversegxp13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:gxp:13'
+
+  rdssqlservereegxp13:
+    Description: parameter group for SQLServer EE-2016 with audit enabled
+    Value: !Ref rdssqlservereegxp13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:gxp:13'
+      
+  rdssqlserverseiso13:
+    Description: parameter group for SQLServer SE-2016 with audit enabled
+    Value: !Ref rdssqlserverseiso13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-se:iso:13'
+
+  rdssqlservereeiso13:
+    Description: parameter group for SQLServer EE-2016 with audit enabled
+    Value: !Ref rdssqlservereeiso13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:sqlserver-ee:iso:13'

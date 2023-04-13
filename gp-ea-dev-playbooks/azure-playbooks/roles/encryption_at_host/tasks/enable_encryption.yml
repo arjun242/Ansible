@@ -1,0 +1,4 @@
+---
+# This Playbook will enable encryption at host for the given subscription
+ - name: Run the enable encryption shell script
+   script: enable_encryption.sh {{ subscription_name }}

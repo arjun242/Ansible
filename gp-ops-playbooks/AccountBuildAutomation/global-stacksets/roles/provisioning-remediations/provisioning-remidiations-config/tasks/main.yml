@@ -1,0 +1,21 @@
+---
+- name: Include vars file
+  include_vars: main.yml
+  
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}"
+
+- name: Copy parameterfile
+  template:
+    src: "parameters-file"
+    dest: "{{source_directory}}/{{resource_folder}}/{{aws_account_id}}({{aws_account_name}})"
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_org: gp-ops
+    github_enterprise_repo: ProvisioningRemediations
+    message: "Ansible is pushing parameter file"

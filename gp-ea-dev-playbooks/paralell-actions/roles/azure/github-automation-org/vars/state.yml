@@ -1,0 +1,12 @@
+## IF YOU WANTED TO ENFORCE CODEOWNER CORRECTION PER CLOUD, BELOW WHERE YOU'D DO IT.
+# codeowners:
+#  aws:
+#   - team_name: SA
+#  azure:
+#   - team_name: EA
+#   - team_name: Operations
+
+codeowners: 
+  - team_name: EA
+  - team_name: Migrations
+  - team_name: Operations

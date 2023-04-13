@@ -1,0 +1,236 @@
+---
+  AWSTemplateFormatVersion: '2010-09-09'
+  Description: Prisma Cloud IAM Role to set read permissions
+
+  Parameters:
+    PrismaCloudRoleName:
+      Type: String
+      Description: 'Provide an role ARN name (Example: PrismaCloudReadOnlyRole)'
+      AllowedPattern: "[-_a-zA-Z0-9]+"
+      Default: PrismaCloudReadOnlyRole
+    ExternalID:
+      Type: String
+      Description: 'Provide an ExternalID (Example: Xoih821ddwf)'
+      MinLength: '1'
+      AllowedPattern: "[a-zA-Z0-9\\=\\,\\.\\@\\:\\/\\-_]*"
+      ConstraintDescription: 'ExternalID must contain alphanumeric characters and only
+        these special characters are allowed =,.@:/-. '
+      Default: 31606e34-6d9c-462a-a91b-583005564ede
+    UAI:
+      Default: uai3047631
+      Type: String
+
+  Resources:
+    PrismaCloudRole:
+      Type: AWS::IAM::Role
+      Properties:
+        ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/SecurityAudit
+        - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+        MaxSessionDuration: 43200
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::188619942792:root
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId:
+                  Ref: ExternalID
+        Policies:
+        - PolicyName: PrismaCloud-IAM-ReadOnly-Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Action:
+              - account:GetAlternateContact
+              - apigateway:GET
+              - acm-pca:ListTags
+              - acm-pca:GetPolicy
+              - acm-pca:ListCertificateAuthorities
+              - airflow:GetEnvironment
+              - airflow:ListEnvironments
+              - appstream:DescribeStacks
+              - appstream:DescribeUsageReportSubscriptions
+              - appstream:DescribeImages
+              - appstream:DescribeFleets
+              - appstream:ListTagsForResource
+              - apprunner:DescribeAutoScalingConfiguration
+              - apprunner:ListAutoScalingConfigurations
+              - apprunner:ListTagsForResource
+              - apprunner:ListServices
+              - apprunner:DescribeCustomDomains
+              - apprunner:DescribeService
+              - appflow:DescribeFlow
+              - appflow:ListFlows
+              - amplify:ListApps
+              - backup:ListBackupVaults
+              - backup:ListTags
+              - backup:GetBackupVaultAccessPolicy
+              - cloud9:ListTagsForResource
+              - cloudwatch:ListTagsForResource
+              - cognito-identity:ListTagsForResource
+              - cognito-identity:DescribeIdentityPool
+              - cognito-idp:ListTagsForResource
+              - codeartifact:ListDomains
+              - codeartifact:DescribeDomain
+              - codeartifact:GetDomainPermissionsPolicy
+              - codeartifact:ListTagsForResource
+              - codeartifact:ListRepositories
+              - codeartifact:DescribeRepository
+              - codeartifact:GetRepositoryPermissionsPolicy
+              - connect:ListInstances
+              - connect:ListInstanceStorageConfigs
+              - connect:ListInstanceAttributes
+              - devops-guru:DescribeServiceIntegration
+              - ds:ListTagsForResource
+              - dynamodb:ListTagsOfResource
+              - ec2:GetEbsEncryptionByDefault
+              - ec2:SearchTransitGatewayRoutes
+              - ecr:DescribeImages
+              - ecr:GetRegistryScanningConfiguration
+              - ecr:GetLifecyclePolicy
+              - ecr:ListTagsForResource
+              - ecr-public:ListTagsForResource
+              - eks:ListTagsForResource
+              - eks:ListFargateProfiles
+              - eks:DescribeFargateProfile
+              - elasticbeanstalk:ListTagsForResource
+              - elasticfilesystem:DescribeTags
+              - elasticfilesystem:DescribeFileSystemPolicy
+              - elasticache:ListTagsForResource
+              - es:ListTags
+              - glacier:GetVaultLock
+              - glacier:ListTagsForVault
+              - glue:GetConnections
+              - glue:GetSecurityConfigurations
+              - grafana:DescribeWorkspace
+              - grafana:DescribeWorkspaceAuthentication
+              - grafana:ListWorkspaces
+              - kafka:ListClusters
+              - kinesisanalytics:ListTagsForResource
+              - kinesisanalytics:DescribeApplication
+              - lambda:GetFunctionUrlConfig
+              - lex:GetBot
+              - lex:GetBots
+              - lex:GetBotVersions
+              - lex:ListTagsForResource
+              - lex:ListBotVersions
+              - lex:ListBots
+              - lex:DescribeBotVersion
+              - lex:DescribeBot
+              - lakeformation:GetDataLakeSettings
+              - logs:GetLogEvents
+              - macie2:GetClassificationExportConfiguration
+              - macie2:GetMacieSession
+              - macie2:GetRevealConfiguration
+              - macie2:GetFindingsPublicationConfiguration
+              - memorydb:DescribeParameters
+              - memorydb:DescribeParameterGroups
+              - memorydb:ListTags
+              - memorydb:DescribeClusters
+              - mq:listBrokers
+              - mq:describeBroker
+              - mediastore:ListTagsForResource
+              - mediastore:GetCorsPolicy
+              - mobiletargeting:GetEmailChannel
+              - mobiletargeting:GetSmsChannel
+              - mobiletargeting:GetApps
+              - ram:GetResourceShares
+              - ssm:GetDocument
+              - ssm:GetParameters
+              - ssm:ListTagsForResource
+              - transcribe:ListLanguageModels
+              - transcribe:ListTagsForResource
+              - elasticmapreduce:ListSecurityConfigurations
+              - elasticmapreduce:GetBlockPublicAccessConfiguration
+              - sns:listSubscriptions
+              - sns:ListTagsForResource
+              - sns:ListPlatformApplications
+              - wafv2:ListResourcesForWebACL
+              - wafv2:ListWebACLs
+              - wafv2:ListTagsForResource
+              - wafv2:GetWebACL
+              - wafv2:GetLoggingConfiguration
+              - waf:GetWebACL
+              - waf:ListTagsForResource
+              - waf:GetLoggingConfiguration
+              - waf-regional:GetLoggingConfiguration
+              - waf-regional:ListResourcesForWebACL
+              - waf-regional:ListTagsForResource
+              - codebuild:BatchGetProjects
+              - s3:DescribeJob
+              - s3:ListJobs
+              - s3:GetJobTagging
+              - ssm:GetInventory
+              - shield:GetSubscriptionState
+              - states:DescribeStateMachine
+              - states:ListTagsForResource
+              - storagegateway:DescribeSMBFileShares
+              - storagegateway:DescribeSMBSettings
+              - translate:GetTerminology
+              - qldb:ListLedgers
+              - qldb:DescribeLedger
+              - qldb:ListTagsForResource
+              Effect: Allow
+              Resource: "*"
+        - PolicyName: PrismaCloud-IAM-ReadOnly-Policy-ElasticBeanstalk
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Sid: RequiredForAwsElasticbeanstalkConfigurationSettingsApiIngestion
+              Action:
+              - s3:GetObject
+              Effect: Allow
+              Resource: arn:aws:s3:::elasticbeanstalk-*/*
+        - PolicyName: PrismaCloud-ReadOnly-Policy-Compute
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:BatchGetImage
+              - ecr:GetAuthorizationToken
+              - ecr:GetDownloadUrlForLayer
+              - ecr:GetLifecyclePolicyPreview
+              - secretsmanager:GetSecretValue
+              - lambda:GetLayerVersion
+              - ssm:GetParameter
+              - securityhub:BatchImportFindings
+              - kms:Decrypt
+              - lambda:GetFunction
+              Effect: Allow
+              Resource: "*"
+        - PolicyName: PrismaCloud-ReadOnly-Compute-Policy-EKS-Audit
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Action:
+              - logs:StartQuery
+              - logs:GetQueryResults
+              Effect: Allow
+              Resource: "*"
+        - PolicyName: PrismaCloud-ReadOnly-Policy-Bridgecrew
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Action:
+              - s3:ListBucket
+              - lambda:GetLayerVersion
+              - lambda:GetEventSourceMapping
+              - lambda:GetFunction
+              - sns:GetSubscriptionAttributes
+              Effect: Allow
+              Resource: "*"
+        RoleName: !Ref PrismaCloudRoleName
+        Path: !Sub /inf/${UAI}/
+
+  Outputs:
+    PrismaCloudARN:
+      Value:
+        Fn::GetAtt:
+        - PrismaCloudRole
+        - Arn
+      Description: Role ARN to configure within PrismaCloud Account Setup

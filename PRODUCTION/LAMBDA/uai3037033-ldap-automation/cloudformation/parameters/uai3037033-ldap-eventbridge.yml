@@ -1,0 +1,6 @@
+UAI: uai3037033
+AppName: ldap
+Env: prd
+DelaySeconds: 0
+QueueName1: evecreateinstance
+QueueName2: evedeleteinstance

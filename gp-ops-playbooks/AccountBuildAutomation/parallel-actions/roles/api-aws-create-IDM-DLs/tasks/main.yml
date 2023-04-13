@@ -1,0 +1,59 @@
+---
+# Create IDM DLs for new AWS accounts
+
+# Create Cld Arch DL
+- name: Create Cloud Arch DL for the account
+  uri:
+    url: "{{ api_url_create_DL }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 200
+    timeout: 30
+    headers:
+      Authorization: "Bearer {{ oauth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: "{{ lookup('template','cldArchDL.j2') }}"
+  register: cldArchDL_response
+
+# Create SecOps DL
+- name: Create SecOps DL for security team
+  uri:
+    url: "{{ api_url_create_DL }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 200
+    timeout: 30
+    headers:
+      Authorization: "Bearer {{ oauth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: "{{ lookup('template','secOpsDL.j2') }}"
+  register: secOpsDL_response
+
+# Create ReadOnly DL
+- name: Create ReadOnly DL for the account
+  uri:
+    url: "{{ api_url_create_DL }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 200
+    timeout: 30
+    headers:
+      Authorization: "Bearer {{ oauth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: "{{ lookup('template','readonlyfedDL.j2') }}"
+  register: readonlyfedDL_response

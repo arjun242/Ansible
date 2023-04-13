@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Federated role for members of secdevops team."
+
+Resources:
+  SecopsRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "bu-pw-secops-fed"
+      Path: "/hq/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa-extended"
+            Action:
+              - sts:AssumeRoleWithSAML
+          - Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::523084324983:role/hq/bu-pw-secops-xaccount-fed
+            Action: sts:AssumeRole
+            Condition:
+              Bool:
+                aws:MultiFactorAuthPresent: "False"
+      ManagedPolicyArns:
+        - !Sub "arn:aws:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+        - "arn:aws:iam::aws:policy/SecurityAudit"
+
+  SecopsPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "bu-pw-secops-fed-policy"
+      Roles:
+        - !Ref SecopsRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "stsDecode"
+            Effect: "Allow"
+            Action:
+              - "sts:DecodeAuthorizationMessage"
+            Resource: "*"
+          - Sid: "ConfigFullAccess"
+            Effect: "Allow"
+            Resource: "*"
+            Action:
+              - config:*
+          - Sid: "S3TaggingUAIConstrained"
+            Effect: "Allow"
+            Action:
+              - "s3:PutBucketTagging"
+            Resource:
+              - "*"
+            Condition:
+              ForAllValues:StringEquals:
+                aws:TagKeys:
+                  - uai
+                  - UAI
+          - Sid: "S3EncryptionUnconstrained"
+            Effect: "Allow"
+            Action:
+              - "s3:PutEncryptionConfiguration"
+            Resource:
+              - "*"
+          - Sid: "S3ListObjects"
+            Effect: "Allow"
+            Action:
+              - "s3:ListBucket"
+              - "s3:GetStorageLensConfiguration"
+              - "s3:GetStorageLensDashboard"
+            Resource:
+              - "*"
+          - Sid: "ImpervaELBUnconstrained"
+            Effect: "Allow"
+            Action:
+              - "elasticloadbalancing:DescribeLoadBalancers"
+              - "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer" # Classic LBs
+              - "elasticloadbalancing:SetSecurityGroups" #LBs V2
+            Resource:
+              - "*"
+          # Required for fixing Imperva WAF vulnerability
+          - Sid: "ImpervaSGUnconstrained"
+            Effect: "Allow"
+            Action:
+              - "ec2:AuthorizeSecurityGroupEgress"
+              - "ec2:AuthorizeSecurityGroupIngress"
+              - "ec2:RevokeSecurityGroupEgress"
+              - "ec2:RevokeSecurityGroupIngress"
+            Resource:
+              - "*"
+          # Additional Read Permissions for Glue
+          - Sid: "GlueReadOnly"
+            Effect: "Allow"
+            Action:
+              - "glue:GetConnection*"
+              - "glue:GetCrawler*"
+              - "glue:GetResourcePolic*"
+              - "glue:GetDevEndpoint*"
+              - "glue:GetSecurityConfiguration*"
+              - "glue:GetTags"
+              - "glue:List*"
+            Resource:
+              - "*"
+          # Additional Read Permissions for AWS WAF
+          - Sid: "WafReadOnly"
+            Effect: "Allow"
+            Action:
+              - "waf-regional:Get*"
+              - "waf-regional:List*"
+              - "waf:Get*"
+              - "waf:List*"
+              - "wafv2:Check*"
+              - "wafv2:Describe*"
+              - "wafv2:Get*"
+              - "wafv2:List*"
+            Resource:
+              - "*"
+          # Read Permissions for kendra
+          - Sid: "KendraReadOnly"
+            Effect: "Allow"
+            Action:
+              - "kendra:Describe*"
+              - "kendra:List*"
+              - "kendra:Get*"
+              - "kendra:BatchGet*"
+            Resource:
+              - "*"
+          # Permission to open suport tickets
+          - Sid: "SupportUnconstrained"
+            Effect: "Allow"
+            Action:
+              - "support:*"
+            Resource:
+              - "*"

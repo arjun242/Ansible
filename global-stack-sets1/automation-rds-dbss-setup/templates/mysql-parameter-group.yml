@@ -1,0 +1,182 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the option groups (and default parameter groups) that are neccessary for builds of RDS instances.
+              It must be created prior to any RDS Instances
+              Last version 31-Dec-2018
+
+ # History:
+  # 31-Dec-2018: Updated Versions
+  # 06-Dec-2018: F1332.US7172: No option group possible (AWS limitation)
+  # 04-Dec-2018: F1332.US7172: Updated to separate options and parameters into separate files
+  # 12-Nov-2018: F1322.US7175: Updated to include multi-vpc support based on VPCAlias parameter
+  # 17-Sep-2018: Updated versions
+  # 20-Aug-2018: Add SSL parameter
+  # 26-Jul-2018: Add default AWS::RDS::DBParameterGroup for PostgreSQL 9.6.8-R1 and 10.3-R1
+  # 29th May 2020 - Added VPC ALIAS to parameter and exported the same
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+    
+Resources:
+  rdsmysqldefaultparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql default parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+
+  rdsmysqlisoparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql ISO parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        general_log: "1"
+
+  rdsmysqlsoxparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql SOX parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        general_log: "1"
+
+  rdsmysqldodparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql DOD parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+
+  rdsmysqlgxpparamgroup57:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql GXP parameter group with slow query log enabled and Event scheduler enabled 
+      Family: 'mysql5.7'
+      Parameters:
+        event_scheduler: "ON"
+        slow_query_log: "1"
+
+  rdsmysqldefaultparamgroup80:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql default parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit.
+      Family: 'mysql8.0'
+      Parameters:
+        init_connect: "SET NAMES utf8"
+        event_scheduler: "ON"
+        slow_query_log: "1"
+
+  rdsmysqlisoparamgroup80:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql ISO parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit.
+      Family: 'mysql8.0'
+      Parameters:
+        init_connect: "SET NAMES utf8"
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        general_log: "1"
+
+  rdsmysqlsoxparamgroup80:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql SOX parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit.
+      Family: 'mysql8.0'
+      Parameters:
+        init_connect: "SET NAMES utf8"
+        event_scheduler: "ON"
+        slow_query_log: "1"
+        general_log: "1"
+
+  rdsmysqldodparamgroup80:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql DOD parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit.
+      Family: 'mysql8.0'
+      Parameters:
+        init_connect: "SET NAMES utf8"
+        event_scheduler: "ON"
+        slow_query_log: "1"
+
+  rdsmysqlgxpparamgroup80:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: mysql GXP parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit.
+      Family: 'mysql8.0'
+      Parameters:
+        init_connect: "SET NAMES utf8"
+        event_scheduler: "ON"
+        slow_query_log: "1"
+
+Outputs:
+  rdsmysqldefaultparamgroup57:
+    Description: "mysql default parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsmysqldefaultparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:default:57'
+      
+  rdsmysqlisoparamgroup57:
+    Description: "mysql ISO parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsmysqlisoparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:iso:57'
+      
+  rdsmysqlsoxparamgroup57:
+    Description: "mysql SOX parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsmysqlsoxparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:sox:57'
+      
+  rdsmysqldodparamgroup57:
+    Description: "mysql DOD parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsmysqldodparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:dod:57'
+     
+  rdsmysqlgxpparamgroup57:
+    Description: "mysql gxp parameter group with slow query log enabled and Event scheduler enabled "
+    Value: !Ref rdsmysqlgxpparamgroup57
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:gxp:57'
+      
+  rdsmysqldefaultparamgroup80:
+    Description: "mysql default parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit."
+    Value: !Ref rdsmysqldefaultparamgroup80
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:default:80'
+      
+  rdsmysqlisoparamgroup80:
+    Description: "mysql default parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit."
+    Value: !Ref rdsmysqlisoparamgroup80
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:iso:80'
+      
+  rdsmysqlsoxparamgroup80:
+    Description: "mysql default parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit."
+    Value: !Ref rdsmysqlsoxparamgroup80
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:sox:80'
+      
+  rdsmysqldodparamgroup80:
+    Description: " mysql default parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit."
+    Value: !Ref rdsmysqldodparamgroup80
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:dod:80'
+     
+  rdsmysqlgxpparamgroup80:
+    Description: " mysql default parameter group with slow query log enabled and Event scheduler enabled , added general_log because it does not have audit. "
+    Value: !Ref rdsmysqlgxpparamgroup80
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:mysql:gxp:80'

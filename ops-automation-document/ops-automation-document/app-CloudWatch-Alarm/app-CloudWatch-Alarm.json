@@ -1,0 +1,11 @@
+{
+    "Content": "file://app-CloudWatch-Alarm.json", 
+    "Name": "app-CloudWatch-Alarm", 
+    "VersionName": "latest",
+    "DocumentType": "Command",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

@@ -1,0 +1,32 @@
+[{
+  "ParameterKey": "PatchLogsBucket",
+  "ParameterValue": "gp-us-east-ops-mw-patch-logs"
+},
+{
+  "ParameterKey": "ServiceRole",
+  "ParameterValue": "arn:aws:iam::325381443140:role/inf/ssm-maintenance-window-role"
+},
+{
+  "ParameterKey": "SnsTopic",
+  "ParameterValue": "GPCloudOpsNotifications"
+},
+{
+  "ParameterKey": "UAI",
+  "ParameterValue": "uai3026350"
+},
+{
+  "ParameterKey": "AppName",
+  "ParameterValue": "gp-ops-patching"
+},
+{
+  "ParameterKey": "Encrypted",
+  "ParameterValue": "True"
+},
+{
+  "ParameterKey": "AWSAccountName",
+  "ParameterValue": "gp-ops"
+},
+{
+  "ParameterKey": "AppInstance",
+  "ParameterValue": "app"
+}]

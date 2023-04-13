@@ -1,0 +1,11 @@
+{
+    "Content": "file://ssm-sessionshell.yml",
+    "Name": "ssm-sessionshell",
+    "VersionName": "1.0",
+    "DocumentType": "Session",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}] 
+ }

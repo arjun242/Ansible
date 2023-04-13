@@ -1,0 +1,26 @@
+description: executes the document to update the latest ami.
+schemaVersion: '0.3'
+
+parameters:
+  InstanceId:
+    type: String
+    description: "(Required) The EC2 Instance ID"
+
+mainSteps:
+  - name: LatestAMI
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: Abort
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+      - "{{InstanceId}}"
+      Parameters:
+        commands:
+          - AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+          - REGION=`echo "$AVAIL_ZONE" | sed 's/[a-z]$//'`
+          - winAMI=`aws ec2 describe-images --owners '325381443140' --filters 'Name=name,Values=SSMWindowsAmi*' --query 'sort_by(Images, &CreationDate)[-1].[ImageId]' --output 'text' --region "$REGION"`
+          - aws ssm put-parameter --name "/automation/windows/ami" --type "String" --value "$winAMI" --overwrite --region "$REGION"
+          - lnxAMI=`aws ec2 describe-images --owners '325381443140' --filters 'Name=name,Values=SSMLinuxAmi*' --query 'sort_by(Images, &CreationDate)[-1].[ImageId]' --output 'text' --region "$REGION"`
+          - aws ssm put-parameter --name "/automation/linx/ami" --type "String" --value "$lnxAMI" --overwrite --region "$REGION"

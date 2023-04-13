@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'A stack for provisioning TG for ECS services'
+
+Parameters:
+  UAI:
+    Type: String
+  AppName:
+    Type: String
+  Env:
+    Type: String
+    AllowedValues:
+      - nonprd
+      - prd
+  TargetGroupProtocol:
+    Type: String
+    AllowedValues:
+      - HTTP
+      - HTTPS
+    Default: HTTP
+  TargetGroupPort:
+    Type: Number
+    Description: 'Provide the Targate group Port, Default is 80.'
+    Default: 5000
+  HealthCheckPath:
+    Type: String
+    Description: Path that ALB pings for health check requests 
+    
+Resources:
+  TargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: !Sub '${UAI}-${AppName}-${Env}-backend'
+      TargetType: ip
+      VpcId: !ImportValue "vpcid"
+      Protocol: !Ref TargetGroupProtocol
+      Port: !Ref TargetGroupPort
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200-399
+      Tags:
+        - Key: uai
+          Value:
+            Ref: UAI
+        - Key: app
+          Value:
+            Ref: AppName
+        - Key: env
+          Value:
+            Ref: Env
+
+Outputs:
+  Targetgrouparn:
+    Description: A reference to the created Targetgroup
+    Value: !Ref TargetGroup
+    Export:
+      Name: ldapTargetgroupBackendnew

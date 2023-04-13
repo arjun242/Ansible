@@ -1,0 +1,43 @@
+custom_resources:
+  - name: iam-ssm-execution-user
+    custom_stackset_name: iam-ssm-execution-user
+    description: iam-ssm-execution-user setup
+    template_file: templates/iam-ssm-execution-user.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+    
+  - name: iam-ssm-execution-role
+    custom_stackset_name: iam-ssm-execution-role
+    description: iam-ssm-execution-role setup
+    template_file: templates/iam-ssm-execution-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw
+        regions:
+          - eu-west-1
+      - account: pwr-sharedhr
+        regions:
+          - us-east-1
+      - account: pwr-power-services
+        regions:
+          - us-east-1

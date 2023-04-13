@@ -1,0 +1,42 @@
+---
+- hosts: all
+  tasks:
+    - name: gather ansible service facts
+      service_facts:
+
+    - name: Trigger the splunk role
+      include_role:
+        name: splunk
+      when: (ansible_facts.services['SplunkForwarder.service'].state == "stopped") or
+            (ansible_facts.services['SplunkForwarder.service'].state == "inactive") or
+            (ansible_facts.services['SplunkForwarder.service'].state == "unknown") or
+            (not SplunkForwarder)
+      register: splunk_result
+
+    - name: Trigger the crowdStrike role
+      include_role:
+        name: crowdstrike
+      when: (ansible_facts.services['falcon-sensor.service'].state == "stopped") or
+            (ansible_facts.services['falcon-sensor.service'].state == "inactive") or
+            (ansible_facts.services['falcon-sensor.service'].state == "unknown")
+      register: crowd_result
+
+    - name: Trigger the qualys role
+      include_role:
+        name: qualys
+      when: (ansible_facts.services['qualys-cloud-agent.service'].state == "stopped") or
+            (ansible_facts.services['qualys-cloud-agent.service'].state == "inactive") or
+            (ansible_facts.services['qualys-cloud-agent.service'].state == "unknown")
+      register: qualys_result  
+      
+    - debug:
+        msg: "splunk is already installed and running"
+      when: splunk_result is skipped
+      
+    - debug:
+        msg: "qualys is already installed and running"
+      when: qualys_result is skipped
+
+    - debug:
+        msg: "crowd strike is already installed and running"
+      when: crowd_result is skipped

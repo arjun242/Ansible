@@ -1,0 +1,4 @@
+---
+- hosts: localhost
+  roles:
+    - cloud-agnostic/api-get-oauth2-token

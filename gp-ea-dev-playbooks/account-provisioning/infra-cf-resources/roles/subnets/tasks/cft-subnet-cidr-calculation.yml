@@ -1,0 +1,72 @@
+---
+# - name: Setting facts
+#   set_fact:
+#     CIDRNumber32: "27"
+#     CIDRNumber64: "26"
+#     CIDRNumber128: "25"
+#     CIDRNumber256: "24"
+
+# - name: Setting CIDRNumber as facts
+#   set_fact: {"{{item.name}}": "{% if item.varName == '32' %}{{CIDRNumber32}}{% elif item.varName == '64' %}{{CIDRNumber64}}{% elif item.varName == '128' %}{{CIDRNumber128}}{% elif item.varName == '256' %}{{CIDRNumber256}}{% endif %}"}
+#   loop:
+#     - { name: "appSubnetCIDRNumber", varName: "{{appSubnetIPCount}}"}
+#     - { name: "extSubnetCIDRNumber", varName: "{{extSubnetIPCount}}"}
+#     - { name: "rbSubnetCIDRNumber", varName: "{{rbSubnetIPCount}}"}
+#     - { name: "dbSubnetCIDRNumber", varName: "{{dbSubnetIPCount}}"}
+#     - { name: "epSubnetCIDRNumber", varName: "{{epSubnetIPCount}}"}
+#     - { name: "igrSubnetCIDRNumber", varName: "{{igrSubnetIPCount}}"}
+    
+# - name: Use custom filter to find CIDR blocks
+#   set_fact:
+#     cidr_blocks: "{{ defaultSubnetCIDRs | findSubnetsFilter(vpcCIDR,appSubnetCIDRNumber, dbSubnetCIDRNumber,epSubnetCIDRNumber,extSubnetCIDRNumber, rbSubnetCIDRNumber, igrSubnetCIDRNumber) }}"
+
+- name: Split AppSubnet CIDR
+  set_fact:
+    appAz1Subnet: "{{ appSubnetCIDR | ipsubnet(to_split,0)}}"
+    appAz2Subnet: "{{ appSubnetCIDR | ipsubnet(to_split,1)}}"
+  vars:
+    to_split: "{{ appSubnetCIDR | ipaddr('prefix')|int + 1 }}"
+
+- name: Split DBSubnet CIDR
+  set_fact:
+    dbSubnet1: "{{ dbSubnetCIDR | ipsubnet(to_split,0)}}"
+    dbSubnet2: "{{ dbSubnetCIDR | ipsubnet(to_split,1)}}"
+  vars:
+    to_split: "{{ dbSubnetCIDR | ipaddr('prefix') |int + 1 }}"
+
+- name: Split EP Subnet CIDR
+  set_fact:
+    epSubnet1: "{{ epSubnetCIDR | ipsubnet(to_split,0)}}"
+    epSubnet2: "{{ epSubnetCIDR | ipsubnet(to_split,1)}}"
+  vars:
+    to_split: "{{ epSubnetCIDR | ipaddr('prefix') |int + 1 }}"
+
+- name: Split EXTSubnet and RBSubnet, if required
+  block:
+    - name: Split EXTSubnet CIDR
+      set_fact:
+        extSubnet1: "{{ extSubnetCIDR | ipsubnet(to_split,0)}}"
+        extSubnet2: "{{ extSubnetCIDR | ipsubnet(to_split,1)}}"
+      vars:
+        to_split: "{{ extSubnetCIDR | ipaddr('prefix') |int + 1 }}"
+    
+    - name: Split RBSubnet CIDR
+      set_fact:
+        rbSubnet1: "{{ rbSubnetCIDR | ipsubnet(to_split,0)}}"
+        rbSubnet2: "{{ rbSubnetCIDR | ipsubnet(to_split,1)}}"
+      vars:
+        to_split: "{{ rbSubnetCIDR | ipaddr('prefix') |int + 1 }}"
+  when: lookup('vars', 'extSubnetCIDR') != "NA" and lookup('vars','rbSubnetCIDR') != "NA"
+
+- name: Split IGRSUbnet, if required
+  block:
+    - name: Split IGRSubnet CIDR
+      set_fact:
+        igrSubnet1: "{{ igrSubnetCIDR | ipsubnet(to_split,0)}}"
+        igrSubnet2: "{{ igrSubnetCIDR | ipsubnet(to_split,1)}}"
+      vars:
+        to_split: "{{ igrSubnetCIDR | ipaddr('prefix') |int + 1 }}"
+  when: igrSubnetCIDR != "NA"
+
+      
+        

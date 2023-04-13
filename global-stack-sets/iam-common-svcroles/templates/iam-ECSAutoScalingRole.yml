@@ -1,0 +1,26 @@
+---
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation Template for creating common/ECSAutoScalingRole
+
+Resources:
+  ECSAutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'ECSAutoScalingRole'
+      Path: !Sub '/app/common/'
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs.application-autoscaling.amazonaws.com
+                - application-autoscaling.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
+Outputs:
+  ECSAutoScalingRoleARN:
+    Value: !GetAtt ECSAutoScalingRole.Arn
+    Export:
+      Name: "common:ECSAutoScalingRoleArn"

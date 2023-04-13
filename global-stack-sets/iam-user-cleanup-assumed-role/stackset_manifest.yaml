@@ -1,0 +1,54 @@
+custom_resources:
+  - name: iam-user-cleanup-assumed-role
+    custom_stackset_name: iam-user-cleanup-assumed-role
+    description: Creates the assumed role for iam user clean-up in each account
+    template_file: templates/iam-user-cleanup-assumed-role.yaml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change
+    deploy_to:  # List of AWS accounts Stack Instances as of 09/16/2020.
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw
+        regions:
+          - eu-west-1
+      - account: gp-aws4-b
+        regions:
+          - us-east-1
+      - account: gp-aws5-d
+        regions:
+          - us-east-1
+      - account: gp-us-east-gr
+        regions:
+          - us-east-1
+      - account: pwr-sharedhr
+        regions:
+          - us-east-1      

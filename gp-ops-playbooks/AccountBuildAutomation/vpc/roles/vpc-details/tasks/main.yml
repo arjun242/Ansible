@@ -1,0 +1,41 @@
+---
+
+- name: Get VPC details
+  ec2_vpc_net_info:
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+    region: "{{ aws_region }}"
+  register: vpc_info
+
+- name: Get subnet details
+  ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{%if vpc_info.vpcs[0].is_default == false %}{{vpc_info.vpcs[0].vpc_id}}{%elif vpc_info.vpcs[1].is_default == false %}{{vpc_info.vpcs[1].vpc_id}}{% endif %}"
+      tag:Builder: "Terraform"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+    region: "{{ aws_region }}"
+  register: default_Subnets
+
+- name: Set vpcCIDR
+  set_stats:
+    data:
+      vpcCIDR: "{%if vpc_info.vpcs[0].is_default == false %}{{vpc_info.vpcs[0].cidr_block}}{%elif vpc_info.vpcs[1].is_default == false %}{{vpc_info.vpcs[1].cidr_block}}{% endif %}"
+  register: vpcCIDR
+
+- name: Create default subnets list
+  set_fact:
+    defaultSubnetsList: "{% set defaultSubnetsList = [] %}{% for subnetCIDR in default_Subnets.subnets %}{{ defaultSubnetsList.append( subnetCIDR.cidr_block ) }}{% endfor %}{{ defaultSubnetsList | addQuotes | join(',') }}"
+
+- name: Set default subnets
+  set_stats:
+    data: 
+      defaultSubnets: "{{ '[' + defaultSubnetsList + ']' }}"
+
+- name: Set account-name and account-id globally
+  set_stats:
+    data:
+      aws_account_name: "{%if vpc_info.vpcs[0].is_default == false %}{{vpc_info.vpcs[0].tags.Name}}{%elif vpc_info.vpcs[1].is_default == false %}{{vpc_info.vpcs[1].tags.Name}}{% endif %}"
+      aws_account_id: "{%if vpc_info.vpcs[0].is_default == false %}{{vpc_info.vpcs[0].owner_id}}{%elif vpc_info.vpcs[1].is_default == false %}{{vpc_info.vpcs[1].owner_id}}{% endif %}"

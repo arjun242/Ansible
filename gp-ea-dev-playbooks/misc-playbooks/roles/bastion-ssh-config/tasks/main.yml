@@ -1,0 +1,59 @@
+- name: Creating a directory to download keys package in master node
+  file:
+    path: "{{ S3DownloadDir }}"
+    state: directory
+  delegate_to: localhost
+
+- name: Create temp storage directory in host machine
+  become: yes
+  file:
+    path: "{{ TempStoreDirectory }}"
+    state: directory
+
+- name: Download Private Key to Tower
+  aws_s3:
+    bucket: "{{ BucketName }}"
+    object: "{{ PrivateObjectDir }}"
+    dest: "{{ S3DownloadDir }}/{{PrivateKeyFileName}}"
+    mode: get
+    region: "{{ BucketRegion }}"
+    overwrite: different
+  delegate_to: localhost
+
+- name: Download Public Key to Tower
+  aws_s3:
+    bucket: "{{ BucketName }}"
+    object: "{{ PublicObjectDir }}"
+    dest: "{{ S3DownloadDir }}/{{PublicKeyFileName}}"
+    mode: get
+    region: "{{ BucketRegion }}"
+    overwrite: different
+  delegate_to: localhost
+
+- name: Copy downloaded Private Key from Master node to Host machine
+  become: yes
+  copy:
+    src: "{{ S3DownloadDir }}/{{ PrivateKeyFileName }}"
+    dest: "{{ TempStoreDirectory }}/{{ PrivateKeyFileName }}"
+
+- name: Copy downloaded Public Key from Master node to Host machine
+  become: yes
+  copy:
+    src: "{{ S3DownloadDir }}/{{ PublicKeyFileName }}"
+    dest: "{{ TempStoreDirectory }}/{{ PublicKeyFileName }}"
+
+- name: Copy downloaded Private Key to ssh directory
+  become: yes
+  copy:
+    remote_src: yes
+    src: "{{ TempStoreDirectory }}/{{ PrivateKeyFileName }}"
+    dest: "{{ SSHDirectory }}/{{ PrivateKeyFileName }}"
+
+- name: Copy downloaded Public Key to ssh directory
+  become: yes
+  copy:
+    remote_src: yes
+    src: "{{ TempStoreDirectory }}/{{ PublicKeyFileName }}"
+    dest: "{{ SSHDirectory }}/{{ PublicKeyFileName }}"
+
+

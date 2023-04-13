@@ -1,0 +1,162 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Used for Creating Service roles with custom Tempaltes.  Lambda ARN is exported as ExecutionRoleBuilder"
+Parameters:
+  RoleName:
+    Type: String
+    Default: "execution-role-builder-lambda"
+
+  RolePath:
+    Type: String
+    Default: "/inf/"
+
+  ModuleName:
+    Type: String
+    Default: "index"
+
+  LambdaName:
+    Description: Lambda Name
+    Type: String
+    Default: "cf-macro-execution-role-builder"
+
+  LambdaCodeS3Bucket:
+    Description: S3 bucket Name of lambda function
+    Type: String
+    Default: "gp-us-east-ops-automation-common-artifacts"
+
+  LambdaCodeZipKey:
+    Description: S3 bucket lambda function object zip key
+    Type: String
+    Default: "lambda/executionrolebuilder.zip"
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+        RoleName: !Ref RoleName
+        Path: !Ref RolePath
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+        Policies:
+          - PolicyName: !Sub ${RoleName}
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+
+                - Sid: cloudformationAccess
+                  Effect: Allow
+                  Action: cloudformation:*
+                  Resource: "*"
+
+                - Sid: CloudWatchPermissions
+                  Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - logs:DescribeLogGroups
+                    - logs:CreateExportTask
+                    - logs:DescribeExportTasks
+                  Resource: "*"
+
+                - Sid: Allows3Access
+                  Effect: Allow
+                  Action:
+                    - s3:Get*
+                    - s3:List*
+                  Resource: "*"
+
+                - Sid: AllowToDeployToVPC
+                  Effect: Allow
+                  Action:
+                    - ec2:CreateNetworkInterface
+                    - ec2:DescribeNetworkInterfaces
+                    - ec2:DetachNetworkInterface
+                    - ec2:DeleteNetworkInterface
+                  Resource: "*"
+
+                - Sid: Ec2CreateNetworkInterfacePermission
+                  Effect: Allow
+                  Resource:
+                    - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+                  Action:
+                    - ec2:CreateNetworkInterfacePermission
+                  Condition:
+                    StringEquals:
+                      ec2:AuthorizedService: lambda.amazonaws.com
+
+  LambdaFunction: 
+    DependsOn:
+      - LambdaRole
+      - LambdaLogGroup
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: !Ref LambdaName
+      Description: "Custom CloudFormation resource for creating aws service roles"
+      Handler: !Sub "${ModuleName}.handler"
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: 'python3.7'
+      Code: 
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeZipKey
+      MemorySize: 128 
+      Timeout: 500
+      Tags:
+      - Key: Name
+        Value: !Ref LambdaName
+      # VpcConfig:
+      #   SecurityGroupIds:
+      #   - !GetAtt LambdaSecurityGroup.GroupId
+      #   SubnetIds:
+      #   - !ImportValue app-az1
+      #   - !ImportValue app-az2
+
+  LambdaLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${LambdaName}'
+      RetentionInDays: 7
+
+  CFMacro:
+    DependsOn:
+      - LambdaFunction
+    Type: AWS::CloudFormation::Macro 
+    Properties:
+      Name: OpsExecutionRoleBuilder 
+      FunctionName: !GetAtt 'LambdaFunction.Arn'
+
+  InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt 'LambdaFunction.Arn'
+      Action: lambda:InvokeFunction
+      Principal: cloudformation.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+
+  # LambdaSecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupDescription: !Sub 'SG for Lambda Function ${LambdaName}'
+  #     GroupName: !Sub "${LambdaName}-lambda-SG"
+  #     VpcId: !ImportValue vpcid
+  #     SecurityGroupEgress:
+  #       - IpProtocol: -1
+  #         CidrIp: 0.0.0.0/0
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub "${LambdaName}-lambda-SG"
+
+Outputs:
+  LambdaFunctionArn:
+    Description: "Resource ARN of the Lambda function"
+    Value: !GetAtt 'LambdaFunction.Arn'
+    Export:
+        Name: OpsExecutionRoleBuilderArn
+  LambdaRoleARN:
+    Value: !GetAtt LambdaRole.Arn
+    Description: "ARN for the lambda svc role"

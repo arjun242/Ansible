@@ -1,0 +1,108 @@
+stack_defaults:
+    tags:
+      uai: uai3037033
+      appname: ldap
+      env: prd
+  
+stacks:
+  us-east-1:
+    uai3037033-ldap-kmskey:
+      template: uai3037033-ldap-kmskey-tem.yml
+
+    uai3037033-ldap-dynamodb:
+      template: uai3037033-ldap-dynamodb-tem.yml
+
+    uai3037033-ldap-s3:
+      template: uai3037033-ldap-s3-tem.yml
+
+    uai3037033-ldap-naapi-sqs1:
+      template: uai3037033-ldap-naapi-sqs1-tem.yml
+      
+    uai3037033-ldap-naapi-sqs2:
+      template: uai3037033-ldap-naapi-sqs2-tem.yml
+
+    uai3037033-ldap-custnetgroup-sqs:
+      template: uai3037033-ldap-custnetgroup-sqs-tem.yml
+
+    uai3037033-ldap-eveec2create-sqs:
+      template: uai3037033-ldap-eveec2create-sqs-tem.yml
+      
+    uai3037033-ldap-eveec2delete-sqs:
+      template: uai3037033-ldap-eveec2delete-sqs-tem.yml   
+
+    uai3037033-ldap-sns-naapi:
+      template: uai3037033-ldap-sns-naapi-tem.yml
+
+    uai3037033-ldap-sns-custnetgroup:
+      template: uai3037033-ldap-sns-custnetgroup-tem.yml
+
+    uai3037033-ldap-sns-rollback:
+      template: uai3037033-ldap-sns-rollback-tem.yml
+
+    uai3037033-ldap-sns-eventdriven:
+      template: uai3037033-ldap-sns-eventdriven-tem.yml
+
+    uai3037033-ldap-ecr-repo:
+      template: uai3037033-ldap-ecr-repo-tem.yml
+    
+    uai3037033-ldap-ecs-uicluster:
+      template: uai3037033-ldap-ecs-uicluster-tem.yml
+
+    uai3037033-ldap-secrets:
+      template: uai3037033-ldap-secrets-tem.yml
+
+    uai3037033-ldap-cognitouserpool:
+      template: uai3037033-ldap-cognitouserpool-tem.yml
+
+    uai3037033-ldap-ecs-sg:
+      template: uai3037033-ldap-ecs-sg-tem.yml
+
+    uai3037033-ldap-alb:
+      template: uai3037033-ldap-alb-tem.yml
+
+    uai3037033-ldap-lambdasg:
+      template: uai3037033-ldap-lambdasg-tem.yml
+
+    # uai3037033-ldap-ecs-backend-tg:
+    #   template: uai3037033-ldap-ecs-backend-tg-tem.yml
+
+    uai3037033-ldap-ecs-ui-tg:
+      template: uai3037033-ldap-ecs-ui-tg-tem.yml
+
+    # uai3037033-ldap-jenkins:
+    #   template: uai3037033-ldap-jenkins-tem.yml
+
+    uai3037033-ldap-cognitouserpoolclient:
+      template: uai3037033-ldap-cognitouserpoolclient-tem.yml
+
+    uai3037033-ldap-alb-httpslistener:
+      template: uai3037033-ldap-alb-httpslistener-tem.yml
+
+    uai3037033-ldap-eventbridge:
+      template: uai3037033-ldap-eventbridge-tem.yml
+
+    uai3037033-ldap-ui-taskdefn:
+      template: uai3037033-ldap-ui-taskdefn-tem.yml
+
+    uai3037033-ldap-backend-taskdefn:
+      template: uai3037033-ldap-backend-taskdefn-tem.yml
+
+    uai3037033-ldap-ecs-backend-cluster:
+      template: uai3037033-ldap-ecs-backend-cluster-tem.yml
+
+    uai3037033-ldap-ecs-ui-servicedefn:
+      template: uai3037033-ldap-ecs-ui-servicedefn-tem.yml
+
+    uai3037033-ldap-apigateway:
+      template: uai3037033-ldap-apigateway-tem.yml
+
+    uai3037033-ldap-backend1-taskdefn:
+      template: uai3037033-ldap-backend1-taskdefn-tem.yml
+      
+    uai3037033-ldap-ecs-backend-servicedefn:
+      template: uai3037033-ldap-ecs-backend-servicedefn-tem.yml
+
+    uai3037033-ldap-ecs-backend-newtg:
+      template: uai3037033-ldap-ecs-backend-newtg-tem.yml
+      
+      

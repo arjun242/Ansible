@@ -1,0 +1,89 @@
+##### History
+# date  - initials - Description
+# {{ ansible_date_time.date }} Ansible commited file
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template to create subnets..
+
+Parameters: 
+
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed. UAI starting sequence. MUST be in lowercase.
+    ConstraintDescription: The UAI must be valid, but specified as uai in lower case followed by 7 digits
+    AllowedPattern: ^uai[0-9]*$
+    MinLength: !!int 10
+    MaxLength: !!int 10
+    Default: uai3026350
+
+  AzName:
+    Description: Availability Zone Id (AZ1, AZ2, AZ3)
+    Type: String
+    AllowedValues:
+    - AZ1
+    - AZ2
+    - AZ3
+
+  SubnetName:
+    Description: Subnet Name Tag
+    Type: String
+  
+  SubnetType:
+    Description: Subnet Type
+    Type: String
+
+  SubnetCidrBlock:
+    Description: subnet CIDR
+    Type: String
+    AllowedPattern: ^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$
+    ConstraintDescription: Must be a valid IP4 CIDR range
+
+  NaclExportName:
+    Description: Name of the exported paratmer for the nacl ID
+    Type: String
+
+  RouteTableExportName:
+    Description: Name of the exported paratmer for route table
+    Type: String
+    
+Resources: 
+  subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: 
+        Fn::ImportValue: 
+          !Sub "${AzName}Name"
+      VpcId: !ImportValue vpcid
+      CidrBlock: !Ref SubnetCidrBlock
+      Tags:
+        - Key: Name
+          Value: !Ref SubnetName
+        - Key: AzName
+          Value: !Ref AzName
+        - Key: uai
+          Value: !Ref UAI
+        - Key: SubnetType
+          Value: !Ref SubnetType
+    
+  naclassocition:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      NetworkAclId: 
+        Fn::ImportValue: 
+          !Ref NaclExportName
+      SubnetId: !Ref subnet
+
+  routetableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: 
+        Fn::ImportValue: 
+          !Ref RouteTableExportName
+      SubnetId: !Ref subnet
+
+Outputs: 
+  SubnetID:
+      Description: "ID of the created subnet"
+      Value: !Ref subnet
+      Export: 
+        Name: !Ref SubnetName

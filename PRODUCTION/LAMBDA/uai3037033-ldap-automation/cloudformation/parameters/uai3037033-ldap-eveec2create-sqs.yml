@@ -1,0 +1,5 @@
+UAI: uai3037033
+AppName: ldap
+Env: prd
+DelaySeconds: 0
+QueueName: eveec2create

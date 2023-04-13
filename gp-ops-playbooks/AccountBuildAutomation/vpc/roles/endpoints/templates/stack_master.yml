@@ -1,0 +1,21 @@
+
+stack_defaults:
+  tags: 
+    core_component: "true"
+    
+stacks:
+  {{aws_region}}:
+    {{prefix}}s3-endpoint:
+      template: s3-endpoint.yml
+    {{prefix}}sqs-endpoint:
+      template: sqs-endpoint.yml
+    {{prefix}}ecr-dkr-endpoint:
+      template: ecr-dkr-endpoint.yml
+    {{prefix}}ecr-api-endpoint:
+      template: ecr-api-endpoint.yml
+    {{prefix}}execute-api-endpoint:
+      template: execute-api-endpoint.yml
+    {{prefix}}kinesis-streams-endpoint:
+      template: kinesis-streams-endpoint.yml
+    {{prefix}}secretsmanager-endpoint:
+      template: secretsmanager-endpoint.yml

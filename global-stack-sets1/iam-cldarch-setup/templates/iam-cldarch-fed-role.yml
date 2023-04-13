@@ -1,0 +1,530 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "cldarch Fed role and policy for the migration Team"
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Description: Name of the  Role... e.g. 'cldSAAdmin'
+    Default: 'cldarch'
+
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'hq'
+
+  TagEnv:
+    Type: CommaDelimitedList
+    Description: "List of all env ex: dev, qa, prd"
+    Default: dev, qa, prd, stg, lab
+
+  TagAssociate:
+    Type: CommaDelimitedList
+    Description: "List of all values ex: ops, sa, admin, app "
+    Default: sa, app
+
+Resources:
+  FedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow # Allow this role to be assumed by a federated entity
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action:
+              - sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+        # - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/deny-get-secret"
+
+      Policies:
+        - PolicyName: !Sub ${RoleName}-inline
+          PolicyDocument:
+            Statement:
+              - Sid: IamPassRole
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/inf/proton-role
+                Action:
+                  - iam:PassRole
+              - Sid: S3Access
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::uai*"
+                Action:
+                  - s3:*
+              - Sid: ConstrainedConditionalAccess
+                Effect: Allow
+                Action:
+                  - cloudformation:DeleteStack
+                  - cloudformation:Get*
+                  - cloudformation:DetectStackDrift
+                  - cloudformation:DetectStackResourceDrift
+                  - cloudformation:SignalResource
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeChangeSet
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/uai*"
+              - Sid: UnconstrainedAccess
+                Effect: Allow                
+                Resource:
+                  - "*"
+                Action:
+                  - support:*
+                  - cloudformation:CreateUploadBucket
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:PutDashboard
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:TagResource
+                  - logs:FilterLogEvents #logs
+                  - logs:Get*
+                  - logs:List*
+                  - logs:StartQuery
+                  - logs:StopQuery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:TestMetricFilter
+                  - events:DeleteRule #events
+                  - events:PutRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                  - elasticache:List*
+                  - elasticache:RebootCacheCluster
+                  - waf-regional:Get*  #waf-regional
+                  - waf-regional:List*
+                  - cognito-identity:Describe*  #cognito-identity
+                  - cognito-identity:List*
+                  - cognito-identity:Get*
+                  - cognito-idp:Describe*
+                  - cognito-idp:AdminGet*
+                  - cognito-idp:AdminList*
+                  - cognito-idp:List*
+                  - cognito-idp:Get*
+                  - cognito-sync:Describe*
+                  - cognito-sync:Get*
+                  - cognito-sync:List*
+                  - cloudfront:Get*  #cloudfront
+                  - cloudfront:List*
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:UpdateDistribution
+                  - route53:CreateTrafficPolicy  #route53
+                  - route53:CreateTrafficPolicyInstance
+                  - route53:CreateTrafficPolicyVersion
+              - Sid: DeleteFullAccess
+                Effect: Allow
+                Action:
+                  - servicediscovery:DeleteNamespace
+                  - servicediscovery:DeleteService
+                  - ec2:RevokeSecurityGroup* #Ingress and Egress
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DeleteNetworkInterfacePermission
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DeleteLaunchTemplate
+                  - ec2:DeleteLaunchTemplateVersions
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:DeleteVolume
+                  - rds:DeleteDBSecurityGroup
+                  - elasticache:DeleteCacheSecurityGroup
+                  - elasticache:RevokeCacheSecurityGroupIngress
+                  - elasticache:DeleteCacheCluster
+                  - autoscaling:DeleteLaunchConfiguration
+                  - apigateway:Delete
+                  - application-autoscaling:DeregisterScalableTarget
+                  - application-autoscaling:DeleteScalingPolicy
+                  - route53:DeleteTrafficPolicy
+                  - route53:DeleteTrafficPolicyInstance
+                Resource:
+                  - '*'
+              - Sid: DeleteConditionalAccess
+                Effect: Allow
+                Action:
+                  - cloudformation:Delete*
+                  - logs:Delete*
+                  - ecr:Delete*
+                  - ecs:Delete*
+                  - kms:Delete*
+                  - rds:Delete*
+                  - lambda:Delete*
+                  - secretsmanager:Delete*
+                  - ssm:Delete*
+                  - sqs:Delete*
+                  - sns:Delete*
+                  - elasticloadbalancing:Delete*
+                  - elasticloadbalancing:Modify*
+                  - elasticloadbalancing:Remove*
+                  - greengrass:Delete*
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:elasticloadbalancing:${AWS::Region}:${AWS::AccountId}:*uai*"  # ELB
+                  - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/uai*" # Cloudformation
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*uai*"  # logs
+                  - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/uai*"  #ecr
+                  - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:uai*"  #lambda Function
+                  - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:layer:uai*"   #lambda Function Layer
+                  - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/uai*"  # Kms Key Alias 
+                  - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:key/*"  
+                  - !Sub "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:uai*"  # sqs
+                  - !Sub "arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:uai*"  # sns
+                  - !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/uai*"  # ecs
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/uai*"   # SSM Parameter
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/uai*"    # SSM Document
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:uai*"  # RDS Cluster
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"  # RDS DB Instance
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:uai*"  # RDS DB snapshot
+                  - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:uai*"  # SecretsManager
+                  - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/cnt-security/login/uai*" #SecretsManager-Prisma
+                  - !Sub "arn:${AWS::Partition}:greengrass:${AWS::Region}:${AWS::AccountId}:/greengrass/*"  # GreenGrass  
+              - Sid: S3CommonBucketsAccess
+                Effect: Allow
+                Action:
+                  - s3:Get*
+                  - s3:List*
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::gp-aws8-d-common-log-bucket*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::gp-aws7-p-common-log-bucket*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::pw-aws-vpc-eu1p-common-log-bucket*'
+                  
+
+  EctwoPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub ${RoleName}-Ec2-access
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+          - Sid: Ec2ResourceTagAccess
+            Effect: Allow
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/* 
+            Action:
+              - ec2:ModifyInstanceAttribute
+              - ec2:StopInstances
+              - ec2:StartInstances
+              - ec2:RebootInstances
+              - ec2:TerminateInstances
+              - ec2:DeleteSnapshot
+            Condition: 
+              ForAnyValue:StringEquals:
+                ec2:ResourceTag/associate: !Ref TagAssociate
+
+          - Sid: Ec2AwsRequestTagAccess
+            Effect: Allow
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*
+            Action:
+              - ec2:RunInstances
+              - ec2:CreateSnapshots
+              - ec2:CreateSnapshot
+            Condition: 
+              ForAnyValue:StringEquals:
+                aws:RequestTag/associate: !Ref TagAssociate
+
+          - Sid: Ec2CreateRequestTagAccess
+            Effect: Allow
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::instance/*
+            Action:
+              - ec2:CreateTags
+            Condition: 
+              ForAnyValue:StringEquals:
+                aws:RequestTag/associate: !Ref TagAssociate
+                
+          - Sid: Ec2CreateTags
+            Effect: Allow
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+            Action:
+              - ec2:CreateTags
+              
+          - Sid: Ec2ModifySchedulingTags
+            Effect: Allow
+            Action:
+              - ec2:CreateTags
+              - ec2:DeleteTags
+            Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+            Condition:
+              ForAllValues:StringEquals:
+                aws:TagKeys: ["schedule"]
+                
+          - Sid: Ec2DeleteSchedulingTags    
+            Effect: Allow
+            Action:
+              - ec2:DeleteTags
+            Resource: 
+              - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+            Condition:
+              StringEquals:
+                "aws:ResourceTag/schedule": ["schedule"]
+
+  MicroServicesPolicy:
+  # Containes access for ECR, ECS, Lambda, SQS
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub ${RoleName}-microservices-access
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+          - Sid: UnconstrainedMisAccess
+            Effect: Allow
+            Action:
+              - batch:Describe*
+              - batch:List*
+              - chatbot:*
+              - codebuild:BatchGet*
+              - codebuild:GetResourcePolicy
+              - codebuild:List*
+              - codebuild:DescribeTestCases
+              - ecs:RegisterTaskDefinition
+              - ecs:DeregisterTaskDefinition
+              - appmesh:ListVirtualNodes
+              - appmesh:DescribeVirtualNode
+              - ecr:GetAuthorizationToken
+              - mq:Describe*
+              - mq:List*
+              - sns:List* #sns
+              - sns:Get*
+              - iot:CreateKeysAndCertificate
+              - iotevents:Describe* #iot
+              - iotevents:List*
+              - iot:Describe*
+              - iot:List*
+              - iot:Get*
+              - iot:ValidateSecurityProfileBehaviors
+              - iot:TestAuthorization
+              - iot:TestInvokeAuthorizer
+              - iot:SearchIndex
+              - apigateway:GET  # apigateway
+              - apigateway:POST
+              - apigateway:PATCH
+              - apigateway:UpdateRestApiPolicy
+              - execute-api:* 
+              - greengrass:Get*  # greengrasss
+              - greengrass:Discover
+              - greengrass:StartBulkDeployment
+              - greengrass:StopBulkDeployment
+              - greengrass:ResetDeployments
+              - states:Desc* #states
+              - states:Get*
+              - states:List*
+              - es:Desc*  #es
+              - es:Get*
+              - es:List*
+              - codepipeline:Get*
+              - codepipeline:List*
+            ### Giving the access for codestar-connections service###
+              - codestar-connections:PassConnection
+              - codestar-connections:CreateConnection
+              - codestar-connections:CreateHost
+              - codestar-connections:GetConnection
+              - codestar-connections:GetHost
+              - codestar-connections:List*    
+              - proton:CreateEnvironment
+              - proton:CreateService
+              - proton:UpdateEnvironment
+              - proton:DeleteEnvironment
+              - proton:UpdateService
+              - proton:DeleteService
+              - proton:Get*
+              - proton:List*
+            Resource:
+              - '*'
+          # Create is explicitly added in PermissionBoundaries.
+          - Sid: ECRconstrainedFullAccess
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/uai*"
+            Action:
+              - ecr:*
+
+          # fix the policy on base repo 
+          - Sid: ECRconstrainedAccessBase
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:325381443140:repository/gp-ops-base-cis*" # base repo name in ops account
+            Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+
+          # required access only to manage the services, tasks and Task Definations.
+          # Does not provide any access to create or delete.
+          - Sid: 'EcsConstrainedFullAccess'
+            Effect: Allow
+            Resource: 
+              - "*"
+            Action:
+              - ecs:*
+            Condition:
+              ArnEquals:
+                ecs:cluster: !Sub "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/uai*"
+
+          - Sid: LambdaConstrainedAccess
+            Effect: Allow
+            Action:
+              - lambda:CreateEventSourceMapping
+              - lambda:UpdateEventSourceMapping
+              - lambda:GetEventSourceMapping
+              - lambda:DeleteEventSourceMapping
+            Resource:
+              - '*'
+            Condition:
+              ArnEquals:
+                lambda:FunctionArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:uai*"
+
+          - Sid: LambdaConstrained
+            Effect: Allow
+            Action:
+              - lambda:Get*
+              - lambda:InvokeFunction
+              - lambda:InvokeAsync
+              - lambda:Update*
+            Resource:
+              - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:uai*"
+
+  SSMandSecretPolicy:
+  # Containes access for ssm, SecretMangaer
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub ${RoleName}-ssm-secret-access
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Statement:
+          - Sid: UnConstrainedAccess
+            Effect: Allow
+            Resource:
+              - '*'
+            Action:
+              - ssm:GetConnectionStatus
+              - ssm:TerminateSession
+              - secretsmanager:CreateSecret
+              - ssm:SendAutomationSignal              
+
+          - Sid: ConstrainedFullAccess
+            Effect: Allow
+            Action:
+              - ssm:*
+              - secretsmanager:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/uai* # SSM Parameters
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/uai*  # SSM Documents
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:uai*" # Secretsmanager
+              - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/cnt-security/login/uai*" #SecretsManager-Prisma
+
+          # required review to include in fed role
+          - Sid: SSMConstrainedCreate
+            Effect: Allow
+            Action:
+              - ssm:CreateDocument
+              - ssm:AddTagsToResource
+            Resource:
+              - '*'
+            Condition:
+              StringEquals:
+                aws:RequestTag/env: !Ref TagEnv
+                aws:RequestTag/associate: !Ref TagAssociate
+
+          - Sid: SSMStartSessionAccessInstance
+            Effect: Allow
+            Action:
+              - ssm:StartSession
+              - ssm:SendCommand
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+            Condition:
+              ForAnyValue:StringEquals:
+                ssm:resourceTag/env: !Ref TagEnv
+                ssm:resourceTag/associate: !Ref TagAssociate
+
+          # this is required by Fed roles only with mfa Access to connect to Instance 
+          # Access to run port forwarding Session document works with above access restrict to run on instance
+          - Sid: SSMStartSessionAccessDoc # Cannot constrain on resource or tag
+            Effect: Allow
+            Action:
+              - ssm:StartSession
+              - ssm:SendCommand
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/app*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartPortForwardingSession # aws managed document
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartSSHSession  # aws managed document
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunPowerShellScript  # aws managed document
+
+  ManagedPolicyServicecatalogAccess:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: !Sub '${RoleName}-ServiceCatalog'
+      Roles:
+        - !Ref FedRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CloudFormationAccess
+            Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:SetStackPolicy
+              - cloudformation:ValidateTemplate
+              - cloudformation:UpdateStack
+              - cloudformation:TagResource
+            Resource:
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/SC-*"
+              - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stackset/SC-*"
+          - 
+            Effect: Allow
+            Action:
+              - cloudformation:GetTemplateSummary
+              - servicecatalog:Describe*
+              - servicecatalog:List*
+              - servicecatalog:SearchProducts
+              - servicecatalog:ProvisionProduct
+              - ssm:GetAutomationExecution
+              - config:DescribeConfigurationRecorders
+              - config:DescribeConfigurationRecorderStatus
+              - s3:GetObject
+            Resource:
+              - "*"
+          - 
+            Effect: Allow
+            Action:
+              - servicecatalog:DescribeProvisionedProduct
+              - servicecatalog:DescribeRecord
+              - servicecatalog:ListRecordHistory
+              - servicecatalog:ListStackInstancesForProvisionedProduct
+              - servicecatalog:ScanProvisionedProducts
+              - servicecatalog:TerminateProvisionedProduct
+              - servicecatalog:UpdateProvisionedProduct
+              - servicecatalog:SearchProvisionedProducts
+              - servicecatalog:ListServiceActionsForProvisioningArtifact
+              - servicecatalog:ExecuteProvisionedProductServiceAction
+              - servicecatalog:DescribeServiceActionExecutionParameters
+            Resource:
+            - "*"
+            Condition:
+              StringEquals:
+                servicecatalog:userLevel: self
+Outputs:
+  
+  FederatedRoleName:
+    Value: !Ref FedRole
+  FederatedRoleArn:
+    Value: !GetAtt FedRole.Arn

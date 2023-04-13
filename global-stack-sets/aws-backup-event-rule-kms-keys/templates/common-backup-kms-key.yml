@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: "2010-09-09" 
+Description: KMS key will be used to encrypt AWS Backup recovery points
+Resources:
+  CommonBackupNonProdKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Key used to encrypt non-prod recovery points created by AWS Backup"
+      Enabled: true
+      EnableKeyRotation: true        
+      KeyPolicy: 
+        Version: 2012-10-17
+        Id: backup-custom-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
+          - Sid: Deny all access delete
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:DisableKey
+            Resource: "*"
+          - Sid: Allow access through Backup for all principals in the account
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Decrypt
+              - kms:CreateGrant
+              - kms:GenerateDataKey*
+              - kms:ReEncrypt*
+              - kms:DescribeKey
+              - kms:Encrypt
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:ViaService: backup.*.amazonaws.com
+                kms:CallerAccount: !Sub "${AWS::AccountId}"
+
+  CommonBackupProdKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Key used to encrypt prod recovery points created by AWS Backup"
+      Enabled: true
+      EnableKeyRotation: true        
+      KeyPolicy: 
+        Version: 2012-10-17
+        Id: backup-custom-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
+          - Sid: Deny all access delete
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:DisableKey
+            Resource: "*"
+          - Sid: Allow access through Backup for all principals in the account
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Decrypt
+              - kms:CreateGrant
+              - kms:GenerateDataKey*
+              - kms:ReEncrypt*
+              - kms:DescribeKey
+              - kms:Encrypt
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:ViaService: backup.*.amazonaws.com
+                kms:CallerAccount: !Sub "${AWS::AccountId}"
+
+  BackupReportKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Key used to encrypt S3 bucket for AWS Backup Audit Manager reports"
+      Enabled: true
+      EnableKeyRotation: true        
+      KeyPolicy: 
+        Version: 2012-10-17
+        Id: backup-custom-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
+          - Sid: Deny all access delete
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:DisableKey
+            Resource: "*"
+          - Sid: Allow access to Backup reports service role
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Decrypt
+              - kms:CreateGrant
+              - kms:GenerateDataKey*
+              - kms:ReEncrypt*
+              - kms:DescribeKey
+              - kms:Encrypt
+            Resource: "*"
+            Condition:
+              ArnLike:
+                aws:PrincipalArn: "arn:aws:iam::*:role/aws-service-role/reports.backup.amazonaws.com/AWSServiceRoleForBackupReports"
+            
+
+  NonProdKMSAlias:
+    Type: AWS::KMS::Alias
+    Properties: 
+      AliasName: alias/common-non-prod-backup-key
+      TargetKeyId: !Ref CommonBackupNonProdKMSKey
+  
+  ProdKMSAlias:
+    Type: AWS::KMS::Alias
+    Properties: 
+      AliasName: alias/common-prod-backup-key
+      TargetKeyId: !Ref CommonBackupProdKMSKey
+  
+  BackupReportKMSAlias:
+    Type: AWS::KMS::Alias
+    Properties: 
+      AliasName: alias/aws-backup-audit-manager-report-key
+      TargetKeyId: !Ref BackupReportKMSKey
+
+Outputs:
+  NonProdVaultKMSKeyExport:
+    Description: GP-Non-Prod vault encryption key ARN
+    Value: !GetAtt CommonBackupNonProdKMSKey.Arn
+    Export:
+      Name: GP-Common-Backup-Non-Prod-KMS-Key
+  ProdVaultKMSKeyExport:
+    Description: GP-Non-Prod vault encrytion key ARN
+    Value: !GetAtt CommonBackupProdKMSKey.Arn
+    Export:
+      Name: GP-Common-Backup-Prod-KMS-Key
+  BackupReportKMSKeyExport:
+    Description: AWS Backup Audit Manager Report encrytion key ARN
+    Value: !GetAtt BackupReportKMSKey.Arn
+    Export:
+      Name: GP-AWS-Backup-Audit-Manager-KMS-Key

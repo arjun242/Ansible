@@ -1,0 +1,25 @@
+---
+- include_vars: secrets.yml
+  no_log: true
+
+- name: Generate the OAuth2 token
+  uri:
+    url: "{{ access_token_url }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: safe
+    force: no
+    return_content: yes
+    status_code: 200
+    timeout: 30
+    headers:
+      Authorization: "Basic {{ encrypted_client_id_pwd }}"
+    body:
+    body_format: json
+  register: oauth_token
+
+- name: Setting the oauth token
+  set_stats:
+    data:
+      oauth_token: "{{ oauth_token.json.access_token }}"

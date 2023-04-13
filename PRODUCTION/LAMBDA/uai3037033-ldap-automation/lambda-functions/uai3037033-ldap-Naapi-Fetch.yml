@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda function for fetching NAAPI values.
+
+Parameters:
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: "uai[0-9]*"
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3037033
+  AppName:
+    Description: "Appname"
+    Type: String  
+    Default: ldap
+  Env:
+    Description: "Environment"
+    Type: String  
+    Default: prd
+
+Resources:
+  uai3037033naapifetch:
+    Type: AWS::Lambda::Function
+    Properties:
+      Environment:
+        Variables:
+          exclude_values: windows,ISS-GR-NAT,bastion,NA
+          secret_name: uai3037033-naapi-api-token 
+          region_name: us-east-1
+          base_url: https://naapi-wrappy.gecloudpod.com/aws/ec2/instance?
+          QueueUrl: https://sqs.us-east-1.amazonaws.com/325381443140/uai3037033-ldap-naapisqs1-prd
+      Tags:
+        - Key: appname
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+        - Key: uai
+          Value: !Ref UAI
+      Runtime: python3.7
+      FunctionName: !Sub ${UAI}-${AppName}-Naapi-Fetch
+      Role: !Sub "arn:aws:iam::325381443140:role/app/${UAI}-${AppName}-lambda-execution-role"
+      Handler: lambda-code/uai3037033-ldap-Naapi-Fetch.lambda_handler
+      Timeout: 900
+
+  # LambdaFunctionLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     LogGroupName: !Sub ${UAI}-${AppName}-Naapi-Fetch
+  #     RetentionInDays: 90
+
+  lambdapiapermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - uai3037033naapifetch
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Sub ${UAI}-${AppName}-Naapi-Fetch
+      Principal: apigateway.amazonaws.com
+      SourceArn: "arn:aws:execute-api:us-east-1:325381443140:680z779s04/*"
+
+Outputs:
+  uai3037033naapifetcharn:
+    Description: A reference to the created Lambdafunction
+    Value:
+      Fn::GetAtt:
+        - uai3037033naapifetch
+        - Arn    
+    Export:
+      Name: ldaplambdanaapifetch
+      

@@ -1,0 +1,34 @@
+stack_defaults: 
+  tags: 
+    core_component: "true"
+    uai: {{UAI}}
+stacks:
+  {{aws_region}}:
+    {{prefix}}{{subnet.stackNames.appAz1}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.appAz2}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.db1}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.db2}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.ep1}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.ep2}}:
+      template: gp-subnet.yml
+    {% if extSubnetCIDR != "NA" and rbSubnetCIDR != "NA" -%}
+    {{prefix}}{{subnet.stackNames.ext1}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.ext2}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.rb1}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.rb2}}:
+      template: gp-subnet.yml
+    {% endif -%}
+    {% if igrSubnetCIDR != "NA" -%}
+    {{prefix}}{{subnet.stackNames.igr1}}:
+      template: gp-subnet.yml
+    {{prefix}}{{subnet.stackNames.igr2}}:
+      template: gp-subnet.yml
+    {% endif -%}

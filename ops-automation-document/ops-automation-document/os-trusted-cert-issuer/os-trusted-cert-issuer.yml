@@ -1,0 +1,24 @@
+ # History:
+ # # 25-March-2020 - Initial build.  This will be responsible for pushing trusted certificates to Linux boxes.
+  
+ schemaVersion: '2.2'
+ description: Copy trusted issuer certs from S3 and configure on server.
+ #parameters: 
+   
+ mainSteps:
+  - name: Download
+    action: aws:downloadContent
+    precondition:
+      StringEquals:
+        - platformType
+        - Linux  
+    inputs:
+      sourceType: 'S3'
+      sourceInfo: "{\"path\":\"https://gp-ops-ssm-logs.s3.amazonaws.com/cert-issuers/\"}"
+      destinationPath: '/etc/pki/ca-trust/source/anchors/'
+
+  - name: InstallCert
+    action: aws:runShellScript
+    inputs:
+      runCommand: 
+        - update-ca-trust extract

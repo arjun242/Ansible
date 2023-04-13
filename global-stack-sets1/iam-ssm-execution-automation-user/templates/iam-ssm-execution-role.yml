@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: SSM execution role
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the Role... e.g. 'iam-ssm-execution-role'
+    Default: iam-ssm-execution-role
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: /inf/
+  UserRoleArn:
+    Type: String
+    Description: Name of the Admin Role...
+    Default: "arn:aws:iam::325381443140:user/502813500"
+Resources:
+  ExeRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${RoleName}"
+      Path: !Sub "${RolePath}"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref UserRoleArn
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Sub >-
+          arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-deploy-role"
+  ExeRolePolicyConstrained:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub "${RoleName}-Policy"
+      Roles:
+        - !Ref ExeRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: PassRolePermissions
+            Effect: Allow
+            Action:
+              - "iam:PassRole"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/*"
+              - !Sub >-
+                arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/*
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/*"
+          - Sid: ResourceLimitedAccess
+            Effect: Allow
+            Action:
+              - "ssm:PutParameter"
+              - "ssm:List*"
+              - "ssm:DeleteDocument"
+              - "ssm:DeleteParameter*"
+              - "ssm:GetDocument"
+              - "ssm:DescribeDocument"
+              - "ssm:GetParameter"
+              - "ssm:GetParameters"
+              - "ssm:GetParametersByPath"
+              - "ssm:LabelParameterVersion"
+              - "ssm:SendCommand"
+            Resource:
+              - !Sub >-
+                arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*
+              - !Sub >-
+                arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/app*
+              - !Sub >-
+                arn:${AWS::Partition}:ssm:${AWS::Region}:325381443140:document/app*
+              - !Sub >-
+                arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation/*
+              - !Sub >-
+                arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+          - Sid: ResourceFullAccess
+            Effect: Allow
+            Action:
+              - "ssm:AddTagsToResource"
+              - "ssm:GetConnectionStatus"
+              - "ssm:GetCommandInvocation"
+              - "ssm:DescribeInstanceInformation"
+              - "ssm:DescribeDocumentParameters"
+              - "ssm:DescribeInstanceProperties"
+              - "tag:GetTagValues"
+              - "tag:GetResources"
+              - "tag:TagResources"
+              - "tag:UntagResources"
+              - "iam:PassRole"
+              - "iam:ListRoles"
+              - "ec2:describeInstances"
+            Resource:
+              - "*"
+Outputs:
+  SSMExeRoleName:
+    Description: SSM Role Name
+    Value: !Ref ExeRole
+  SSMExeRoleArn:
+    Description: SSM Role Arn
+    Value: !GetAtt
+      - ExeRole
+      - Arn

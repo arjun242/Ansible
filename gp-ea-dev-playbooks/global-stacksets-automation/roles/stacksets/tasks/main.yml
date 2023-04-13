@@ -1,0 +1,104 @@
+---
+- name: Include vars file
+  include_vars: main.yml
+
+- name: Create a new directory <account-name>-<account-id>
+  file:
+    state: directory
+    path: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 02-iam-gr.yml
+  template:
+    src: "02-iam-gr.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 04-iam-common-policies.yml
+  template:
+    src: "04-iam-common-policies.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 05-iam-common-roles.yml
+  template:
+    src: "05-iam-common-roles.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 06-iam-fed-roles.yml
+  template:
+    src: "06-iam-fed-roles.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 12-gr-account-support-resources.yml
+  template:
+    src: "12-gr-account-support-resources.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 20-automation-components.yml
+  template: 
+    src: "20-automation-components.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 21-provisioning-remediations.yml
+  template:
+    src: "21-provisioning-remediations.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 23-ops-cloudwatch.yml
+  template:
+    src: "23-ops-cloudwatch.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 25-patching.yml
+  template:
+    src: "25-patching.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 26-compliance-framework.yml
+  template:
+    src: "26-compliance-framework.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 28-evm-patching.yml
+  template:
+    src: "28-evm-patching.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 28-evm-patching.yml
+  template:
+    src: "28-evm-patching.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 31-dbss-dba-gp-ops-only.yml
+  template:
+    src: "31-dbss-dba-gp-ops-only.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 32-dbss-dba-components.yml
+  template:
+    src: "32-dbss-dba-components.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 34-dbss-dba-parameter-option-groups.yml
+  template:
+    src: "34-dbss-dba-parameter-option-groups.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- name: Copy 42-ansible.yml
+  template:
+    src: "42-ansible.yml"
+    dest: "{{source_directory}}/{{ aws_account_name }}-{{ aws_account_id }}"
+
+- debug: var=ansible_date_time
+
+- name: Copy Ansible Metadata file
+  template:
+    src: "{{role_path}}/files/ansible_metadata.txt"
+    dest: "{{source_directory}}/ansible_metadata.txt"
+  vars:
+    current_date_jinja: "{{ ansible_date_time.date }} {{ansible_date_time.time}} UTC"
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_org: gp-ops-non-prod
+    github_enterprise_repo: ansible-test-repo

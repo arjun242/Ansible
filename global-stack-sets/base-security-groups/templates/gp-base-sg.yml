@@ -1,0 +1,962 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create the 'base' security groups for high trust VPC. outgoing traffic is disabled by default
+
+ # History:
+  # 09-Sep-2019 - Initial Version : Create base security group to assigne to all EC2 linux. Create bastion Security Group
+  # Source : Base Security Group for the High Risk VPC
+  # 12-Sep-2019 - Commented Parameters sections. replaces references to the Route53 group with ImportValue. 
+  # 16-Sep-2019 - Updated the outbound rule of BaseLinuxImmutableSG for splunk logging
+  # 24-Sep-2019 - Update outbound rule of BaseLinuxImmutableSG to allow traffic to smtp remlay server 
+  # 26-Sep-2019 - Incorporating into new repo and infra processor
+  # 27-Sep-2019 - Adding new SGs for SSM endpoints
+  # 17-06-2020  - Create base security group to assigne to windows EC2.
+################################################################################
+# Parameters Section
+################################################################################
+
+# Parameters:
+
+################################################################################
+# Resources Section
+################################################################################
+
+Resources:
+
+    ## Default Bastion SG
+    ## Need to be reviewed
+    BastionSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-bastion-SG
+        GroupDescription: Base SG for Bastion(s)
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-bastion-SG
+
+        SecurityGroupIngress:
+        # ssh from 10.x GE network
+        # This is too large. Need to find a way to be more restrictive
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 10.0.0.0/8
+
+        # ssh from 3.x legacy GE network
+        # This should be removed as GE does not own the network and the risk is high
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 3.0.0.0/8
+        
+        - IpProtocol: -1
+          CidrIp: 3.239.129.41/32
+          
+        - IpProtocol: -1
+          CidrIp: 10.73.56.152/32
+          
+        - IpProtocol: -1
+          CidrIp: 10.152.60.22/32
+          
+        - IpProtocol: -1
+          CidrIp: 10.152.60.21/32
+
+        ## We need to allow specific outoing connections to the entire VPC
+        SecurityGroupEgress:
+
+        # Allow HTTTP and HTTTPS connections to the world via transparent proxy/NAT
+        # This rule need to be checked
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+        # allow DNS (53/udp) outgoing to the Bind server(s)
+        # Need to be replaced by ENIs of the 53 resolver
+
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          SourceSecurityGroupId: !ImportValue VPCResolverSG
+
+        # allow NTP (123/udp) outgoing to the NTP server.
+        # As per the DHCP option set, the NTP server is 169.254.169.123 ??
+        - IpProtocol: udp
+          FromPort: 123
+          ToPort: 123
+          CidrIp: 169.254.169.123/32
+
+        # SSH to other hosts within the VPC
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !ImportValue VPCCidr
+
+        - IpProtocol: tcp
+          FromPort: 1421
+          ToPort: 4432
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: -1
+          CidrIp: 3.239.129.41/32
+          
+        - IpProtocol: -1
+          CidrIp: 10.73.56.152/32
+          
+        - IpProtocol: -1
+          CidrIp: 10.152.60.22/32
+          
+        - IpProtocol: -1
+          CidrIp: 10.152.60.21/32
+
+  ###########################
+  # Linux section
+  ###########################
+
+    BaseLinuxImmutableSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-Immutable-Linux-SG
+        GroupDescription: Base SG to assign to Linux EC2 instances
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-Immutable-Linux-SG
+
+        ## Inbound rules
+        SecurityGroupIngress:
+          # allow SSH from Bastion
+          -
+            IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            SourceSecurityGroupId: !Ref BastionSG
+          # Allow DNS UDP/TCP from resolver
+          -
+            IpProtocol: tcp
+            FromPort: 53
+            ToPort: 53
+            SourceSecurityGroupId: !ImportValue VPCResolverSG
+          -
+            IpProtocol: udp
+            FromPort: 53
+            ToPort: 53
+            SourceSecurityGroupId: !ImportValue VPCResolverSG
+            
+          #allow Inbound on port 22 from ansible control node
+          -
+            IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: 10.157.140.0/25
+
+          #allow Inbound on port 22 from 10.157.136.0/25
+          -
+            IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: 10.157.136.0/25            
+
+        ## allow only specific outgoing traffic by default. The app specific SG will enable it to the specific destination
+        SecurityGroupEgress:
+          # allow DNS (53/udp) outgoing to the Bind server(s) in the Bastion subnets
+          # need to be replaced by the resolver Ips
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          SourceSecurityGroupId: !ImportValue VPCResolverSG
+
+        - IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          SourceSecurityGroupId: !ImportValue VPCResolverSG
+
+          # allow NTP (123/udp) outgoing to the NTP server(s) in SR
+          # As per the DHCP option set, the NTP server is 169.254.169.123 ??
+        - IpProtocol: udp
+          FromPort: 123
+          ToPort: 123
+          CidrIp: 169.254.169.123/32
+         
+          # allow traffic to smtp relay 
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 10.38.9.235/32
+
+          #Splunk Outputs US
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.200.8.139/32
+
+          #Splunk Outputs US
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.199.101.28/32
+
+          #Splunk Outputs EU
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.248.23.211/32
+
+          #Splunk Outputs Eu
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.248.113.177/32
+
+          #Splunk Deployment
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.200.8.136/32
+
+          #Splunk Deployment
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.200.8.46/32
+          
+          #Ldap for 2fa
+        - IpProtocol: tcp
+          FromPort: 8389
+          ToPort: 8389
+          CidrIp: 10.38.8.176/28
+          
+          #Ldap for 2fa
+        - IpProtocol: udp
+          FromPort: 8389
+          ToPort: 8389
+          CidrIp: 10.38.8.176/28
+          
+          #Radius for 2fa
+        - IpProtocol: udp
+          FromPort: 1812
+          ToPort: 1812
+          CidrIp: 10.152.60.20/30
+          
+          #All outbound 80
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+          #All outbound 443
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+          #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.17.48/32
+
+         #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.19.78/32
+
+         #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.213.48/32
+
+         #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.212.78/32 
+
+    #
+    # Used by Jenkins in HR VPC
+    # Need to keep ? need to check if the FW is Ok ?.
+
+    BaseOutVDSSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-Base-outgoing-VDS-SG
+        GroupDescription: Assign this SG to instances that need to connect to VDS
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-Base-outgoing-VDS-SG
+
+        ## do not allow anything for ingress
+        SecurityGroupIngress: []
+
+        # allow connectivity to VDS service (Virtual Directory Service) - prodIZvds.8389.corporate.ge.com
+        SecurityGroupEgress:
+        - CidrIp: 10.38.9.237/32
+          FromPort: 636
+          ToPort: 636
+          IpProtocol: "tcp"
+          
+  
+  ###########################
+  # Windows section
+  ###########################        
+          
+    BaseWindowsImmutableSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-Immutable-Windows-SG
+        GroupDescription: Base SG to assign to Windows EC2 instances
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-Immutable-Windows-SG
+
+        ## Inbound rules
+        SecurityGroupIngress:
+          # allow RDP from Bastion
+          -
+            IpProtocol: tcp
+            FromPort: 3389
+            ToPort: 3389
+            SourceSecurityGroupId: !Ref BastionSG
+          # Allow DNS UDP/TCP from resolver
+          -
+            IpProtocol: tcp
+            FromPort: 53
+            ToPort: 53
+            SourceSecurityGroupId: !ImportValue VPCResolverSG
+          -
+            IpProtocol: udp
+            FromPort: 53
+            ToPort: 53
+            SourceSecurityGroupId: !ImportValue VPCResolverSG
+
+        # ref to the changerequest GECHG1015163 for AD Join
+          
+          - IpProtocol: tcp
+            FromPort: 0
+            ToPort: 65535
+            CidrIp: 10.0.0.0/21
+
+          - CidrIp: 10.152.60.100/31
+            IpProtocol: "-1"
+
+          - IpProtocol: tcp
+            FromPort: 636
+            ToPort: 636
+            CidrIp: 10.152.60.100/31
+
+          - IpProtocol: udp
+            FromPort: 389
+            ToPort: 389
+            CidrIp: 10.152.60.100/31
+
+          - IpProtocol: tcp
+            FromPort: 389
+            ToPort: 389
+            CidrIp: 10.38.8.128/28
+
+          - IpProtocol: udp
+            FromPort: 88
+            ToPort: 88
+            CidrIp: 10.152.60.100/31
+
+          - IpProtocol: tcp
+            FromPort: 88
+            ToPort: 88
+            CidrIp: 10.152.60.100/31
+            
+            #Allow traffic from ansible control node
+          - IpProtocol: tcp
+            FromPort: 5986
+            ToPort: 5986
+            CidrIp: 10.157.140.0/25
+
+            #Allow traffic on rdp 3389 from 10.157.136.0/25
+          - IpProtocol: tcp
+            FromPort: 3389
+            ToPort: 3389
+            CidrIp: 10.157.136.0/25            
+            
+        ## allow only specific outgoing traffic by default. The app specific SG will enable it to the specific destination
+        SecurityGroupEgress:
+          # allow DNS (53/udp) outgoing to the Bind server(s) in the Bastion subnets
+          # need to be replaced by the resolver Ips
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          SourceSecurityGroupId: !ImportValue VPCResolverSG
+
+        - IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          SourceSecurityGroupId: !ImportValue VPCResolverSG
+
+          # allow NTP (123/udp) outgoing to the NTP server(s) in SR
+          # As per the DHCP option set, the NTP server is 169.254.169.123 ??
+        - IpProtocol: udp
+          FromPort: 123
+          ToPort: 123
+          CidrIp: 169.254.169.123/32
+         
+          # allow traffic to smtp relay 
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 10.38.9.235/32
+
+          #Splunk Outputs US
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.200.8.139/32
+
+          #Splunk Outputs US
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.199.101.28/32
+
+          #Splunk Outputs EU
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.248.23.211/32
+
+          #Splunk Outputs Eu
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.248.113.177/32
+
+          #Splunk Deployment
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.200.8.136/32
+
+          #Splunk Deployment
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 34.200.8.46/32
+
+          #All outbound 80
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+          #All outbound 443
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+          #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.17.48/32
+
+          #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.19.78/32
+
+          #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.213.48/32
+
+         #SMTP outbound 25
+        - IpProtocol: tcp
+          FromPort: 25
+          ToPort: 25
+          CidrIp: 3.159.212.78/32
+
+        # egress ports for AD Join (GECHG1386333)
+        
+        - IpProtocol: tcp
+          FromPort: 88
+          ToPort: 88
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: udp
+          FromPort: 88
+          ToPort: 88
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: tcp
+          FromPort: 135
+          ToPort: 139
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: udp
+          FromPort: 135
+          ToPort: 139
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: tcp
+          FromPort: 389
+          ToPort: 389
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: udp
+          FromPort: 389
+          ToPort: 389
+          CidrIp: 10.152.60.100/31
+        
+        - IpProtocol: tcp
+          FromPort: 445
+          ToPort: 464
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: udp
+          FromPort: 445
+          ToPort: 464
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: tcp
+          FromPort: 636
+          ToPort: 636
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: tcp
+          FromPort: 3268
+          ToPort: 3269
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: udp
+          FromPort: 135
+          ToPort: 139
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: tcp
+          FromPort: 49152
+          ToPort: 65535
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: udp
+          FromPort: 49152
+          ToPort: 65535
+          CidrIp: 10.152.60.100/31
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.141.52.23/32
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.141.196.20/32
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 3.32.132.151/32
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 3.184.67.48/32
+
+        - IpProtocol: udp
+          FromPort: 389
+          ToPort: 389
+          CidrIp: 10.38.8.128/28
+
+        - IpProtocol: tcp
+          FromPort: 88
+          ToPort: 88
+          CidrIp: 10.38.8.128/28
+
+        - IpProtocol: tcp
+          FromPort: 135
+          ToPort: 139
+          CidrIp: 10.38.8.128/28
+
+        - IpProtocol: tcp
+          FromPort: 445
+          ToPort: 445
+          CidrIp: 10.38.8.128/28
+
+        - IpProtocol: tcp
+          FromPort: 49152
+          ToPort: 65535
+          CidrIp: 10.38.8.128/28          
+
+  ###########################
+  # Web section
+  ###########################
+    #
+    # GP-web-internal-facing-websites-SG is used for Internally facing web sites
+    #
+    WebInternalSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-web-internal-facing-websites-SG
+        GroupDescription: Assign this SG to the ELB of an internally facing web app (the DNS record would point to this ELB)
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-web-internal-facing-websites-SG
+
+        SecurityGroupIngress:
+
+        # allow plain HTTP from all 'legitimate' on-prem (internal GE network) subnets
+        -
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 3.0.0.0/8
+        -
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 10.0.0.0/8
+
+        #
+        # (repeat the same for HTTPS) - allow HTTPS from all 'legitimate' on-prem (internal GE network) subnets
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 3.0.0.0/8
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/8
+        #
+        # disable all outgoing traffic by default. The app specific SG will enable it to the specific destination
+        SecurityGroupEgress:
+        - CidrIp: 127.0.0.1/32
+          IpProtocol: "-1"
+          
+    WebExternalSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-web-external-facing-websites-SG
+        GroupDescription: Assign this SG to the ELB of an externally facing web app (the DNS record would point to this ELB)
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-web-external-facing-websites-SG
+
+        SecurityGroupIngress:
+
+        # allow plain HTTP from all 'legitimate' on-prem (internal GE network) subnets
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+        # disable all outgoing traffic by default. The app specific SG will enable it to the specific destination
+        SecurityGroupEgress:
+        - CidrIp: 127.0.0.1/32
+          IpProtocol: "-1"      
+    
+    WebImpervaSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-web-imperva-SG
+        GroupDescription: Assign this SG to the ALB (Imperva WAF) of externally facing web app
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-web-imperva-SG
+
+        SecurityGroupIngress:
+        #
+        # allow  HTTPS only from white-listed IP Addresses
+        - 
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 199.83.128.0/21
+        -         
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 198.143.32.0/19
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 149.126.72.0/21
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 103.28.248.0/22
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 45.64.64.0/22
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 185.11.124.0/22
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 192.230.64.0/18
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 107.154.0.0/16
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 45.60.0.0/16
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 45.223.0.0/16
+       
+
+        #
+        # (repeat the same for HTTP) - allow HTTP only from white-listed IP Addresses
+        - 
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 199.83.128.0/21
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 198.143.32.0/19
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 149.126.72.0/21
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 103.28.248.0/22
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 45.64.64.0/22
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 185.11.124.0/22
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 192.230.64.0/18
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 107.154.0.0/16
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 45.60.0.0/16
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 45.223.0.0/16
+       
+        #
+        # disable all outgoing traffic by default. The app specific SG will enable it to the specific destination
+        SecurityGroupEgress:
+        - CidrIp: 127.0.0.1/32
+          IpProtocol: "-1" 
+     
+    
+  ###########################
+  # DB DataMover section
+  ###########################
+
+    BaseDataMover:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-RDS-DataMover-SG
+        GroupDescription: Base SG to grant access from data mover to DBs
+        VpcId: !ImportValue vpcid            
+        Tags:
+        - Key: Name
+          Value: GP-RDS-DataMover-SG
+
+  ###########################
+  # RDS section
+  ###########################
+
+    BaseRDSSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-Base-RDS-SG
+        GroupDescription: Base SG to assign to RDS instances. Only allows access from Bastion
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-Base-RDS-SG
+
+        SecurityGroupIngress:
+        -
+          IpProtocol: tcp
+          FromPort: 1433
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref BaseDataMover  
+        
+        -
+          IpProtocol: tcp
+          FromPort: 8444
+          ToPort: 8445
+          SourceSecurityGroupId: !Ref BaseDataMover  
+        
+        #GECHG1037228 - Enable db tunneling to application accounts from a bastion hosted in gp ops
+        -
+          IpProtocol: tcp
+          FromPort: 1433
+          ToPort: 5432
+          CidrIp: 10.157.136.0/25
+          
+        -
+          IpProtocol: tcp
+          FromPort: 8444
+          ToPort: 8445
+          CidrIp: 10.157.136.0/25
+        
+        # disable all outgoing traffic by default. The app specific SG will enable it to the specific destination
+        SecurityGroupEgress:
+        - CidrIp: 127.0.0.1/32
+          IpProtocol: "-1"
+
+  ###########################
+  # SSM Section
+  ###########################
+    SSMEndpointSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: GP-SSM-ENDPoint-SG
+        GroupDescription: SG to allow 443 traffic for SSM
+        VpcId: !ImportValue vpcid
+        Tags:
+        - Key: Name
+          Value: GP-SSM-ENDPoint-SG
+
+        SecurityGroupIngress:
+        -
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+        -
+          IpProtocol: tcp
+          FromPort: 8084
+          ToPort: 8084
+          CidrIp: 0.0.0.0/0
+
+        # disable all outgoing traffic by default. The app specific SG will enable it to the specific destination
+        SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+
+        -
+          IpProtocol: tcp
+          FromPort: 8084
+          ToPort: 8084
+          CidrIp: 0.0.0.0/0
+################################################################################
+# Outputs Section
+################################################################################
+
+Outputs:
+
+# Bastion SG
+  BastionSG:
+    Description: Base SG for Bastion(s)
+    Value: !Ref BastionSG
+    Export:
+      Name: GP-bastion-SG
+# Linux SG
+  BaseLinuxImmutableSG:
+    Description: Base SG to assign to Linux EC2 instances
+    Value: !Ref BaseLinuxImmutableSG
+    Export:
+      Name: GP-Immutable-Linux-SG
+      
+# Windows SG
+  BaseWindowsImmutableSG:
+    Description: Base SG to assign to Windows EC2 instances
+    Value: !Ref BaseWindowsImmutableSG
+    Export:
+      Name: GP-Immutable-Windows-SG
+# VDS SG
+  BaseOutVDSSG:
+    Description: Base SG to assign to Instance that need to connect to VDS
+    Value: !Ref BaseOutVDSSG
+    Export:
+      Name: GP-Base-outgoing-VDS-SG
+          
+# web sites SG
+  WebInternalSG:
+    Description: Base SG for internally facing web apps
+    Value: !Ref WebInternalSG
+    Export:
+      Name: GP-web-internal-facing-websites-SG
+          
+  WebExternalSG:
+    Description: Base SG for Externally facing web apps
+    Value: !Ref WebExternalSG
+    Export:
+      Name: GP-web-External-facing-websites-SG
+          
+# RDS SG
+  BaseRDSSG:
+    Description: Base SG to assign to RDS instances
+    Value: !Ref BaseRDSSG
+    Export:
+      Name: GP-Base-RDS-SG
+
+  DataMoverSg:
+    Description: Base SG to assign to datamover
+    Value: !Ref BaseDataMover
+    Export:
+      Name: GP-datamover-sg
+
+  SSMEndpointSG:
+    Description: SSM endpoint Base SG
+    Value: !Ref SSMEndpointSG
+    Export:
+      Name: GP-ssm-endpoint-sg

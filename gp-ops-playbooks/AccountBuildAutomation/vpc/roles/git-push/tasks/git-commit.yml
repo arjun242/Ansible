@@ -1,0 +1,95 @@
+---
+- name: Including secret vars
+  include_vars: main.yml
+  no_log: true
+
+- name: Include directory vars files
+  include_vars: directory_vars.yml
+
+- name: Create empty directory
+  file:
+    path: "{{dest_directory}}"
+    state: directory
+
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{github_enterprise_repo}}"
+    dest: "{{dest_directory}}"
+    clone: yes
+    recursive: yes
+  #no_log: true
+
+- name: Synchronize source and destination directories
+  synchronize:
+    src: "{{source_directory}}/"
+    dest: "{{dest_directory}}"
+  delegate_to: localhost
+  
+# - name: Git repo commands(Reinitialuze and add remote)
+#   command: "{{item}} chdir={{dest_directory}}"
+#   with_items:
+#     - git init
+#     - git remote add checkGit \"https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{github_enterprise_repo}}\" 
+
+# - name: Git repo commands(push latest changes)
+#   shell:
+#     cmd: "{{item}}"
+#   args:
+#     chdir: "{{dest_directory}}"
+#   with_items:
+#     - git config --local user.name \"Vikram\"
+#     - git config --local user.email vikram.chandrasekaran@ge.com
+#     - git pull checkGit main
+#     - git add --all
+#     - git commit -a -m \"New commit into {{github_enterprise_repo}} by Ansible\"
+#     - git push checkGit main
+#     - git remote rm checkGit
+
+- name: Reinitialize existing repo
+  shell:
+    cmd: "cd {{dest_directory}} && git init"
+
+- name: Add remote
+  shell:
+    cmd: "cd {{dest_directory}} && git remote add checkGit \"https://{{sso}}:{{pat}}@github.build.ge.com/{{github_enterprise_org}}/{{github_enterprise_repo}}\" "
+  #no_log: true
+  
+- name: Add identity
+  shell:
+    cmd: "cd {{dest_directory}} && git config user.name \"Jenkins\" && git config user.email 502813500@ge.com"
+  #no_log: true
+
+- name: Pull the latest revision of repo
+  shell:
+    cmd: "cd {{dest_directory}} && git pull checkGit master"
+  #no_log: true
+
+- name: Add the modified files using git add
+  shell:
+    cmd: "cd {{dest_directory}} && git add --all"
+  #no_log: true
+
+- name: Commit the changes
+  shell:
+    cmd: "cd {{dest_directory}} && git diff --quiet && git diff --staged --quiet || git commit -a -m \"{{message}}\" "  
+  #no_log: true
+
+- name: Push the changes
+  shell:
+    cmd: "cd {{dest_directory}} && git push checkGit master"
+  #no_log: true
+
+- name: Remove remote
+  shell:
+    cmd: " cd {{dest_directory}} && git remote rm checkGit"
+  #no_log: true
+
+- name: Delete destination directory
+  file:
+    path: "{{dest_directory}}"
+    state: absent
+
+- name: Delete Source directory
+  file:
+    path: "{{source_directory}}"
+    state: absent

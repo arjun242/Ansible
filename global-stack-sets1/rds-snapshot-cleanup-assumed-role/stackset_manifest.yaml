@@ -1,0 +1,7 @@
+custom_resources:
+  - name: rds-snapshot-cleanup-assumed-role
+    custom_stackset_name: rds-snapshot-cleanup-assumed-role
+    description: Creates the assumed role for rds snapshot clean-up in each account
+    template_file: templates/rds-snapshot-cleanup-assumed-role.yaml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change

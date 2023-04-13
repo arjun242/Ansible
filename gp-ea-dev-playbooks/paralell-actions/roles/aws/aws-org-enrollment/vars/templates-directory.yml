@@ -1,0 +1,4 @@
+source_directory: "/tmp/account-automation-folder/directory_to_be_synced"
+dest_directory: "/tmp/account-automation-folder/directory_to_be_pushed"
+resource_folder: "git-org-scripts/base_config/aws/orgs"
+temp_directory: "/tmp/gitpull"

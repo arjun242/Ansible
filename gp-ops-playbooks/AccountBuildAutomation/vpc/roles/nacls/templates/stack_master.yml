@@ -1,0 +1,25 @@
+# History:
+# date  - initials - Description
+
+stack_defaults: 
+  tags: 
+    core_component: "true"
+    uai: {{UAI}}
+stacks:
+  {{aws_region}}:
+    {{prefix}}gp-app-nacl:
+      template: gp-nacl-application.yml     
+    {{prefix}}gp-db-nacl:
+      template: gp-nacl-database.yml 
+    {{prefix}}gp-ep-nacl:
+      template: gp-nacl-ep.yml
+    {% if extSubnetCIDR != "NA" and rbSubnetCIDR !="NA" -%}
+    {{prefix}}gp-ext-nacl:
+      template: gp-nacl-ext.yml 
+    {{prefix}}gp-rb-nacl:
+      template: gp-nacl-rb.yml
+    {% endif -%}
+    {% if igrSubnetCIDR != "NA" -%}
+    {{prefix}}gp-igr-nacl:
+      template: gp-nacl-integration.yml
+    {% endif -%} 

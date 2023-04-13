@@ -1,0 +1,11 @@
+---
+- name: Using a REST API
+  become: false
+  debug:
+    msg: “Let’s call an API”
+
+- name: GET Distribution List information
+  uri:
+    url: https://api.ge.com/digital/idm/group-api/v1/webSsoGroups/g02847995
+    method: GET
+    

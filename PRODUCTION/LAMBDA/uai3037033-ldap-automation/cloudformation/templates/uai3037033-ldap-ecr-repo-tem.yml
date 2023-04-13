@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation to create ECR.
+
+Parameters:
+  AppName:
+    Type: String
+    MaxLength: 25
+    MinLength: 3
+    Description: Name of the application, keep to 15 characters or less
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed.
+    ConstraintDescription: The UAI must be valid, but specified as 'uai' followed by 7 digits.
+    AllowedPattern: '^uai[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    AllowedValues:
+    - nonprd
+    - prd
+
+Resources:
+  ECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${UAI}-${AppName}-${Env}"
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 5,
+                "description": "Expire untagged images older than 21 days",
+                "selection": {
+                      "countType": "sinceImagePushed",
+                      "countUnit": "days",
+                      "countNumber": 21,
+                      "tagStatus": "untagged"
+                },
+                "action": {
+                  "type": "expire"
+                }
+              },
+              {
+                "rulePriority": 20,
+                "description": "expire images count more than 20 units",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 20
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+
+Outputs:
+  Repositoryname:
+    Value: !Ref ECR
+  RepositoryArn:
+    Value: !GetAtt ECR.Arn

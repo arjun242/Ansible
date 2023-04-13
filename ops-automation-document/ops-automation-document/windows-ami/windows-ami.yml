@@ -1,0 +1,406 @@
+--- 
+description: "Updates a Microsoft Windows AMI. By default it will install all Windows updates, Amazon software, and Amazon drivers. It will then sysprep and create a new AMI. Supports Windows Server 2008 R2 and greater."
+mainSteps:
+  - name: invokelambda
+    action: 'aws:invokeLambdaFunction'
+    inputs:
+      InvocationType: RequestResponse
+      FunctionName: 'arn:aws:lambda:us-east-1:{{global:ACCOUNT_ID}}:function:get-latest-gesos-image'
+      Payload: |-
+        {
+          "imagename": "{{AMINAME}}"
+        }
+  - 
+    action: "aws:runInstances"
+    inputs: 
+      IamInstanceProfileName: "{{ InstanceIamRole }}"
+      ImageId: "{{ invokelambda.Payload }}"
+      InstanceType: "{{ InstanceType }}"
+      KeyName: "{{KeyName}}"
+      MaxInstanceCount: 1
+      MinInstanceCount: 1
+      SecurityGroupIds: 
+        - "{{SecurityGroup}}"
+      SubnetId: "{{ SubnetId }}"
+      TagSpecifications: 
+        - 
+          ResourceType: instance
+          Tags: 
+            - 
+              Key: Name
+              Value: "Image_from_{{automation:EXECUTION_ID}}"
+            - 
+              Key: uai
+              Value: "{{uai}}"
+            - 
+              Key: env
+              Value: "{{env}}"
+    maxAttempts: 3
+    name: LaunchInstance
+    onFailure: Abort
+    timeoutSeconds: 1800
+  - maxAttempts: 3
+    inputs:
+      Parameters:
+        executionTimeout: '3600'
+        commands:
+        - Invoke-WebRequest https://s3.amazonaws.com/aws-cli/AWSCLI64PY3.msi -OutFile
+          C:\temp\AWSCLI64PY3.msi
+        - sleep 60
+        - Start-Process "msiexec.exe" -ArgumentList "/i C:\temp\AWSCLI64PY3.msi /qn"
+          -Wait -NoNewWindow
+        - sleep 20
+      InstanceIds:
+      - "{{LaunchInstance.InstanceIds}}"
+      DocumentName: AWS-RunPowerShellScript
+    name: InstallAWSCLI
+    action: aws:runCommand
+    onFailure: Abort
+    timeoutSeconds: 3600
+  - maxAttempts: 3
+    inputs:
+      DesiredState: stopped
+      InstanceIds:
+      - "{{ LaunchInstance.InstanceIds }}"
+      CheckStateOnly: false
+    name: StopInstanceAWSCLI
+    action: aws:changeInstanceState
+    timeoutSeconds: 7200
+    onFailure: Abort
+  - maxAttempts: 3
+    inputs:
+      DesiredState: running
+      InstanceIds:
+      - "{{ LaunchInstance.InstanceIds }}"
+      CheckStateOnly: false
+    name: StartInstanceAWSCLI
+    action: aws:changeInstanceState
+    timeoutSeconds: 7200
+    onFailure: Abort
+  - 
+    action: "aws:runCommand"
+    inputs: 
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds: 
+        - "{{LaunchInstance.InstanceIds}}"
+      Parameters: 
+        commands: 
+          - "cd C:\\temp"
+          - "Invoke-WebRequest https://s3.us-east-1.amazonaws.com/gp-us-east-ops-automation-common-tools/QualysCloudAgent.exe -OutFile QualysCloudAgent.exe"
+          - "sleep 10"
+          - ".\\QualysCloudAgent.exe CustomerId={{QualysCustomerId}}  ActivationId={{QualysActivationId}}"
+          - "Invoke-WebRequest https://s3.us-east-1.amazonaws.com/gp-us-east-ops-automation-common-tools/WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe -OutFile WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe"
+          - "sleep 30"
+          - ".\\WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe /install /quiet /norestart CID=D96C92BDFB0946B589727FF82FB4601A-9E"
+          - "sleep 5"
+        executionTimeout: "3600"
+    maxAttempts: 3
+    name: UpdateSecurityAgents
+    onFailure: Abort
+    timeoutSeconds: 3600
+
+  - name: CloudWatch
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    onFailure: Abort
+    timeoutSeconds: 3600
+    inputs:
+      DocumentName: AWS-ConfigureAWSPackage
+      InstanceIds:
+        - '{{LaunchInstance.InstanceIds}}'
+      Parameters:
+        name: AmazonCloudWatchAgent
+        action: Install
+  - 
+    action: "aws:runCommand"
+    inputs: 
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds: 
+        - "{{LaunchInstance.InstanceIds}}"
+      Parameters: 
+        commands: 
+          - $trigger = New-JobTrigger -AtStartup -RandomDelay 00:05:00
+          - mkdir C:\\CWLaunch
+          - echo '& "C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1" -a fetch-config -m ec2 -s -c ssm:/automation/WindowsCloudWatchConfig' > "C:\\CWLaunch\\LaunchLog.ps1"
+          - Register-ScheduledJob -Trigger $trigger -FilePath C:\\CWLaunch\\LaunchLog.ps1 -Name GetLauchLog
+          - sleep 10
+          - C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe "C:\\CWLaunch\\LaunchLog.ps1"
+        executionTimeout: "3600"
+    maxAttempts: 3
+    name: PlaceCloudWatchConfig
+    onFailure: Abort
+    timeoutSeconds: 1800
+  - 
+    action: "aws:runCommand"
+    inputs: 
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds: 
+        - "{{LaunchInstance.InstanceIds}}"
+      Parameters: 
+        commands: 
+          - "mkdir C:\\Certs"
+          - "cd C:\\Certs"
+          - "Invoke-WebRequest https://s3.us-east-1.amazonaws.com/gp-us-east-ops-automation-common-tools/GE_External_Root_CA_2_1.cer -OutFile GE_External_Root_CA_2_1.cer"
+          - "sleep 10"
+          - "certutil -addstore -f root C:\\Certs\\GE_External_Root_CA_2_1.cer"
+          - "sleep 30"
+          - "aws s3 cp s3://gp-us-east-ops-automation-common-tools/TrustStoreImport.reg C:\\Certs\\TrustStoreImport.reg"
+          - "reg import C:\\Certs\\TrustStoreImport.reg"
+        executionTimeout: "3600"
+    maxAttempts: 3
+    name: PlaceGECertPem
+    onFailure: Abort
+    timeoutSeconds: 1800
+  - 
+    action: aws:runCommand
+    inputs:
+      InstanceIds:
+      - "{{LaunchInstance.InstanceIds}}"
+      DocumentName: AWS-RunPowerShellScript
+      Parameters:
+        commands:
+          - aws s3 cp s3://gp-us-east-ops-automation-common-tools/unzip.exe C:\\unzip.exe
+          - sleep 20
+          - "$OSVersion = (Get-WmiObject -class Win32_OperatingSystem).Caption"
+          - if ($OSVersion -eq 'Microsoft Windows Server 2012 R2 Standard'){
+          - aws s3 cp s3://gp-us-east-ops-automation-common-tools/CC_ActivClient-7.0.2.421_Win-x64.zip C:\\CC_ActivClient-7.0.2.421_Win-x64.zip
+          - sleep 30
+          - cd c:\\
+          - C:\\unzip.exe -PassThru C:\\CC_ActivClient-7.0.2.421_Win-x64.zip
+          - start-process C:\\sysinfo\\2_Factor\\install.bat
+          - sleep 30
+          - Remove-Item -path c:\\sysinfo -Recurse
+          - sleep 10
+          - Remove-Item -path c:\\CC_ActivClient-7.0.2.421_Win-x64.zip -Recurse}
+          - elseif ($OSVersion -eq 'Microsoft Windows Server 2016 Datacenter'){
+          - aws s3 cp s3://gp-us-east-ops-automation-common-tools/CC_ActivClient-7.2_Win-x64.zip C:\\CC_ActivClient-7.2_Win-x64.zip
+          - sleep 30
+          - Expand-Archive -LiteralPath C:\\CC_ActivClient-7.2_Win-x64.zip -DestinationPath C:\\
+          - start-process C:\\sysinfo\\2_Factor\\install.bat
+          - sleep 30
+          - Remove-Item -path c:\\sysinfo -Recurse
+          - sleep 10
+          - Remove-Item -path c:\\CC_ActivClient-7.2_Win-x64.zip -Recurse}
+          - else{
+          - Write-Output "New OS Version $OSVersion. Active Client is not instsalled"}
+          - sleep 5
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: Abort
+    name: InstallActiveClientandUnzip
+  - 
+    action: "aws:runCommand"
+    inputs: 
+      DocumentName: AWS-InstallSpecificWindowsUpdates
+      InstanceIds: 
+        - "{{ LaunchInstance.InstanceIds }}"
+      Parameters: 
+        KbArticleIds: "{{ KbArticleIds }}"
+    maxAttempts: 3
+    name: UpdateWindows
+    onFailure: Abort
+    timeoutSeconds: 3600
+  - 
+    action: "aws:runCommand"
+    inputs: 
+      DocumentName: AWSEC2-RunSysprep
+      InstanceIds: 
+        - "{{LaunchInstance.InstanceIds}}"
+      Parameters: 
+        Id: "{{automation:EXECUTION_ID}}"
+    maxAttempts: 3
+    name: RunSysprepGeneralize
+    onFailure: Abort
+    timeoutSeconds: 600
+  - 
+    action: "aws:runCommand"
+    inputs: 
+      DocumentName: AWS-UpdateSSMAgent
+      InstanceIds: 
+        - "{{ LaunchInstance.InstanceIds }}"
+      Parameters: 
+        allowDowngrade: "false"
+    maxAttempts: 3
+    name: UpdateSSMAgent
+    onFailure: Abort
+    timeoutSeconds: 600
+  - name: RunAnsibleUserSetupSSMDoc
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 1800
+    onFailure: Continue
+    inputs:
+      DesiredState: running
+      DocumentName: app-ansibleUser-publicKey
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+  - 
+    action: "aws:changeInstanceState"
+    inputs: 
+      CheckStateOnly: false
+      DesiredState: stopped
+      InstanceIds: 
+        - "{{ LaunchInstance.InstanceIds }}"
+    maxAttempts: 3
+    name: StopInstance
+    onFailure: Abort
+    timeoutSeconds: 7200
+  - 
+    action: "aws:createImage"
+    inputs: 
+      ImageDescription: "AMI Generated by EC2 Automation on {{global:DATE_TIME}} from {{invokelambda.Payload}}"
+      ImageName: "{{ TargetAmiName }}"
+      InstanceId: "{{ LaunchInstance.InstanceIds }}"
+      NoReboot: true
+    maxAttempts: 3
+    name: CreateImage
+    onFailure: Abort
+  - 
+    action: "aws:createTags"
+    inputs: 
+      ResourceIds: 
+        - "{{CreateImage.ImageId}}"
+      ResourceType: EC2
+      Tags: 
+        - 
+          Key: "Generated By Automation"
+          Value: "{{automation:EXECUTION_ID}}"
+        - 
+          Key: "From Source AMI"
+          Value: "{{invokelambda.Payload}}"
+        - 
+          Key: uai
+          Value: "{{uai}}"
+        - 
+          Key: Encrypted
+          Value: "true"
+        - 
+          Key: Name
+          Value: "{{TargetAmiName}}"
+        - 
+          Key: env
+          Value: "{{env}}"
+    maxAttempts: 1
+    name: createTags
+    onFailure: Continue
+  - 
+    action: "aws:changeInstanceState"
+    inputs: 
+      DesiredState: running
+      InstanceIds: 
+        - "{{LaunchInstance.InstanceIds}}"
+    maxAttempts: 3
+    name: startInstance
+    onFailure: Continue
+    timeoutSeconds: 1200
+  - name: updateSSMAMI
+    action: 'aws:executeAwsApi'
+    onFailure: Abort
+    inputs:
+      Service: ssm
+      Api: PutParameter
+      Name: /automation/ami/windows
+      Overwrite: true
+      Tier: Standard
+      Type: String
+      Value: '{{CreateImage.ImageId}}'
+  - 
+    action: "aws:runCommand"
+    inputs: 
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds: 
+        - "{{LaunchInstance.InstanceIds}}"
+      Parameters: 
+        commands: 
+          - $AVAIL_ZONE=invoke-restmethod -uri http://169.254.169.254/latest/meta-data/placement/availability-zone
+          - $REGION=$AVAIL_ZONE.Substring(0,$AVAIL_ZONE.Length-1)
+          - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+          - Start-Sleep -s 20
+          - choco install jq --force -version 1.5 -Y
+          - Start-Sleep -s 10
+          - $list='{{AMISharingRegAccList}}'
+          - $regions=($list | jq 'keys') -replace '[\"\[\],\" \"]', ''
+          - foreach ($reg in $regions) {
+          - if ($reg -ne '' -AND $reg -ne $REGION) {
+          - $copy_ami_id=Copy-EC2Image -SourceRegion $REGION -SourceImageId {{CreateImage.ImageId}} -Region $reg -Name "{{TargetAmiName}}" }
+          - Start-Sleep -s 600
+          - if ($reg -ne '') {
+          - $accounts=($list | jq --arg reg "$reg" '.[$reg]') -replace '[\"\[\],\" \"]', ''
+          - foreach ($acc in $accounts) {
+          - if ($acc -ne '' -AND $reg -ne $REGION) {
+          - Edit-Ec2ImageAttribute -ImageId $copy_ami_id -Region $reg -Attribute 'launchPermission' -OperationType "add" -UserId $acc }
+          - if ($acc -ne '' -AND $reg -eq $REGION) {
+          - Edit-Ec2ImageAttribute -ImageId {{CreateImage.ImageId}} -Region $reg -Attribute 'launchPermission' -OperationType "add" -UserId $acc } } } }
+    maxAttempts: 3
+    name: amiSharing
+    onFailure: "step:TerminateInstance"
+    timeoutSeconds: 7200
+
+  - 
+    action: "aws:changeInstanceState"
+    inputs: 
+      DesiredState: terminated
+      InstanceIds: 
+        - "{{ LaunchInstance.InstanceIds }}"
+    maxAttempts: 3
+    name: TerminateInstance
+    onFailure: Abort
+parameters: 
+  AutomationAssumeRole: 
+    default: "arn:aws:iam::{{global:ACCOUNT_ID}}:role/inf/ssm-ami"
+    description: "(Required) The ARN of the role that allows Automation to perform the actions on your behalf."
+    type: String
+  InstanceIamRole: 
+    default: ec2-ami-instance-profile
+    description: "(Required) The name of the role that enables Systems Manager (SSM) to manage the instance."
+    type: String
+  InstanceType: 
+    default: t3.medium
+    description: "(Optional) Type of instance to launch as the workspace host. Instance types vary by region. Default is t3.medium."
+    type: String
+  KbArticleIds: 
+    default: ""
+    description: "(Optional) Specify one or more Microsoft Knowledge Base (KB) article IDs to include. You can install multiple IDs using comma-separated values. Valid formats: KB9876543 or 9876543."
+    type: String
+  KeyName: 
+    default: test-gp-ops-key
+    description: "key pair to use. Default is AUTO."
+    type: String
+  QualysActivationId: 
+    default: "{{ssm:/automation/qualys/activationid}}"
+    description: "qualys activation id"
+    type: String
+  QualysCustomerId: 
+    default: "{{ssm:/automation/qualys/customerid}}"
+    description: "qualys activation id"
+    type: String
+  SecurityGroup: 
+    default: "{{ssm:/automation/ami/sg}}"
+    description: "Base SG Id for windows Instance"
+    type: String
+  AMINAME:
+    type: String
+    default: GESOS-AWS-BASE_Windows2016
+    description: Initial name of base AMI, Accepts Windows2012R2/Windows2016/Windows2019
+  SubnetId: 
+    default: "{{ssm:/automation/ami/subnet}}"
+    description: "Subnet to launch as the workspace host. Subnets vary by VPC."
+    type: String
+  TargetAmiName: 
+    default: "SSMWindowsAmi_from_SourceImageId_on_{{global:DATE_TIME}}"
+    description: "(Optional) The name of the new AMI that will be created. Default is a system-generated string including the source AMI id, and the creation time and date."
+    type: String
+  env: 
+    default: Dev
+    description: "Env of the instance"
+    type: String
+  uai: 
+    default: uai3026350
+    description: "UAI to tag instance and AMI. Default is AUTO."
+    type: String
+  AMISharingRegAccList:
+    type: String
+    default: '{{ssm:/automation/region-account}}'
+    description: region and corresponding accounts where AMI needs to be shared
+assumeRole: "{{ AutomationAssumeRole }}"
+schemaVersion: "0.3"

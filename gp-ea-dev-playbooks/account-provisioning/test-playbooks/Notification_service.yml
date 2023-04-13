@@ -1,0 +1,4 @@
+---
+- hosts: localhost
+  roles:
+    - Notification_service

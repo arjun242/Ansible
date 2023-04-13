@@ -1,0 +1,11 @@
+---
+- name: Including secret vars
+  include_vars: main.yml
+  no_log: true
+
+- name: Include directory vars files
+  include_vars: directory_vars.yml
+
+- name: Clear the contents of all mentioned repos
+  include_tasks: "{{role_path}}/files/delete-tasks.yml"
+  with_items: "{{ to_be_deleted }}"

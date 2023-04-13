@@ -1,0 +1,59 @@
+---
+## copy the existing github orgs list, append the new aws account info and push the orgs.json file back
+## https://github.build.ge.com/gp-ops/gp-jenkins-selfservice/blob/master/git-org-scripts/base_config/orgs/orgs.json
+
+# tasks:
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Including secret vars
+  include_vars: vault.yml
+  no_log: true
+
+- name: Create a new directory for orgs list json file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}"
+
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-ops/gp-jenkins-selfservice"
+    dest: "{{temp_directory}}"
+    clone: yes
+    recursive: yes
+    version: master
+
+- name: JSON file content of existing orgs
+  shell: cat {{temp_directory}}/{{resource_folder}}/orgs.json
+  register: out_existing_orgs
+
+- name: save the Json data to a variable as a set_act
+  set_fact:
+    existing_orgs: "{{ out_existing_orgs.stdout | from_json }}"
+
+- name: Display Existing Orgs List
+  debug:
+    var: existing_orgs
+
+- name: Add New Account details to existing orgs list
+  set_fact: 
+      total_orgs_list: "{{ existing_orgs | default({}) + [{ 'aws_acct_number' : item.AwsAccountId , 'name' : item.GitOrgName }] }}"
+  loop:
+    - { AwsAccountId: "{{ aws_account_id }}", GitOrgName: "{{ aws_account_name }}" }
+
+- name: Display after append new account info
+  debug:
+    var: total_orgs_list
+
+- name: Write the updated orgs list json file 
+  copy: 
+    content: "{{ total_orgs_list | to_nice_json }}"
+    dest: "{{source_directory}}/{{resource_folder}}/orgs.json"
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_org: gp-ops
+    github_enterprise_repo: gp-jenkins-selfservice
+    message: "Ansible Managed Commit - AccountProvisioning"

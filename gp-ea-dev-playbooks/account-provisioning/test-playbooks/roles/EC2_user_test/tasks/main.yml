@@ -1,0 +1,76 @@
+---
+- name: Command to list down all the users
+  ansible.builtin.shell: cat /etc/passwd
+  register: Users
+
+- name: Initialize an empty list for our strings
+  set_fact:
+    username_list: []
+    uid_list: []
+
+- set_fact: users_details={{ Users.stdout_lines }}
+- debug:
+    var: users_details
+
+- name: Taking service local users
+  ansible.builtin.shell: cat /etc/passwd | grep -E '/sbin/nologin|/bin/false'
+  register: Service_local_Users
+- debug:
+    var: Service_local_Users.stdout_lines
+
+# - name: write to file
+#   ansible.builtin.copy:
+#     content: "{{ Service_local_Users }}"
+#     dest: "files/Service_local_Users.txt"
+
+- name: Taking non-service local users
+  ansible.builtin.shell: cat /etc/passwd | grep '/bin/bash'
+  register: NonService_local_Users
+- debug:
+    var: NonService_local_Users.stdout_lines
+
+- name: Copy using inline content
+  copy:
+    content: "{{ NonService_local_Users }}"
+    dest: test-playbooks\roles\EC2_user_test\files\NonService_local_Users.txt
+
+- name: Getting UID_MIN
+  ansible.builtin.shell: cat /etc/login.defs | grep -E '^UID_MIN'
+  register: UID_MIN
+- debug:
+    var: UID_MIN.stdout_lines
+
+- name: Getting UID_MAX
+  ansible.builtin.shell: cat /etc/login.defs | grep -E '^UID_MAX'
+  register: UID_MAX
+- debug:
+    var: UID_MAX.stdout_lines
+
+- name: Initialize an empty list for our strings
+  set_fact:
+    name_list: []
+    UID: []
+    username_list: []
+    list: []
+
+- name: Printing user details after splitting
+  set_fact:
+    username: "{{ item.split(':')[0]}}"
+    uid: "{{ item.split(':')[3]}}"
+    name_list: "{{name_list + [item.split(':')[0]]}}"
+    UID: "{{UID + [item.split(':')[3]]}}"
+  loop: "{{ users_details | list }}"
+
+- name: filtering out the username
+  set_fact:
+    list: " {% for i in range(UID | length) %}{% if UID[i]|int<60000 and UID[i]|int>1000 %}{{ username_list + [name_list[i]] }}{% endif %}{% endfor %}"
+- set_fact:
+    username_list: "{{ list |replace('][', ',')}}"
+
+# - name: Getting login details of all the users
+#   ansible.builtin.shell: "lslogins {{ item }}"
+#   with_items: "{{ username_list }}"
+#   register: user_logins
+
+# - debug:
+#     msg: "{{ user_logins }}"

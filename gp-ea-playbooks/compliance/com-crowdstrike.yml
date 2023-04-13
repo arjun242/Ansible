@@ -1,0 +1,6 @@
+---
+# installing crowd strike agent
+- hosts: all
+  ignore_unreachable: yes
+  roles:
+    - crowdstrike

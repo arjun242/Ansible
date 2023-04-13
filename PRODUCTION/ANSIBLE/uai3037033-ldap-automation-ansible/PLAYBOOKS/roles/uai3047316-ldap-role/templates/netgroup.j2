@@ -1,0 +1,10 @@
++CA_AWSENTC_NC_PW_CLDOPS_ADMINS ALL=(ALL) NOPASSWD:ALL
+Defaults:CA_AWSENTC_NC_PW_CLDOPS_ADMINS !requiretty
+{% if netgroup is defined and netgroup|trim and netgroup|length %}
+{% for item in netgroup.split(',') %}
+{% set custom_netgroup = item[1:] %}
++{{ custom_netgroup }} ALL=(ALL) NOPASSWD:ALL
+Defaults:{{ custom_netgroup }} !requiretty
+{% else %}
+{% endfor %}
+{% endif %}

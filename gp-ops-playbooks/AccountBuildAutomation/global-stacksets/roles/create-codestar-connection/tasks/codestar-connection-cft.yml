@@ -1,0 +1,38 @@
+---
+- set_stats:
+    data:
+      to_be_deleted:
+        - folder_name: codestar-connection
+          repo: cft-infra-templates
+          message: "Ansible is deleting codestar-connection"
+          stackNames:
+            - "{{prefix}}codestar-connection"
+
+- name: New folder for codestar-connection
+  file:
+    state: directory
+    path: "/tmp/account-automation-folder/codestar-connection/"
+
+- name: Render CF template
+  template:
+    src: codestar-connection-cft.yml
+    dest: "/tmp/account-automation-folder/codestar-connection/"
+
+- name: Create codestar-connection stack
+  cloudformation:
+    stack_name: "{{prefix}}codestar-connection"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "/tmp/account-automation-folder/codestar-connection/codestar-connection-cft.yml"
+    template_parameters:
+      ConnectionName: "github-build-ge"
+      ConnectionHostArn: "{{ CodeStarHost.HostArn }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+  register: CodestarConnectionCf
+
+- name: Set Stats for Code Star Connection ARN
+  set_stats:
+    data: 
+      CodeStarConnectionArn: "{{CodestarConnectionCf.stack_outputs.CodeStarConnectionArn}}"

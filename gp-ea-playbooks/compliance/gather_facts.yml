@@ -1,0 +1,7 @@
+---
+- hosts: all
+  gather_facts: true
+  tasks:
+    - name: Smart Inventory
+      debug:
+       msg: "Testing Smart Inventory"

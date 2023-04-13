@@ -1,0 +1,6 @@
+# Description: rendering global stacksets files related to rds 
+# Requirements: Stackset Execution role CFT
+---
+- hosts: localhost
+  roles:
+    - stacksets-rds

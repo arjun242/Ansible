@@ -1,0 +1,5 @@
+# Description: setup the org to gp-ops as default.
+---
+- hosts: localhost
+  roles:
+    - set-stats-gp-ops-org

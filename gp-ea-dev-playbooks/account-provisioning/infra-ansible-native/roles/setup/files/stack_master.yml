@@ -1,0 +1,5 @@
+stacks:
+  us-east-1:
+    gp-stackset-execution:
+      template: stackset-execution.yml 
+      

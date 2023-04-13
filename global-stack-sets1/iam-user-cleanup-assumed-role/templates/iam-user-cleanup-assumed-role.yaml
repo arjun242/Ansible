@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CF template for iam user cleanup assumed role
+
+Resources:
+  IAMUserCleanupAssumedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: IAMUserCleanupAssumedRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            AWS: 'arn:aws:iam::325381443140:role/IAMUserCleanupExecutionRole'
+          Sid: ''
+        Version: '2012-10-17'
+      Policies:
+      - PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: IAMActions
+            Action:
+            - iam:DeleteAccessKey
+            - iam:ListRoleTags
+            - iam:UpdateUser
+            - iam:GetAccessKeyLastUsed
+            - iam:UpdateAccessKey
+            - iam:ListGroupsForUser
+            - iam:ListAccessKeys
+            - iam:DeleteUser
+            - iam:TagUser
+            - iam:UntagUser
+            - iam:GetUser
+            - iam:ListUserTags
+            - iam:ListUsers
+            - iam:DeleteLoginProfile
+            - iam:ListGroups
+            - iam:GetGroup
+            - iam:DeleteGroup
+            - iam:RemoveUserFromGroup
+            - iam:DetachGroupPolicy
+            - iam:ListAttachedGroupPolicies
+            - iam:ListAttachedUserPolicies
+            - iam:DetachUserPolicy
+            - iam:ListUserPolicies
+            - iam:ListGroupPolicies
+            - iam:DeleteUserPolicy
+            - iam:DeleteGroupPolicy
+            - iam:ListAccountAliases
+            Effect: Allow
+            Resource: "*"
+        PolicyName: AssumedPolicy
+      Tags:
+        - Key: "UAI"
+          Value: "UAI3037033"
+        - Key: "appname"
+          Value: "gp-iamusercleanup"
+        - Key: "env"
+          Value: "prd"
+Outputs:
+  IAMUserCleanupAssumedRole:
+    Description: "IAM Assumed Role created for cleanup function"
+    Value: !GetAtt IAMUserCleanupAssumedRole.Arn

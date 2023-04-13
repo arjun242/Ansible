@@ -1,0 +1,68 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create an Sqs queue
+
+Parameters:
+  UAI:
+    Type: String
+  AppName:
+    Type: String
+  Env:
+    Type: String
+  DelaySeconds:
+    Type: String
+  QueueName:
+    Type: String
+
+Resources:
+  SQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      # ContentBasedDeduplication: Boolean
+      DelaySeconds: !Ref DelaySeconds
+      # KmsDataKeyReusePeriodSeconds: Integer
+      KmsMasterKeyId:  !ImportValue ldapcommonkmskeyname
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub ${UAI}-${AppName}-${QueueName}-${Env}
+      ReceiveMessageWaitTimeSeconds: 3
+      # RedrivePolicy:
+      #   deadLetterTargetArn:
+      #   maxReceiveCount:
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${QueueName}-${Env}"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: ! Ref Env
+      VisibilityTimeout: 5400
+
+  SQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+      - Ref: SQS
+      PolicyDocument:
+        Id: !GetAtt SQS.Arn
+        Version: '2012-10-17'
+        Statement:
+          - Sid: __owner_statement
+            Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com,sqs.amazonaws.com,events.amazonaws.com]
+            Action:
+              - "sqs:SendMessage"
+            Resource: !GetAtt SQS.Arn
+
+Outputs:
+  SQSarn:
+    Description: A reference to the created SQSarn
+    Value:
+      Fn::GetAtt:
+        - SQS
+        - Arn
+    Export:
+      Name: eventec2deletesqs

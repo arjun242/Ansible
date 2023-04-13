@@ -1,0 +1,9 @@
+BucketName: gp-us-east-ops-automation-common-tools
+PrivateObjectDir: /ansible/bastion/ssh_host_rsa_key
+PublicObjectDir: /ansible/bastion/ssh_host_rsa_key_pub
+S3DownloadDir: /tmp/s3Download
+BucketRegion: us-east-1
+PrivateKeyFileName: ssh_host_rsa_key
+PublicKeyFileName: ssh_host_rsa_key.pub
+TempStoreDirectory: /tmp/fromTower
+SSHDirectory: /etc/ssh

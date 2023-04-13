@@ -1,0 +1,5 @@
+---
+# installing qualys agent
+- hosts: all
+  roles:
+    - qualys

@@ -1,0 +1,19 @@
+VpcID: "{{vpcID}}"
+VPCAlias: "{{vpcName}}"
+AZ1Name: "{{sn1Az}}"
+AZ2Name: "{{sn2Az}}"
+AZ1ID: use1-az6
+AZ2ID: use1-az1
+VPCCidr: "{{vpcCIDR}}"
+VPCName: "{{vpcName}}"
+SubnetInternetAZ1: "{{sn1Id}}"
+SubnetInternetAZ2: "{{sn2Id}}"
+NATEniId: "{{nat_eni_id}}"
+VPCResolverSG: "{{vpcResolverSG}}"
+InternetRouteTableID: "{{internetRTID}}"
+{% if vpcGatewayID != "NA" -%}
+VPCGatewayId: "{{vpcGatewayID}}"
+{% endif -%}
+{% if transitGatewayID != "NA" -%}
+TransitGatewayId: "{{transitGatewayID}}"
+{% endif -%}

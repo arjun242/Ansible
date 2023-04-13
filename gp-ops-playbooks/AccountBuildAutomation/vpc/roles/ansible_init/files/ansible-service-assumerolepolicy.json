@@ -1,0 +1,14 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::325381443140:role/app/uai3047316/gp-ansible-app-prd-ec2"
+        ]
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}

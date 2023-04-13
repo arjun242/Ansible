@@ -1,0 +1,92 @@
+#AWS_Lambda_Role 
+
+#Service Role.
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+    LambdaCustomOpsRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: LambdaCustomOpsRole
+        Description: Custom role for Lambda
+        Path: /inf/
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+
+    LambdaCustomOpsPolicy:
+      Type: 'AWS::IAM::Policy'
+      Properties:
+        PolicyName: LambdaCustomOpsPolicy
+        Roles:
+          - !Ref LambdaCustomOpsRole
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+                Effect: Allow
+                Sid: logs
+                
+              - Action:
+                  - 'rds:DescribeDBClusterSnapshots'
+                  - 'rds:DescribeDBClusters'
+                  - 'rds:DescribeDBInstances'
+                  - 'rds:DescribeDBParameters'
+                  - 'rds:DescribeDBSnapshotAttributes'
+                  - 'rds:DescribeDBSnapshots'
+                  - 'rds:ListTagsForResource'
+                  - 'rds:DeleteDBSnapshot'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: AllResourceAccess
+                
+              - Action:
+                  - 's3:Get*'
+                  - 's3:List*'
+                  - 's3:PutObject'
+                  - 's3:PutObjectAcl'
+                  - 's3:PutBucketTagging'
+                Resource:
+                  - 'arn:aws:s3:::gp-ops*'
+                  - 'arn:aws:s3:::gp-ops/*'
+                Effect: Allow
+                Sid: CloudOpsBucket
+                
+              - Action:
+                  - 'lambda:InvokeFunction'
+                  - 'lambda:InvokeAsync'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: InvokeLambda
+                
+              - Action:
+                  - 'acm:DescribeCertificate'
+                  - 'acm:ListCertificates'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: CertificateManagerACM
+                
+              - Action:
+                  - 'kms:Decrypt'
+                  - 'kms:Encrypt'
+                  - 'kms:Describe*'
+                  - 'kms:GenerateDataKey*'
+                  - 'kms:List*'
+                  - 'kms:Put*'
+                  - 'kms:Get*'
+                Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/common-kms-key*"
+                Effect: Allow
+                Sid: OpsKMSKeys

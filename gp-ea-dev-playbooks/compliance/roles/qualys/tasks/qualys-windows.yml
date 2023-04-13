@@ -1,0 +1,93 @@
+---
+# This Playbook contains tasks for Qualys Cloud Agent installation on Windows OS
+
+    # This task checks if Qualys Service is Running 
+    - name: Check if Qualys Service is Running
+      win_service:
+        name: 'QualysAgent'
+      register: service_info
+      
+    - name: Checking the version of existing package installed
+      win_shell: Get-Process -Name "QualysAgent" | Format-list -Property ProductVersion
+      register: version_check
+      
+    - set_fact: 
+        existing_version: "{{ version_check.stdout_lines[2].split(':')[1] | replace(' ','') }}"
+       # updates: "{{ update | lower }}"
+      when: service_info.exists == true
+      
+    # This block is executed when Qualys service is installed
+    - block: 
+      - name: Fetch the current Customer ID
+        no_log: true
+        win_reg_stat:
+          path: HKLM:\SOFTWARE\Qualys
+          name: CustomerID
+        register: cid
+
+      - name: Fetch the current Activation ID
+        no_log: true
+        win_reg_stat:
+          path: HKLM:\SOFTWARE\Qualys
+          name: ActivationID
+        register: acid
+ 
+      - name: Setting fact 
+        no_log: true
+        set_fact:
+          c_id: "{{ cid.value | lower }}"
+          a_cid: "{{ acid.value | lower }}"
+        when: cid.exists ==  true and acid.exists == true
+      
+      when: service_info.exists == true
+      
+    - set_fact:
+         c_id: 0
+         a_cid: 0
+      when: service_info.exists == false or cid.exists ==  false or acid.exists == false
+      
+    # This block is executed when Qualys Cloud Agent is not already installed or service is stopped or paused
+    - block:
+            
+        # This task creates a directory for the downloaded Qualys package on Master Node
+        - name: "Create Qualys downloaded files directory"
+          file:
+            path: "{{ qualys_download_dir }}"
+            state: directory
+          delegate_to: localhost
+
+        # This task downloads Qualys installer from s3 bucket on Master Node 
+        - name: Download Qualys installer
+          aws_s3:
+              bucket: "{{ BucketName }}"
+              object: "{{ qualys_package_windows }}"
+              dest: "{{ qualys_download_dir }}/{{ qualys_package_windows }}"
+              mode: get
+              region: "{{ reg }}"
+              overwrite: different
+          delegate_to: localhost 
+
+        # This task copies the files from master node to target host
+        - name: Copying the files to windows server
+          win_copy:
+            src: "{{ qualys_download_dir }}/{{ qualys_package_windows }}"             # Path of Downloaded files on Master Node
+            dest: "{{ installer_dir_windows }}{{ qualys_package_windows }}"           # Path of Installer Directory on Target Node
+ 
+        # This task installs Qualys Agent on target host
+        - name: Install Qualys Agent on the host machine
+          win_package:
+             path: "{{ installer_dir_windows }}{{ qualys_package_windows }}"
+             productid: auto
+             state: present
+             arguments:
+              - CustomerId="{{ QualysCustomerId }}" 
+              - ActivationId="{{ QualysActivationId }}"
+      
+        # This task starts the Qualys service on target host 
+        - name: Start Qualys
+          win_service:
+            name: 'QualysAgent'
+            state: started
+
+      when: service_info.exists == false or service_info.state == 'stopped' or service_info.state == 'paused' or c_id != QualysCustomerId or a_cid != QualysActivationId or cid.exists == false or acid.exists == false or update == 'yes' #(service_info.exists == true and existing_version != current_win_version)
+

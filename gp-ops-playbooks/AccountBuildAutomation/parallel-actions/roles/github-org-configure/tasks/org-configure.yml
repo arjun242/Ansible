@@ -1,0 +1,42 @@
+---
+
+- name: Include variables file
+  include_vars: templates-directory.yml
+
+- name: Include variables file
+  include_vars: secret.yml
+  no_log: true
+
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{src_directory}}"
+
+- name: Clone the repository to new directory
+  # no_log: true
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-ops/gp-jenkins-selfservice"
+    dest: "{{src_directory}}"
+    clone: yes
+    recursive: yes
+    version: master
+
+- name: Generate python state file
+  template:
+    src: "state.json"
+    dest: "{{src_directory}}/state.json"
+
+#- name: Install python dependency package
+#  command: "pip install {{source_directory}}/{{resource_folder}}/git-org-scripts/requirements.txt" 
+
+- name: Invoke GitHub Org Script
+  command: "python3 {{src_directory}}/git-org-scripts/src/main.py --host 'ansible' --cloud '{{ deployment_cloud }}'" 
+  register: output
+
+- name: Display Script Output to Screen
+  debug: "{{ output.stdout }}"
+
+- name: Delete directory for parameter file
+  file:
+    state: absent
+    path: "{{src_directory}}"

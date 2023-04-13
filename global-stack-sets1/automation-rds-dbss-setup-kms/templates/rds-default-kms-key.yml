@@ -1,0 +1,96 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to create kms key
+
+Parameters:
+  VPCAlias:
+    Description: "Specify the VPC name or VPC alias within this account. It is used as logical label to identify execution environment."
+    Type: String
+    Default: gr-db
+
+Resources:
+  KMSKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: Default Kms Key For RDS
+      Enabled: true
+      EnableKeyRotation: true
+      Tags: 
+        - Key: Name
+          Value: 'rds-default'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: automation-key
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+          - Sid: Enable Key Access for Admins
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed'
+            Action:
+              - 'kms:Create*'
+              - 'kms:Describe*'
+              - 'kms:Enable*'
+              - 'kms:List*'
+              - 'kms:Put*'
+              - 'kms:Update*'
+              - 'kms:Revoke*'
+              - 'kms:Disable*'
+              - 'kms:Get*'
+              - 'kms:Delete*'
+              - 'kms:TagResource'
+              - 'kms:UntagResource'
+              - 'kms:ScheduleKeyDeletion'
+              - 'kms:CancelKeyDeletion"'
+            Resource: '*'
+
+          - Sid: Enable Key Access
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/ops-jenkins-execution"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/cldarch-jenkins-execution"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldarch-fed"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/dbss/db-devops"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/dbss/dba"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-secops-fed"
+            Action:
+              - 'kms:CreateGrant'
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+            Resource: '*'
+
+  KMSAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/rds-default'
+      TargetKeyId: !Ref KMSKey
+
+Outputs:
+  KMSID:
+    Description: Default master key that protects RDS database volumes when no other key is defined
+    Value: !Ref KMSKey
+    Export:
+      Name: !Sub "kms:base:${VPCAlias}-default-rds:id"
+  KMSArn:
+    Description: Default master key that protects RDS database volumes when no other key is defined
+    Value: !GetAtt KMSKey.Arn
+    Export:
+      Name: !Sub "kms:base:${VPCAlias}-default-rds:arn"
+  KMSAlias:
+    Description: Default master key that protects RDS database volumes when no other key is defined
+    Value: !Ref KMSAlias
+    Export:
+      Name: !Sub "kms:base:${VPCAlias}-default-rds:alias"

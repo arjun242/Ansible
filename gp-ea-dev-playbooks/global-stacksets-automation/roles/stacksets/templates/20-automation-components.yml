@@ -1,0 +1,10 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+stacksets:
+  - name: cf-customresource-oidc-registration-setup
+  - name: cf-macro-execution-role-builder-setup
+  - name: common-access-logging-s3-bucket
+  - name: lambda-ami-ssm-parameters-update
+  - name: iam-user-cleanup-assumed-role
+  - name: ebs-volume-cleanup-assumed-role

@@ -1,0 +1,160 @@
+custom_resources:
+
+  - name: dbss-rds-sqlserver-parameter-groups
+    custom_stackset_name: dbss-rds-sqlserver-parameter-groups
+    description: RDS sqlserver default parameter groups
+    template_file: templates/sqlserver-parameter-groups.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/gp-ops.yml
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        override_parameter_file: parameters/ent-emea-pnw-preprod.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw
+        override_parameter_file: parameters/ent-emea-pnw.yml
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        override_parameter_file: parameters/pwr-power-services.yml
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        override_parameter_file: parameters/pwr-itsecops.yml
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        override_parameter_file: parameters/pwr-primavera.yml
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        override_parameter_file: parameters/pnw-preprod.yml
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        override_parameter_file: parameters/pnw-prod.yml
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        override_parameter_file: parameters/gp-aws3-b.yml
+        regions:
+          - us-east-1
+
+  - name: dbss-rds-sqlserver-option-groups
+    custom_stackset_name: dbss-rds-sqlserver-option-groups
+    description: RDS sqlserver default option groups
+    template_file: templates/sqlserver-option-groups.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/gp-ops.yml
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        override_parameter_file: parameters/ent-emea-pnw-preprod.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw
+        override_parameter_file: parameters/ent-emea-pnw.yml
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        override_parameter_file: parameters/pwr-power-services.yml
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        override_parameter_file: parameters/pwr-itsecops.yml
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        override_parameter_file: parameters/pwr-primavera.yml
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        override_parameter_file: parameters/pnw-preprod.yml
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        override_parameter_file: parameters/pnw-prod.yml
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        override_parameter_file: parameters/gp-aws3-b.yml
+        regions:
+          - us-east-1
+
+  - name: dbss-iam-rds-sqlserver-servicerole
+    custom_stackset_name: dbss-iam-rds-sqlserver-servicerole
+    description: IAM RDS sqlserver service role used in options group
+    template_file: templates/iam-rds-sqlserver-backup-service-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/gp-ops.yml
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        override_parameter_file: parameters/ent-emea-pnw-preprod.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw
+        override_parameter_file: parameters/ent-emea-pnw.yml
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        override_parameter_file: parameters/pwr-power-services.yml
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        override_parameter_file: parameters/pwr-itsecops.yml
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        override_parameter_file: parameters/pwr-primavera.yml
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        override_parameter_file: parameters/pnw-preprod.yml
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        override_parameter_file: parameters/pnw-prod.yml
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        override_parameter_file: parameters/gp-aws3-b.yml
+        regions:
+          - us-east-1

@@ -1,0 +1,62 @@
+custom_resources:
+  - name: stackset-execution-policy
+    custom_stackset_name: iam-stackset-execution-policy
+    description: Stackset Execution role Managed Policy
+    template_file: templates/stackset-execution-policy.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        regions:
+          - eu-west-1
+      - account: gp-us-east-gr
+        regions:
+          - us-east-1
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        regions:
+          - us-east-1
+      - account: ent-emea-pnw
+        regions:
+          - eu-west-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+      - account: gp-us-east-gr
+        regions:
+          - us-east-1
+      - account: gp-aws4-b
+        regions:
+          - us-east-1
+      - account: pwr-sharedhr
+        regions:
+          - us-east-1
+      - account: gp-aws5-d
+        regions:
+          - us-east-1
+      - account: gp-aws7-p
+        regions:
+          - us-east-1
+      - account: gp-aws8-d
+        regions:
+          - us-east-1

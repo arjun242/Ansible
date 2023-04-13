@@ -1,0 +1,85 @@
+---
+- hosts: all
+  environment:
+    PATH: "{{ lookup('env', 'PATH') }}: /usr/local/bin/aws"
+  tasks:
+  #Check LDAP installattion status with sssd service
+  - include_vars: static_vars.yml
+  - name: Gathering Metadata Facts
+    ec2_metadata_facts:
+
+  # This task is setting the variable Account ID  of the particular target host. 
+  - name: Setting the variables for IP Address, Account ID and OS Version 
+    set_fact:
+      account_id: "{{ ansible_ec2_identity_credentials_ec2_info_accountid }}"
+  - name: Get Service Status
+    systemd:
+      name: "sssd"
+    register: sssd_service_status
+  #backup of sssd.conf,sshd_config file and /etc/sudoers file before editing and with Timestamp
+  - name: Backup of access.conf file
+    become: yes
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      remote_src: yes
+    with_items:
+    - { src: '/etc/security/access.conf', dest: '/etc/security/access_bkp.conf ' }
+  #Update CustomNetgroups received from UI to target instance, if LDAP already installed
+  - block:    
+    - name: Update CustomNetgroups received from UI to particular instance, if LDAP already installed
+      become: yes
+      blockinfile:
+        dest: /etc/security/access.conf
+        marker: "# {mark} OF CUSTOM_NETGROUPS"
+        insertbefore: "#PRE-EXISTING_NETGROUPS"
+        block: |
+          #MANUAL ENTRIES WILL BE DELETED, UPON CUSTOM NETGROUPS ADDITION FROM WEB UI
+          {% if netgroup is defined and netgroup|trim and netgroup|length %}
+          {% for item in netgroup.split(',') %}
+          {% set custom_netgroup = item %}       
+          + : {{ custom_netgroup }} : ALL
+          {% else %}
+          {% endfor %}
+          {% endif %}
+    #Update Dynamodb table with custom netgroups
+    - name: update custom netgroups to dynamodb table
+      shell: |
+        aws dynamodb update-item --table-name {{ ddb_table_name }} --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"NetGroupName": {"Value": {"S": "{{ netgroup }}"}}}' --region {{ region }}
+      delegate_to: localhost
+      notify: sns_success_notification       
+    when: 
+      - sssd_service_status.status.LoadError is not defined
+      - netgroup is defined
+    rescue:
+    - name: Rollback,if custom netgroup addition fails
+      become: yes
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: yes
+      with_items:
+      - { dest: '/etc/security/access.conf', src: '/etc/security/access_bkp.conf ' }
+      ignore_errors: true
+    - name: sns_success_notification
+      sns:
+        msg: "Rollback Completed, since Custom Netgroup Updation failed on InstanceID: {{ instance_id }} in AccountID: {{ account_id }}."
+        subject: "Rollback completed !"
+        topic: "{{ topic_arn_custom_net }}"
+        region: "{{ region }}"
+      delegate_to: localhost
+      ignore_errors: true
+  
+  #Send SNS Notification if installattion successfull
+  handlers:
+  - name: sns_success_notification
+    sns:
+      msg: "Custom Netgroup was updated on InstanceID: {{ instance_id }} in AccountID: {{ account_id }}."
+      subject: "Custom Netgroup Updated !"
+      topic: "{{ topic_arn_custom_net }}"
+      region: "{{ region }}"
+    delegate_to: localhost
+    ignore_errors: true
+
+
+     

@@ -1,0 +1,12 @@
+[{
+  "ParameterKey": "Platform",
+  "ParameterValue": "postgres"
+},
+{
+  "ParameterKey": "Env",
+  "ParameterValue": "dev"
+},
+{
+  "ParameterKey": "VPCAlias",
+  "ParameterValue": "pw-aws-vpc-eu1n"
+}]

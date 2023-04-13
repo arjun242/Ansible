@@ -1,0 +1,6 @@
+UAI: uai3037033
+AppName: ldap
+ClientId: uai3047316ldapauto
+ClientSecret: uai3047316ldapautomate
+OidcIssuer: "https://fssfed.ge.com/fss"
+Env: prd

@@ -1,0 +1,100 @@
+description: >-
+  Updates AMI with Linux distribution packages and Amazon software. For
+  details,see
+  https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sysman-ami-walkthrough.html
+schemaVersion: '0.3'
+parameters:
+  InstanceId:
+    type: String
+    description: "(Required) The EC2 Instance ID"
+  InstanceIamRole:
+    type: String
+    default: ec2-ami-instance-profile
+    description: >-
+      (Required) The name of the role that enables Systems Manager (SSM) to
+      manage the instance.
+  AutomationAssumeRole:
+    type: String
+    default: 'arn:aws:iam::325381443140:role/inf/ssm-ami'
+    description: >-
+      (Required) The ARN of the role that allows Automation to perform the
+      actions on your behalf.
+  BucketName:
+    type: String
+    default: '{{ssm:/automation/ami/bucket}}'
+    description: common bucket
+mainSteps:
+  - name: Ldap
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: 'Abort'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+      - "{{InstanceId}}"
+      Parameters:
+        commands:
+          - set -e
+          - pkgs='authconfig compat-openldap oddjob-mkhomedir openldap-clients openssh-clients openssh-server sssd sssd-client sudo unzip'
+          - for pkg in $pkgs; do
+          -   yum install $pkg -y
+          - done
+          - mkdir -p /tmp/2fa
+          - cd /tmp/2fa
+          - aws s3 cp s3://gp-us-east-ops-automation-common-tools/2faDownload.zip /tmp/2fa
+          - sleep 10
+          - unzip -n /tmp/2fa/2faDownload.zip
+          - sleep 20
+          - cd /tmp/2fa/2faDownload
+          - rm -rf /tmp/2fa/2faDownload.zip
+          - mkdir -p /etc/openldap/cacerts
+          - mkdir -p /etc/pam.d
+          - mkdir -p /etc/raddb
+          - mkdir -p /etc/security
+          - mkdir -p /etc/sssd
+          - mkdir -p /etc/sysconfig
+          - mkdir -p /lib64/security
+          - mkdir -p /lib/security
+          - for line in `ls /tmp/2fa/2faDownload`; do
+          -   file=`echo "$line" | sed 's/7/\//g'`
+          -   \cp "$line" "$file"
+          -   chown root:root "$file"
+          -   chmod 0644 "$file"
+          - done
+          - chmod 0600 '/etc/security/access.conf'
+          - chmod 0600 '/etc/sssd/sssd.conf'
+          - region=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/[a-z]$//' | awk -F"-" '{print $1}'`
+          - if [ "$region" == 'us' ]; then
+          -   sed -i 's/<%=@LdapServer1%>/crpalpgap01iam.corporate.ge.com/g' /etc/sssd/sssd.conf
+          -   sed -i 's/<%=@LdapServer2%>/crpciohp01iam.corporate.ge.com/g' /etc/sssd/sssd.conf
+          -   sed -i 's/<%=@LdapBindDn%>/crpciohp01iam.corporate.ge.com/g' /etc/sssd/sssd.conf
+          -   sed -i 's/<%=@LdapBindPassword%>/AVVcGjVZlIq5XYIdVY8Mopqw/g' /etc/sssd/sssd.conf
+          - fi
+          - if [ "$region" == 'eu' ]; then
+          -   sed -i 's/<%=@LdapServer1%>/crplonukp01iam.corporate.ge.com/g' /etc/sssd/sssd.conf
+          -   sed -i 's/<%=@LdapServer2%>/crpbudhup02iam.corporate.ge.com/g' /etc/sssd/sssd.conf
+          -   sed -i 's/<%=@LdapBindDn%>/crpciohp01iam.corporate.ge.com/g' /etc/sssd/sssd.conf
+          -   sed -i 's/<%=@LdapBindPassword%>/AVVcGjVZlIq5XYIdVY8Mopqw/g' /etc/sssd/sssd.conf
+          - fi
+          - sed -i 's/<%=@AccessGroupName%>/CA_AWSENTC_NC_GPCLOUD/g' /etc/security/access.conf
+          - chown root:root /etc/sudoers
+          - chmod 0400 /etc/sudoers
+          - echo '+CA_AWSENTC_NC_GPCLOUD        ALL=(ALL)       NOPASSWD: ALL' >> /etc/sudoers
+          - echo 'ssm-user        ALL=(ALL)       NOPASSWD: ALL' >> /etc/sudoers
+          - /usr/sbin/cacertdir_rehash /etc/openldap/cacerts
+          - chmod 0600 /etc/raddb/server
+          - sed -i 's/<%=@RadiusServer1%>/10.152.60.21/g' /etc/raddb/server
+          - sed -i 's/<%=@RadiusServer2%>/10.152.60.22/g' /etc/raddb/server
+          - sed -i 's/<%=@RadiusSharedSecret%>/P5Gn2juDDB0M9R1J/g' /etc/raddb/server
+          - chmod 0600 /etc/ssh/sshd_config
+          - sed -i '/ChallengeResponseAuthentication/ s/yes/no/g' /etc/ssh/sshd_config
+          - sed -i '/GSSAPIAuthentication/ s/yes/no/g' /etc/ssh/sshd_config
+          - sed -i '/PasswordAuthentication/ s/no/yes/g' /etc/ssh/sshd_config
+          - sed -i '/UsePAM/ s/no/yes/g' /etc/ssh/sshd_config
+          - chkconfig sshd on
+          - chkconfig sssd on
+          - systemctl restart sshd
+          - systemctl restart sssd
+          - rm -rf /tmp/2fa
+          - sleep 10

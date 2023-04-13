@@ -1,0 +1,10 @@
+UAI: uai3037033
+AppName: ldap
+Env: prd
+AvailabilityZone: us-east-1a
+EC2Type: m5.large
+ServerAMI: /automation/ami/centos7
+AppInstance: jenkins
+VolumeSize: 200
+VolumeMount: /gpcloud
+LoadBalancerCertificateArn: arn:aws:acm:us-east-1:325381443140:certificate/b7a3944a-a10c-425f-8805-9df8a5787d64

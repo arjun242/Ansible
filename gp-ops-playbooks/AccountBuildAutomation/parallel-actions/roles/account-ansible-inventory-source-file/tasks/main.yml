@@ -1,0 +1,18 @@
+---  
+- name: Create a new directory for inventory file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/{{ aws_account_name|upper }}-INVENTORY"
+
+- name: Copy inventoryfile
+  template:
+    src: "aws_ec2.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/{{ aws_account_name|upper }}-INVENTORY"
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_org: gp-ansible
+    github_enterprise_repo: gp-ea-playbooks
+    message: "Creating account inventory file using Ansible Automation Workflow"

@@ -1,0 +1,136 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the parameter groups that are necessary for builds of RDS oracle instances.
+              It must be created prior to any RDS Instances
+              Last version 23-Oct-2020
+
+ # History:
+  # 23-Oct-2020: Removed 18c
+  # 03-Dec-2019: Add 18c and 19c groups
+  # 29-Nov-2018: Separated options and parameter groups
+  # 05-Nov-2018: F1322.US7170: Updated to include multi-vpc support based on VPCAlias parameter
+  #              Naming convention: https://github.build.ge.com/Cloud/ManagedComponents/blob/master/CFEXPORTS.md
+  # 20-Aug-2018: Add SSL parameter
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: "dbss"
+
+# SE2 groups
+Resources:
+  rdsoraclecomplianceparamgroupse2121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v12.1 (se2) with compliance parameters enabled.
+      Family: 'oracle-se2-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+#####SE  19
+  rdsoraclecomplianceparamgroupse219:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle SE v19 (se2) with compliance parameters enabled.
+      Family: 'oracle-se2-19'
+      Parameters:
+           audit_trail: "DB"
+
+####
+# EE groups
+  rdsoraclecomplianceparamgroupee121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v12.1 with compliance parameters enabled.
+      Family: 'oracle-ee-12.1'
+      Parameters:
+           audit_trail: "DB"
+
+#####EE 19
+  rdsoraclecomplianceparamgroupee19:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the parameter group for Oracle EE v19 with compliance parameters enabled.
+      Family: 'oracle-ee-19'
+      Parameters:
+           audit_trail: "DB"
+
+# default groups
+  rdsoracledefaultparamgroupse2121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle SE v12.1 (se2)
+      Family: 'oracle-se2-12.1'
+
+  rdsoracledefaultparamgroupse219:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle SE v19 (se2)
+      Family: 'oracle-se2-19'
+
+  rdsoracledefaultparamgroupee121:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle EE v12.1
+      Family: 'oracle-ee-12.1'
+
+  rdsoracledefaultparamgroupee19:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: This is the default parameter group for Oracle EE v19
+      Family: 'oracle-ee-19'
+
+Outputs:
+ ## PARAMETER GROUPS
+ #  Note: Parameter groups are not VPC-bound
+# SE2 groups
+  rdsoraclecomplianceparamgroupse2121:
+    Description: "This is the parameter group for Oracle SE v12.1 (se2) with Compliance Parameters enabled."
+    Value: !Ref rdsoraclecomplianceparamgroupse2121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:compliance:121'
+
+  rdsoraclecomplianceparamgroupse219:
+    Description: "This is the parameter group for Oracle SE v19 (se2) with Compliance Parameters enabled."
+    Value: !Ref rdsoraclecomplianceparamgroupse219
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:compliance:19'
+
+# EE groups
+  rdsoraclecomplianceparamgroupee121:
+    Description: "This is the parameter group for Oracle EE v12.1 with Compliance Parameters enabled."
+    Value: !Ref rdsoraclecomplianceparamgroupee121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:compliance:121'
+
+  rdsoraclecomplianceparamgroupee19:
+    Description: "This is the parameter group for Oracle EE v19 with Compliance Parameters enabled."
+    Value: !Ref rdsoraclecomplianceparamgroupee19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:compliance:19'
+
+# default groups
+  rdsoracledefaultparamgroupse2121:
+    Description: "This is the parameter group for Oracle SE v12.1 (se2) with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupse2121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:default:121'
+
+  rdsoracledefaultparamgroupse219:
+    Description: "This is the parameter group for Oracle SE v19 (se2) with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupse219
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-se2:default:19'
+
+  rdsoracledefaultparamgroupee121:
+    Description: "This is the parameter group for Oracle EE v12.1 with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupee121
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:default:121'
+
+  rdsoracledefaultparamgroupee19:
+    Description: "This is the parameter group for Oracle EE v19 with Defaults only enabled."
+    Value: !Ref rdsoracledefaultparamgroupee19
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:oracle-ee:default:19'

@@ -1,0 +1,4 @@
+---
+- hosts: ansib-dev-node1_9874
+  roles:
+    - azure/github-automation-org

@@ -1,0 +1,287 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation template to create some VPC specific 'constants' as parameters in the SSM parameter store
+
+ ## History
+ # 27-Dec-2018 - Initial Version
+ 
+
+Parameters:
+
+ # these paramaters are potentially different accross accounts/VPCs, so need to be supplied as parameters
+ # the rest of the values we will create in the SSM Parameter Store will come from previously exported values from earlier CF stacks
+ 
+  CentOS7AMI:
+    Type: String
+    Description: "CentOS7 AMI to be consumed by EC2 instances"
+    Default: 'nil'
+        
+  WinAMI:
+    Type: String
+    Description: "Win2016 AMI to be consumed by EC2 instances"
+    Default: 'nil'
+
+  Win2019AMI:
+    Type: String
+    Description: "Win2019 AMI to be consumed by EC2 instances"
+    Default: 'nil'
+
+  Win2012AMI:
+    Type: String
+    Description: "Win2012 AMI to be consumed by EC2 instances"
+    Default: 'nil'
+
+  BaseKeyName:
+    Type: String
+    Description: "BaseKey to be consumed by EC2 instances"
+    Default: 'nil'
+
+  CommonBucket:
+    Type: String
+    Description: "Common s3 bucket to use"
+    Default: 'gp-us-east-ops-automation-common-tools'
+
+  LinuxSg:
+    Type: String
+    Description: "Common Linux sg to use"
+    Default: 'nil'
+
+  DomainJoinUserName:
+    Type: String
+    Description: "Domain user"
+    Default: 'nil'
+
+  DomainJoinPassword:
+    Type: String
+    Description: "Domain password"   
+    Default: 'nil'
+
+  QualysActivationID:
+    Type: String
+    Description: "qualys activation id"
+    Default: '346faac7-8411-41aa-a235-105652a8064b'
+
+  QualysCustomerID:
+    Type: String
+    Description: "qualys customer id"
+    Default: '9c0e25de-0221-5af6-e040-10ac13043f6a'
+
+  NetGroup:
+    Type: String
+    Description: "Net Group Name that will be used to give access on windows"
+    Default: 'nil'
+
+  SplunkPassKey:
+    Type: String
+    Description: "splunk pass key"
+    Default: 'pass4SymmKey = D85A9TuK8itcU^HA#04Wi7quVL4F#4'
+
+  ApacheCentos7AMI:
+    Type: String
+    Description: "WebHost Apache CentOS7 AMI"
+    Default: 'Update Manully'
+
+  JbossCentos7AMI:
+    Type: String
+    Description: "WebHost Jboss CentOS7 AMI"
+    Default: 'Update Manully'
+
+  TomcatCentos7AMI:
+    Type: String
+    Description: "WebHost Tomcat CentOS7 AMI"
+    Default: 'Update Manully'
+
+  WeblogicCentos7AMI:
+    Type: String
+    Description: "WebHost Weblogic CentOS7 AMI"
+    Default: 'Update Manully'
+
+  ApacheRhel7AMI:
+    Type: String
+    Description: "WebHost Apache Rhel7 AMI"
+    Default: 'Update Manully'
+
+  JbossRhel7AMI:
+    Type: String
+    Description: "WebHost Jboss Rhel7 AMI"
+    Default: 'Update Manully'
+
+  TomcatRhel7AMI:
+    Type: String
+    Description: "WebHost Tomcat Rhel7 AMI"
+    Default: 'Update Manully'
+
+  WeblogicRhel7AMI:
+    Type: String
+    Description: "WebHost Weblogic Rhel7 AMI"
+    Default: 'Update Manully'
+
+Resources:
+
+  CentOS7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/centos7
+        Description: Specify the latest CentOS7 AMI to use
+        Type: String
+        Value: !Ref CentOS7AMI
+
+  WinAMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/windows
+        Description: Specify the latest Win2012/Win2016 AMI to use
+        Type: String
+        Value: !Ref WinAMI
+
+  Win2019AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/windows2019
+        Description: Specify the latest Win2019 AMI to use
+        Type: String
+        Value: !Ref Win2019AMI
+
+  Win2012AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/windows2012
+        Description: Specify the latest Win2012 AMI to use
+        Type: String
+        Value: !Ref Win2012AMI
+
+  BaseKeyParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/base-key
+        Description: BaseKeyName to use
+        Type: String
+        Value: !Ref BaseKeyName
+
+  CommonBucketParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/bucket
+        Description: Common bucket to use
+        Type: String
+        Value: !Ref CommonBucket
+
+  LinuxSgParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/sg
+        Description: Linux sg to use
+        Type: String
+        Value: !Ref LinuxSg
+
+  DomainJoinUserNameParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/domainJoinUserName
+        Description: domain join user name
+        Type: String
+        Value: !Ref DomainJoinUserName
+          
+  DomainJoinPasswordParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/domainJoinPassword
+        Description: domain join password
+        Type: String
+        Value: !Ref DomainJoinPassword
+          
+  QualysActivationIDParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/qualys/activationid
+        Description: qualys activation id
+        Type: String
+        Value: !Ref QualysActivationID
+
+  QualysCustomerIDParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/qualys/customerid
+        Description: qualys customer id
+        Type: String
+        Value: !Ref QualysCustomerID
+
+  NetGroupParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/win/NetGroup
+        Description: Net Group Name that will be used to give access on windows
+        Type: String
+        Value: !Ref NetGroup
+          
+  SplunkPassKeyParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/splunkpasskey
+        Description: Splunk Pass Key
+        Type: String
+        Value: !Ref SplunkPassKey
+
+  WeblogicRhel7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/WeblogicRhel7AMI
+        Description: WebHost Weblogic Rhel7 AMI
+        Type: String
+        Value: !Ref WeblogicRhel7AMI
+
+  JbossRhel7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/JbossRhel7AMI
+        Description: WebHost Jboss Rhel7 AMI
+        Type: String
+        Value: !Ref JbossRhel7AMI
+
+  ApacheRhel7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/ApacheRhel7AMI
+        Description: WebHost Apache Rhel7 AMI
+        Type: String
+        Value: !Ref ApacheRhel7AMI
+
+  TomcatRhel7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/TomcatRhel7AMI
+        Description: WebHost Tomcat Rhel7 AMI
+        Type: String
+        Value: !Ref TomcatRhel7AMI
+
+  WeblogicCentos7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/WeblogicCentos7AMI
+        Description: WebHost Weblogic Centos7 AMI
+        Type: String
+        Value: !Ref WeblogicCentos7AMI
+
+  JbossCentos7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/JbossCentos7AMI
+        Description: WebHost Jboss Centos7 AMI
+        Type: String
+        Value: !Ref JbossCentos7AMI
+
+  ApacheCentos7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/ApacheCentos7AMI
+        Description: WebHost Apache Centos7 AMI
+        Type: String
+        Value: !Ref ApacheCentos7AMI
+
+  TomcatCentos7AMIParam:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/ami/TomcatCentos7AMI
+        Description: WebHost Tomcat Centos7 AMI
+        Type: String
+        Value: !Ref TomcatCentos7AMI

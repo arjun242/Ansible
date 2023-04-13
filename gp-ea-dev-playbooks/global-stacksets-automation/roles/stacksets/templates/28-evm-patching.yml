@@ -1,0 +1,7 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+stacksets:
+  - name: uai3027632-power-security-automation-fedrole
+  - name: uai3027632-power-security-automation-ssm-lambda-fun
+  

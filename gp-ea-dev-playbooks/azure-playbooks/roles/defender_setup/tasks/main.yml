@@ -1,0 +1,4 @@
+#The main.yml file executes the imported tasks
+---
+  - name: Microsoft Defender setup for subscription
+    import_tasks: enable_defender.yml

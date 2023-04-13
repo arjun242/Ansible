@@ -1,0 +1,40 @@
+{
+    "params": {
+        "files": {
+            "CODEOWNERS":{{ codeowners | tojson }},
+            "README.md": "Azure DevOps VMSS",
+            "backend.tf": {
+                "resourceGroup":"{{ hub_subscription_terraform_rg }}",
+                "hubSubscriptionID":"{{ hub_subscription_id }}",
+                "storageAccount":"satfstatefilestorage",
+                "containerName": "statefilestorage"
+            },
+            "main.tf": {
+                "hubSubscriptionID":"{{ hub_subscription_id }}",
+                "deploymentSubscriptionID":"{{ deployment_subscription_id }}",
+                "versions": {
+                    "app_infra": "N/A",
+                    "core_infra": "N/A",
+                    "vm_provisioning": "{{ versions['azure'].vm_provisioning }}"
+                }
+            }
+        },
+        "configs": {
+            "coreInfra": false,
+            "vmss": true,
+            "hookURL":null 
+        }
+    },
+    "args": {
+        "token": "{{ pat }}",
+        "sso": "{{ sso }}",
+        "provider": "azure",
+        "mode": "repo",
+        "org": "{{ deployment_subscription_name }}",
+        "region": "{{ deployment_subscription_region }}",
+        "env": "{{ deployment_subscription_env }}",
+        "appUAI": "uai3047228",
+        "appName": "vmss",
+        "aws_acct_number": "NONE"
+    }
+}

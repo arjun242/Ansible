@@ -1,0 +1,132 @@
+---
+# This task is fetching the content of secret.yml file present inside vars folder. #This secret.yml is encrypted using ansible vault.
+- include_vars: secrets.yml
+  no_log: true   #no_log: true will not show any logs of this task
+  
+# Gathering some EC2 metadata facts to use in different template files.
+- name: Gathering Metadata Facts
+  ec2_metadata_facts:
+  
+# This task is setting the variable IP Address, Account ID and OS Version of the particular target host. 
+- name: Setting the variables for IP Address, Account ID and OS Version 
+  set_fact:
+    ip: "{{ ansible_default_ipv4['address'] }}"
+    accid: "{{ ansible_ec2_identity_credentials_ec2_info_accountid }}" 
+    os_version: "{{ hostvars[inventory_hostname].ansible_distribution_major_version }}"
+
+# This task will install all the required packages in the target host which are required for LDAP.
+- name: Install the required packages of LDAP
+  become: yes
+  yum:
+    name: "{{ package }}" #This variable 'package' is declared in the main.yml in vars folder.
+    state: present  
+
+# This task will create all the required directories in the target host
+- name: Creating Required Directories
+  become: yes
+  file:
+    path: "{{ item }}" 
+    state: directory
+  with_items:   #Using loop to create multiple directories in the same task.
+     - /etc/openldap/cacerts
+     - /etc/raddb
+     - /etc/security
+     - /etc/sssd
+     - /etc/sysconfig
+     - /lib64/security
+     - /lib/security
+
+# This task is checking for the appConfig.json 
+- name: Checking for the appConfig.json file
+  become: yes
+  stat: 
+    path: /usr/etc/local/appConfig.json
+  register: file_check  #Registering the output of the task in a variable 
+
+# Creating a block to group multiple tasks together under one single condition
+- block:
+
+   # This task is getting the contents of the appConfig.json and setting it into a variable 
+   - name: Getting the json file in a variable 
+     shell: cat /usr/etc/local/appConfig.json
+     register: appConfig  
+     
+   # This task is creating an array and appending all the groups found in the appConfig.json file and this created array is referred in the netgroups_sudoers.j2 and access.conf.j2 templates
+   - name: Appending the netgroups name and permission into an array
+     ignore_errors: true
+     set_fact:     
+        netgroups: "{{ netgroups | default([]) + [item | to_yaml | replace('[','') | replace(']','') | trim | replace(': ', ':') | replace(' /','/') ] }}" 
+     with_items: "{{ appConfig.stdout | from_json | json_query('[*].groups') }}"  
+     #Using the json_query to fetch the content of 'groups' from the appConfig variable and passing it to netgroups variable. 
+      
+  when: file_check.stat.exists == true 
+  #Condition to execute the block tasks only when the appConfig.json file exists on the target host.  
+
+# This task will template all the .conf and .cert files on the target host. Required data for these templates will be fetched from either main.yml or secrets.yml in the vars folder 
+- name: Templating the conf/cert files
+  become: yes
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:        
+    - { src: 'nsswitch.conf.j2', dest: '/etc/nsswitch.conf' }
+    - { src: 'access.conf.j2', dest: '/etc/security/access.conf' }
+    - { src: 'netgroups_sudoers.j2', dest: '/etc/sudoers.d/netgroups' }
+    - { src: 'authconfig.j2', dest: '/etc/sysconfig/authconfig' }
+    - { src: 'sshd_config.j2', dest: '/etc/ssh/sshd_config' }
+    - { src: 'server.j2', dest: '/etc/raddb/server' }
+    - { src: 'sssd.conf.j2', dest: '/etc/sssd/sssd.conf' }
+    - { src: 'ldap.conf.j2', dest: '/etc/openldap/ldap.conf' }
+    - { src: '2020_trusted_auth.cert.j2', dest: '/etc/openldap/cacerts/2020_trusted_auth.cert' }
+    - { src: '2020_trusted_root.cert.j2', dest: '/etc/openldap/cacerts/2020_trusted_root.cert' }
+    - { src: 'GE_trusted_root.cert.j2', dest: '/etc/openldap/cacerts/GE_trusted_root.cert' }
+    - { src: 'GE_trusted_root_issuing_cert.cert.j2', dest: '/etc/openldap/cacerts/GE_trusted_root_issuing_cert.cert' }
+
+# This task will template the files only for the target hosts which has OS version == 7 
+- name: Templating the conf/cert files according to OS version
+  become: yes
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: 'pam_d_password-auth-ac_el7.j2', dest: '/etc/pam.d/password-auth-ac' }
+    - { src: 'pam_d_system-auth-ac_el7.j2', dest: '/etc/pam.d/system-auth-ac' }
+  notify: restart oddjobd 
+  when: os_version != '6'
+
+# Using copy module because template can't parse encodings other than UTF-8 
+- name: Copying the binary files 
+  become: yes
+  copy:
+   src: "{{ item.src }}"
+   dest: "{{ item.dest }}"
+  with_items:
+   - { src: 'cert8.db', dest: '/etc/openldap/certs/cert8.db' }
+   - { src: 'key3.db', dest: '/etc/openldap/certs/key3.db' }
+   - { src: 'pam_radius_auth.so', dest: '/lib64/security/pam_radius_auth.so' }
+    
+- name: Changing permission of the files 
+  become: yes
+  file:
+     path: "{{ item }}"
+     mode: 0600
+  with_items: 
+     - '/etc/security/access.conf'
+     - '/etc/sssd/sssd.conf'
+     - '/etc/raddb/server'
+     - '/etc/ssh/sshd_config'
+     - '/etc/sudoers.d/netgroups'
+     
+- name: Updating the certs
+  become: yes
+  shell: /usr/sbin/cacertdir_rehash /etc/openldap/cacerts; /usr/sbin/cacertdir_rehash /etc/openldap/certs
+  
+- name: Enable boot start for services
+  become: yes
+  service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  with_items: 
+    - sshd
+    - sssd

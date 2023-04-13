@@ -1,0 +1,11 @@
+custom_resources:
+  - name: config-conforms
+    custom_stackset_name: config-conforms
+    description: Stack Setup for Config Conforms Service Linked Role
+    template_file: templates/config-conforms.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-powermax-erp
+        regions:
+          - us-east-1

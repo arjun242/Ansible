@@ -1,0 +1,15 @@
++CA_AWSENTC_NC_PW_CLDOPS_ADMIN ALL=(ALL) NOPASSWD:ALL
+Defaults:CA_AWSENTC_NC_PW_CLDOPS_ADMIN !requiretty
+{% if netgroups is defined %}
+{% for item in netgroups %}
+{% set list1 = item.split(':') %}
+{% set allpermissions = list1[1] %}
+{% set list2 = allpermissions.split(',') %}
+{% if list2|length >= 1 %}
+{% for permission in list2 %}
++{{ list1[0] }} ALL=(ALL) NOPASSWD:{{ permission }}
+{% endfor %}
+Defaults:{{ list1[0] }} !requiretty
+{% endif %}
+{% endfor %}
+{% endif %}

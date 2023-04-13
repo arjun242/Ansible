@@ -1,0 +1,454 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create common (per region) buckets in the account(s) which will be used by workload account in that region
+                Last version from 11-Oct-2019
+
+# See "s3-master-buckets" stack in mas-co-lab for reference
+# This stack will create bucket for DBA atifacts
+             
+Parameters:
+  VPCAlias:
+    Type: String
+    Description: "Provide VPCAlias value to designate the instance of this app"
+    Default: gr-db
+
+  RetentionPeriodForLogs:
+    Type: Number
+    Description: "For how many days to keep the logs?"
+    Default: '35'
+#  ListOfRolesAllowedAccess:
+#    Type : CommaDelimitedList
+#    Description: "Specify comma delimited list of RoleIds of workload roles allowed to access the 'code' S3 bucket. Format 'AROASI2UAC6VONBI3C7PB:*'. See RoleId in output of 'aws iam get-role --role-name <role name>'"
+#    Default: 'AROASI2UAC6VONBI3C7PB:*'
+  ListOfWorkloadRolesAllowedToRead:
+    Type : CommaDelimitedList
+    Description: "Specify comma delimited list of workload roles allowed to read from the 'code' S3 bucket"
+    # i believe any role on this list must also be on ListOfRolesAllowedAccess
+    Default: 'arn:aws:iam::156405602218:root'
+  ListOfWorkloadRolesAllowedToWrite:
+    Type : CommaDelimitedList
+    Description: "Specify comma delimited list of workload role ids allowed to manage the 'code' S3 bucket"
+    # i believe any role on this list must also be on ListOfRolesAllowedAccess
+    Default: 'arn:aws:iam::156405602218:root'
+  ListOfVPCIDsAllowedToReadFromRegionalBuckets:
+    Type : CommaDelimitedList
+    Description: "Specify comma delimited list of VPC IDs allowed to read from 'regional' buckets containing non-sensitive binaries, yum repo, config files for ALL VPCs in that region. The VPC id referred by 'vpc:${VPCAlias}:id' should also be included"
+    Default: 'vpc-0ea8cfef94c8933de'
+
+# !Sub "s3:${VPCAlias}:audit-s3:name"
+# !Sub "s3:${VPCAlias}:code:name"
+# !Sub "s3:${VPCAlias}:logs:name"
+# !Sub "s3:${VPCAlias}:artifacts:name"
+# !Sub "s3:${VPCAlias}:migrations:name"
+    
+Resources:
+    S3AuditBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: 
+          Fn::ImportValue: !Sub 's3:${VPCAlias}:audit-s3:name'
+        PolicyDocument:
+          Statement:
+            - Sid: Prohibit access over plain HTTP
+              Effect: 'Deny'
+              Principal: '*'
+              Action: '*'
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3AuditBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:audit-s3:arn" } }, "/*" ] ] }
+              Condition:
+                Bool:
+                  aws:SecureTransport: 'false'
+            - Sid: DenyUnEncryptedObjectUploads
+              Effect: 'Deny'
+              Principal: '*'
+              Action:
+                - s3:PutObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3AuditBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:audit-s3:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3AuditBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:audit-s3:arn" } }, "/*" ] ] }
+              Condition: { "Null": { "s3:x-amz-server-side-encryption": "true" } }
+            - Sid: DenyIncorrectEncryptionHeader
+              Effect: 'Deny'
+              Principal: '*'
+              Action:
+                - s3:PutObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3AuditBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:audit-s3:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3AuditBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:audit-s3:arn" } }, "/*" ] ] }
+              Condition: # when we start supporting KMS key then: # s3:x-amz-server-side-encryption: 'aws:kms'
+                StringNotEquals:
+                  "s3:x-amz-server-side-encryption":
+                    "AES256"
+
+    CodeBucketPolicy:
+      Type: "AWS::S3::BucketPolicy"
+      Properties:
+        Bucket: 
+          Fn::ImportValue: !Sub 's3:${VPCAlias}:code:name'
+
+        # this bucket policy allows read-only access to this bucket for all VPCs listed in the CommaDelimitedList parameter ListOfVPCIDsAllowedToReadFromRegionalBuckets
+        PolicyDocument:
+          Statement:
+#            # https://aws.amazon.com/blogs/security/how-to-restrict-amazon-s3-bucket-access-to-a-specific-iam-role/
+#            - Sid: Deny access of non-owners of code bucket
+#              Effect: 'Deny'
+#              Principal: '*'
+#              Action:
+#                - s3:*
+#              Resource:
+#                - !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+#                - !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+#              Condition:
+#                StringNotLike:
+#                  aws:userId:
+#                    - !Sub '${AWS::AccountId}'
+#                    - Fn::Join: [ ":", [ {"Fn::ImportValue" : {"Fn::Sub" :"iam:svc:${VPCAlias}-ecsrole:id"}}, "*" ] ]
+#                    - "AROASI2UAC6VONBI3C7PB:*"
+#                    !Split
+#                      - ","
+#                      - !Join
+#                        - ","
+#                        - - !Sub '${AWS::AccountId}'  # target account number
+#                          - Fn::Join: [ ":", [ {"Fn::ImportValue" : {"Fn::Sub" :"iam:svc:${VPCAlias}-ecsrole:id"}}, "*" ] ]
+#                          - !Ref ListOfRolesAllowedAccess
+#                          #- "AROASI2UAC6VONBI3C7PB:*" # see RoleId in output of "aws iam get-role --role-name bu-dbops"
+                    
+                                
+            # I believe, all Roles included in ListOfWorkloadRolesAllowedToWrite must also be added (their RoleId) to "Deny access of non-owners of code bucket" statement
+            - Sid: Allow bucket owners to manage code bucket
+              Effect: 'Allow'
+              Principal:
+                AWS: !Ref 'ListOfWorkloadRolesAllowedToWrite'
+              Action:
+                - s3:*
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:code:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/*" ] ] }
+            
+            - Sid: Allow dbss ecs task role to read code bucket
+              Effect: 'Allow'
+              Principal: 
+                AWS: 
+                  - Fn::ImportValue: !Sub 'iam:svc:${VPCAlias}-ecsrole:arn' 
+                  # !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/svc/ecs-task-role-UAI9999999/dba-db/dba-db-ecsrole'
+              Action:
+                - s3:GetBucketLocation
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:code:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/*" ] ] }
+            
+            - Sid: "Enable anonymous LIST and GET from every instance from Level 3 VPCs in this region"
+              Effect: "Allow"
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:code:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/*" ] ] }
+              Principal: "*"
+              Condition:
+                StringEquals:
+                  aws:SourceVpc: !Ref ListOfVPCIDsAllowedToReadFromRegionalBuckets
+
+            - Sid: "Enable read to Lambda artifacts for deployment roles in workload accounts"
+              Effect: "Allow"
+              Action: s3:GetObject
+              Resource: 
+              # !Sub "arn:${AWS::Partition}:s3:::${CodeBucket}/lambda/*"
+              - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/lambda/*" ] ] }
+              Principal:
+                AWS: !Ref ListOfWorkloadRolesAllowedToRead
+            
+            - Sid: "Enable LIST for Lambda artifacts for deployment roles in workload accounts"
+              Effect: 'Allow'
+              Action:
+                - s3:ListBucket
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:code:arn'
+              Condition:
+                StringLike:
+                  s3:prefix: lambda/*
+              Principal:
+                AWS: !Ref ListOfWorkloadRolesAllowedToRead
+           
+            - Sid: Prohibit access over plain HTTP
+              Effect: 'Deny'
+              Principal: '*'
+              Action: '*'
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/*" ] ] }
+              Condition:
+                Bool:
+                  aws:SecureTransport: 'false'
+
+            - Sid: "Prohibit setting ACLs"
+              Effect: "Deny"
+              Action:
+                - s3:PutBucketAcl
+                - s3:PutObjectAcl
+                - s3:PutObjectVersionAcl
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:code:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/*" ] ] }
+              Principal: '*'
+
+            - Sid: DenyUnEncryptedObjectUploads
+              Effect: 'Deny'
+              Principal: '*'
+              Action:
+                - s3:PutObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:code:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/*" ] ] }
+              Condition: { "Null": { "s3:x-amz-server-side-encryption": "true" } }
+
+            - Sid: DenyIncorrectEncryptionHeader
+              Effect: 'Deny'
+              Principal: '*'
+              Action:
+                - s3:PutObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:code:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${CodeBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:code:arn" } }, "/*" ] ] }
+              Condition: # when we start supporting KMS key then: # s3:x-amz-server-side-encryption: 'aws:kms'
+                StringNotEquals:
+                  "s3:x-amz-server-side-encryption":
+                    "AES256"
+
+            # to be developed; not needed in GR accounts
+            #- Sid: "Allow Classic VPCs to read Ansible and SSM"
+            #  Effect: "Allow"
+            #  Action:
+            #    - s3:GetObject
+            #    - s3:ListBucket
+            #  Resource:
+            #    - !Sub "arn:${AWS::Partition}:s3:::${CodeBucket}"
+            #    - !Sub "arn:${AWS::Partition}:s3:::${CodeBucket}/ansible/*"
+            #    - !Sub "arn:${AWS::Partition}:s3:::${CodeBucket}/ssm/*"
+            #    - !Sub "arn:${AWS::Partition}:s3:::${CodeBucket}/inspec/*"
+            #  Principal: "*"
+            #  Condition:
+            #    StringEquals:
+            #      aws:SourceVpc:
+            #        !Split
+            #          - ','
+            #          - !Join
+            #            - ','
+            #            - - !Join [ ',' , !Ref ClassicL1VPCs ]
+            #              - !Join [ ',' , !Ref ClassicL2VPCs ]
+            #
+            #- Sid: "Enable read to Lambda artifacts for deployment roles in classic accounts"
+            #  Effect: "Allow"
+            #  Action: s3:GetObject
+            #  Resource: !Sub "arn:${AWS::Partition}:s3:::${CodeBucket}/lambda/classic/*"
+            #  Principal:
+            #    AWS:
+            #        !Split
+            #          - ','
+            #          - !Join
+            #            - ','
+            #            - - !Join [ ',' , !Ref ClassicL1Principals ]
+            #              - !Join [ ',' , !Ref ClassicL2Principals ]
+
+
+    S3LogsBucketPolicy:
+      Type: "AWS::S3::BucketPolicy"
+      Properties:
+        Bucket: 
+          Fn::ImportValue: !Sub 's3:${VPCAlias}:logs:name'
+
+        PolicyDocument:
+          Statement:
+            - Sid: Allow dbss ecs task role to manage files
+              Effect: 'Allow'
+              Principal: 
+                AWS: 
+                  - Fn::ImportValue: !Sub 'iam:svc:${VPCAlias}-ecsrole:arn'
+                # !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/svc/ecs-task-role-UAI9999999/dba-db/dba-db-ecsrole"
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListBucket
+                - s3:DeleteObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3LogsBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:logs:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3LogsBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:logs:arn" } }, "/*" ] ] }
+
+            - Sid: Prohibit access over plain HTTP
+              Effect: 'Deny'
+              Principal: '*'
+              Action: '*'
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${S3LogsBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:logs:arn" } }, "/*" ] ] }
+              Condition:
+                Bool:
+                  aws:SecureTransport: 'false'
+            # commented out by 212390867 until we start supporting encrypted uploads through all hardening scripts
+            #- Sid: DenyUnEncryptedObjectUploads
+            #  Effect: 'Deny'
+            #  Principal: '*'
+            #  Action:
+            #    - s3:PutObject
+            #  Resource:
+            #    - !Sub 'arn:${AWS::Partition}:s3:::${S3LogsBucket}'
+            #    - !Sub 'arn:${AWS::Partition}:s3:::${S3LogsBucket}/*'
+            #  Condition: { "Null": { "s3:x-amz-server-side-encryption": "true" } }
+            #- Sid: DenyIncorrectEncryptionHeader
+            #  Effect: 'Deny'
+            #  Principal: '*'
+            #  Action:
+            #    - s3:PutObject
+            #  Resource:
+            #    - !Sub 'arn:${AWS::Partition}:s3:::${S3LogsBucket}'
+            #    - !Sub 'arn:${AWS::Partition}:s3:::${S3LogsBucket}/*'
+            #  Condition:
+            #    StringNotEquals:
+            #      "s3:x-amz-server-side-encryption":
+            #        "AES256"
+
+
+    MigrationsBucketPolicy:
+      Type: 'AWS::S3::BucketPolicy'
+      Properties:
+        Bucket: 
+          Fn::ImportValue: !Sub 's3:${VPCAlias}:migrations:name'
+
+        PolicyDocument:
+          Statement:
+            - Sid: Allow dbss ecs task role to read migration bucket
+              Effect: 'Allow'
+              Principal: 
+                AWS: 
+                  - Fn::ImportValue: !Sub 'iam:svc:${VPCAlias}-ecsrole:arn'
+                # !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/svc/ecs-task-role-UAI9999999/dba-db/dba-db-ecsrole'
+              Action:
+                - s3:GetBucketLocation
+                - s3:ListBucket
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${MigrationsBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:migrations:arn'
+            - Sid: Allow dbss ecs task role to manage migration files
+              Effect: 'Allow'
+              Principal: 
+                AWS: 
+                  - Fn::ImportValue: !Sub 'iam:svc:${VPCAlias}-ecsrole:arn'
+                # !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/svc/ecs-task-role-UAI9999999/dba-db/dba-db-ecsrole'
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${MigrationsBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:migrations:arn" } }, "/*" ] ] }
+            - Sid: Prohibit access over plain HTTP
+              Effect: 'Deny'
+              Principal: '*'
+              Action: '*'
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${MigrationsBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:migrations:arn" } }, "/*" ] ] }
+              Condition:
+                Bool:
+                  aws:SecureTransport: 'false'
+            - Sid: DenyUnEncryptedObjectUploads
+              Effect: 'Deny'
+              Principal: '*'
+              Action:
+                - s3:PutObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${MigrationsBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:migrations:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${MigrationsBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:migrations:arn" } }, "/*" ] ] }
+              Condition: { "Null": { "s3:x-amz-server-side-encryption": "true" } }
+            - Sid: DenyIncorrectEncryptionHeader
+              Effect: 'Deny'
+              Principal: '*'
+              Action:
+                - s3:PutObject
+              Resource:
+                # !Sub 'arn:${AWS::Partition}:s3:::${MigrationsBucket}'
+                - Fn::ImportValue: !Sub 's3:${VPCAlias}:migrations:arn'
+                # !Sub 'arn:${AWS::Partition}:s3:::${MigrationsBucket}/*'
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:migrations:arn" } }, "/*" ] ] }
+              Condition: # when we start supporting KMS key then: # s3:x-amz-server-side-encryption: 'aws:kms'
+                StringNotEquals:
+                  "s3:x-amz-server-side-encryption":
+                    "AES256"
+
+    ArtifactsBucketPolicy:
+      Type: 'AWS::S3::BucketPolicy'
+      Properties:
+        Bucket: 
+          Fn::ImportValue: !Sub 's3:${VPCAlias}:artifacts:name'
+
+        PolicyDocument:
+          Statement:
+            # - Sid: Allow bucket owners to manage artifacts bucket
+            #   Effect: 'Allow'
+            #   Principal:
+            #     AWS: !Ref 'ListOfWorkloadRolesAllowedToWrite'
+            #   Action:
+            #     - s3:*
+            #   Resource:
+            #     - Fn::ImportValue: !Sub 's3:${VPCAlias}:artifacts:arn'
+            #     - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:artifacts:arn" } }, "/*" ] ] }
+
+            # - Sid: Allow dbss ecs task role to read artifacts bucket
+            #   Effect: 'Allow'
+            #   Principal: 
+            #     AWS: 
+            #       - Fn::ImportValue: !Sub 'iam:svc:${VPCAlias}-ecsrole:arn'
+            #   Action:
+            #     - s3:GetBucketLocation
+            #     - s3:ListBucket
+            #     - s3:GetObject
+            #   Resource:
+            #     - Fn::ImportValue: !Sub 's3:${VPCAlias}:artifacts:arn'
+            #     - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:artifacts:arn" } }, "/*" ] ] }
+
+            # - Sid: "Enable LIST for Lambda artifacts for deployment roles in workload accounts"
+            #   Effect: 'Allow'
+            #   Action:
+            #     - s3:ListBucket
+            #   Resource:
+            #     - Fn::ImportValue: !Sub 's3:${VPCAlias}:artifacts:arn'
+            #   Condition:
+            #     StringLike:
+            #       s3:prefix: lambda/*
+            #   Principal:
+            #     AWS: !Ref ListOfWorkloadRolesAllowedToRead
+            - Sid: Prohibit access over plain HTTP
+              Effect: 'Deny'
+              Principal: '*'
+              Action: '*'
+              Resource:
+                - { "Fn::Join" : [ "", [ { "Fn::ImportValue" : { "Fn::Sub": "s3:${VPCAlias}:artifacts:arn" } }, "/*" ] ] }
+              Condition:
+                Bool:
+                  aws:SecureTransport: 'false'
+#Outputs:

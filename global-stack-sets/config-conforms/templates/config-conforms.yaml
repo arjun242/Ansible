@@ -1,0 +1,11 @@
+Description: SLR resource create test - Auto Scaling
+Resources:
+  BasicSLR:
+    Type: 'AWS::IAM::ServiceLinkedRole'
+    Properties:
+      AWSServiceName: config-conforms.amazonaws.com
+      Description: Config Conforms ServiceLinkedRole
+      CustomSuffix: ConfigConformsSuffix
+Outputs:
+  SLRId:
+    Value: !Ref ConfigConformsSLR

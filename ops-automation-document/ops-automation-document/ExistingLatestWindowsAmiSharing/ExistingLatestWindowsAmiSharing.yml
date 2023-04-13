@@ -1,0 +1,68 @@
+description: >-
+  Updates AMI with Windows distribution packages and Amazon software. For
+  details,see
+  https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sysman-ami-walkthrough.html
+schemaVersion: '0.3'
+parameters:
+  InstanceId:
+    type: String
+    description: "(Required) The EC2 Instance ID"
+  InstanceIamRole:
+    type: String
+    default: ec2-ami-instance-profile
+    description: >-
+      (Required) The name of the role that enables Systems Manager (SSM) to
+      manage the instance.
+  AutomationAssumeRole:
+    type: String
+    default: 'arn:aws:iam::325381443140:role/inf/ssm-ami'
+    description: >-
+      (Required) The ARN of the role that allows Automation to perform the
+      actions on your behalf.
+  LatestAMI:
+    type: String
+    default: '{{ssm:/automation/ami/windows}}'
+    description: >-
+      (Required) Value of the latest AMI that needs to be shared across the accounts.
+  AMISharingRegAccList:
+    type: String
+    default: '{{ssm:/automation/region-account}}'
+    description: region and corresponding accounts where AMI needs to be shared
+  TargetAmiName:
+    type: String
+    default: 'SSMLinuxAmi_from_SourceAMIID_on_{{global:DATE_TIME}}'
+    description: >-
+      (Optional) The name of the new AMI that will be created. Default is a
+      system-generated string including the source AMI id, and the creation time
+      and date.
+mainSteps:
+  - name: sharedAMINewAcc
+    action: "aws:runCommand"
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: 'Abort'
+    inputs: 
+      DocumentName: AWS-RunPowerShellScript
+      InstanceIds:
+      - "{{InstanceId}}"
+      Parameters: 
+        commands: 
+          - $AVAIL_ZONE=invoke-restmethod -uri http://169.254.169.254/latest/meta-data/placement/availability-zone
+          - $REGION=$AVAIL_ZONE.Substring(0,$AVAIL_ZONE.Length-1)
+          - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+          - Start-Sleep -s 20
+          - choco install jq --force -version 1.5 -Y
+          - Start-Sleep -s 10
+          - $list='{{AMISharingRegAccList}}'
+          - $regions=($list | jq 'keys') -replace '[\"\[\],\" \"]', ''
+          - foreach ($reg in $regions) {
+          - if ($reg -ne '' -AND $reg -ne $REGION) {
+          - $copy_ami_id=Copy-EC2Image -SourceRegion $REGION -SourceImageId {{LatestAMI}} -Region $reg -Name "{{TargetAmiName}}" }
+          - Start-Sleep -s 600
+          - if ($reg -ne '') {
+          - $accounts=($list | jq --arg reg "$reg" '.[$reg]') -replace '[\"\[\],\" \"]', ''
+          - foreach ($acc in $accounts) {
+          - if ($acc -ne '' -AND $reg -ne $REGION) {
+          - Edit-Ec2ImageAttribute -ImageId $copy_ami_id -Region $reg -Attribute 'launchPermission' -OperationType "add" -UserId $acc }
+          - if ($acc -ne '' -AND $reg -eq $REGION) {
+          - Edit-Ec2ImageAttribute -ImageId {{LatestAMI}} -Region $reg -Attribute 'launchPermission' -OperationType "add" -UserId $acc } } } }

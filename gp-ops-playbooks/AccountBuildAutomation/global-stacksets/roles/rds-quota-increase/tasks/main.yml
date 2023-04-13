@@ -1,0 +1,10 @@
+---
+- name: Generate the python file
+  template:
+    src: "{{role_path}}/files/rds.py"
+    dest: "/tmp/account-automation-folder/rds-quota-increase/"
+
+- name: Run a script using an executable in a system path
+  script: /tmp/account-automation-folder/rds-quota-increase/rds.py
+  args:
+    executable: python3

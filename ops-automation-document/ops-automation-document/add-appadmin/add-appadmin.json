@@ -1,0 +1,12 @@
+{
+    "Content": "file://add-appadmin.yml", 
+    "Name": "add-appadmin", 
+    "VersionName": "latest",
+    "DocumentType": "Command",
+    "DocumentFormat": "YAML",
+    "TargetType": "/AWS::EC2",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

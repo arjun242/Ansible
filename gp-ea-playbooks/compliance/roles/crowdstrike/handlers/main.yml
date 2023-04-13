@@ -1,0 +1,7 @@
+---
+# handlers file for CrowdStrike
+- name: restart crowdStrike
+  become: yes
+  service:
+     name: 'falcon-sensor'
+     state: restarted

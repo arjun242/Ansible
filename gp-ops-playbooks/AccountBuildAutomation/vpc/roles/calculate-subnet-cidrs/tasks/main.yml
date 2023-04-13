@@ -1,0 +1,121 @@
+---
+- name: Setting facts
+  set_fact:
+    mask0: "32"
+    mask16: "28"
+    mask32: "27"
+    mask64: "26"
+    mask128: "25"
+    mask256: "24"
+
+- name: Setting mask as facts
+  set_fact: {"{{item.name}}": "{% if item.varName == '16' %}{{mask16}}{% elif item.varName == '32' %}{{mask32}}{% elif item.varName == '64' %}{{mask64}}{% elif item.varName == '128' %}{{mask128}}{% elif item.varName == '256' %}{{mask256}}{% elif item.varName == '0' %}{{mask0}}{% endif %}"}
+  loop:
+    - { name: "appSubnetMask", varName: "{{ appSubnetIPCount }}"}
+    - { name: "extSubnetMask", varName: "{{ extSubnetIPCount }}"}
+    - { name: "rbSubnetMask", varName: "{{ rbSubnetIPCount }}"}
+    - { name: "dbSubnetMask", varName: "{{ dbSubnetIPCount }}"}
+    - { name: "epSubnetMask", varName: "{{ epSubnetIPCount }}"}
+    - { name: "igrSubnetMask", varName: "{{ igrSubnetIPCount }}"}
+
+- name: Use custom filter
+  set_stats:
+    data: "{{ defaultSubnets | findSubnetsFilter(vpcCIDR, appSubnetMask, dbSubnetMask, epSubnetMask, extSubnetMask, rbSubnetMask, igrSubnetMask) }}"
+  register: generated_subnets
+
+- name: Set ep subnet CIDR
+  set_stats:
+    data: 
+      epSubnetCIDR: "{{ generated_subnets.ansible_stats.data.epSubnet }}"
+  register: epSubnetCIDR
+  when: not generated_subnets.ansible_stats.data.epSubnet is search("/32")
+
+- name: Set ep subnet CIDR to NA when contains /32
+  set_stats:
+    data: 
+      epSubnetCIDR: "NA"
+  register: epSubnetCIDR
+  when: generated_subnets.ansible_stats.data.epSubnet is search("/32")
+
+- name: Set ext subnet CIDR
+  set_stats:
+    data: 
+      extSubnetCIDR: "{{ generated_subnets.ansible_stats.data.extSubnet }}"
+  register: extSubnetCIDR
+  when: not generated_subnets.ansible_stats.data.extSubnet is search("/32")
+
+- name: Set ext subnet CIDR to NA when contains /32
+  set_stats:
+    data: 
+      extSubnetCIDR: "NA"
+  register: extSubnetCIDR
+  when: generated_subnets.ansible_stats.data.extSubnet is search("/32")
+
+- name: Set rb subnet CIDR
+  set_stats:
+    data:
+      rbSubnetCIDR: "{{ generated_subnets.ansible_stats.data.rbSubnet }}"
+  register: rbSubnetCIDR
+  when: not generated_subnets.ansible_stats.data.rbSubnet is search("/32")
+
+- name: Set rb subnet CIDR to NA when contains /32
+  set_stats:
+    data:
+      rbSubnetCIDR: "NA"
+  register: rbSubnetCIDR
+  when: generated_subnets.ansible_stats.data.rbSubnet is search("/32")
+
+- name: Set igr subnet CIDR
+  set_stats:
+    data:
+      igrSubnetCIDR: "{{ generated_subnets.ansible_stats.data.igrSubnet }}"
+  register: igrSubnetCIDR
+  when: not generated_subnets.ansible_stats.data.igrSubnet is search("/32")
+
+- name: Update igr subnet CIDR to NA when contains /32
+  set_stats:
+    data:
+      igrSubnetCIDR: "NA"
+  register: igrSubnetCIDR
+  when: generated_subnets.ansible_stats.data.igrSubnet is search("/32")
+
+# - name: Sending Subnet Details over email
+#   mail:
+#     host: cinmlip01.e2k.ad.ge.com
+#     port: 25
+#     from: "{{ from_email_id }}"
+#     to:
+#       - "{{ from_email_id }}"
+#     subject: "VPC Subnet CIDRs for {{ org }}"
+#     body: 
+#         <p> VPC CIDR:</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;">{{ vpcCIDR }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p> CoreTech Default Subnets :</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;">{{ defaultSubnets }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p> To be provisioned Subnets :</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;"> App Subnet CIDR- {{ generated_subnets.ansible_stats.data.appSubnetCIDR }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;"> DB Subnet CIDR- {{ generated_subnets.ansible_stats.data.dbSubnetCIDR }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;"> Endpoint Subnet CIDR- {{ epSubnetCIDR }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;"> External Subnet CIDR- {{ extSubnetCIDR }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;"> Reachback Subnet CIDR- {{ rbSubnetCIDR }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+#         <p style="margin:0; padding:0;"> IGR Subnet CIDR- {{ igrSubnetCIDR }}</p>
+#         <p style="margin:0; padding:0;">&nbsp;</p>
+        
+#     subtype: html
+#     charset: utf8
+#   delegate_to: localhost

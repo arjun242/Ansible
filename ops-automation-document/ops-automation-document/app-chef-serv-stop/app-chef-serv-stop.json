@@ -1,0 +1,11 @@
+{
+    "Content": "file://app-chef-serv-stop.yml", 
+    "Name": "app-chef-serv-stop", 
+    "VersionName": "1.0",
+    "DocumentType": "Command",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

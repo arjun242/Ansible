@@ -1,0 +1,6 @@
+AzName: AZ1
+subnetName: "{{prefix}}{{ subnet.subnetNames.ep1 }}"
+subnetCidrBlock: "{{ epSubnet1 }}"
+NaclExportName: "{{ subnet.EpNaclExportName }}"
+RouteTableExportName: "{{ subnet.AppRouteTableExportName }}"
+SubnetType: endpoint

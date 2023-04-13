@@ -1,0 +1,30 @@
+---
+- name: Create DLM service role
+  iam_role:
+    name: AWSDataLifecycleManagerDefaultRole
+    state: "present"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"
+    managed_policy:
+      - "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole"
+    assume_role_policy_document: "{{ lookup('file','policy.json') }}"
+    purge_policies: no
+  register: dlm_role
+
+- name: Pause for 20 seconds
+  pause:
+    seconds: 20
+
+- name: Create the DLM policies
+  cloudformation:
+    stack_name: "DataLifecyclePolicy-CFT"
+    state: "present"
+    region: "{{ aws_region }}"
+    template: "{{role_path}}/templates/dlm.yml"
+    template_parameters:
+      UAI: "{{UAI}}"
+      DLMRoleArn: "{{dlm_role.iam_role.arn}}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ session_token }}"

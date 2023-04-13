@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Role for Prisma Compute to scan images hosted in ECR."
+
+Resources:
+  PrismaEcrRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "prisma-cloud-ecr-read-prd"
+      Path: "/app/uai3036998/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: "arn:aws:iam::523084324983:role/app/uai3036998-prisma-cloud-ec2-instance"
+              Service: "ec2.amazonaws.com"
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+
+  PrismaEcrPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "gesos-ecr-read-policy"
+      Roles:
+        - !Ref PrismaEcrRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+            Resource: arn:aws:ecr:us-east-1:144538309574:repository/*
+            Effect: Allow
+            Sid: GetDownload
+          - Action: ecr:GetAuthorizationToken
+            Resource: "*"
+            Effect: Allow
+            Sid: GetAuth

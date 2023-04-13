@@ -1,0 +1,88 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an IAM custom managed policy for all Fed roles.
+Resources:
+  CustomManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: common-fed-role
+      Description: Common managed policy for all Fed roles.
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DecodeAuthorizationMessage
+            Action:
+              - sts:DecodeAuthorizationMessage
+            Resource:
+              - "*"
+            Effect: Allow
+
+          - Sid: SSmAccess
+            Effect: Allow
+            Resource:
+              - '*'
+            Action:
+              - ssm:GetConnectionStatus
+              - ssm:TerminateSession
+              - ssm:ListCommands
+
+          # Bastion Access 
+          - Sid: SSMStartSessionAccessonBastion
+            Effect: Allow
+            Action:
+              - ssm:StartSession
+              - ssm:SendCommand
+            Resource:
+              - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+            Condition:
+              StringEquals:
+                ssm:resourceTag/role: 'bastion'
+
+          # this is required by Fed roles only with mfa Access to connect to Instance 
+          # Access to run port forwarding Session document works with above access restrict to run on instance
+          - Sid: SSMSessionAccess # Cannot constrain on resource or tag
+            Effect: Allow
+            Action:
+              - ssm:StartSession
+              - ssm:SendCommand
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartPortForwardingSession # aws managed document
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartSSHSession  # aws managed document
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunPowerShellScript  # aws managed document
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunPowerShellScript  # aws managed document
+
+          - Sid: SSMSecretssharedRead
+            Effect: Allow
+            Action:
+              - ssm:List* 
+              - ssm:GetDocument
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetParametersByPath
+              - ssm:SendCommand
+              - ssm:StartAutomationExecution
+              - secretsmanager:DescribeSecret
+              - secretsmanager:List*
+              - secretsmanager:GetSecretValue
+              - secretsmanager:GetResourcePolicy
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:parameter/global/*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:document/global*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:automation-definition/global*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:document/app-*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:*:automation-definition/app-*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/local/*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/local*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/local*
+              - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:*:secret:global*
+              - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:common*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation/*
+
+          - Sid: lambdaInvoke  # Invoke access on lambda functions for Cloudformation Macros
+            Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+            - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:common*"
+            - !Sub "arn:aws:lambda:${AWS::Region}:*:function:global*"

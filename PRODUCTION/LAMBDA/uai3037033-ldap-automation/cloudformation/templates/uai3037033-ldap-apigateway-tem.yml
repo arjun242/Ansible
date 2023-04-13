@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'This is the Cloudformation stack that will provision APIGateway'
+
+Parameters:
+  UAI:
+    Type: String
+  AppName:
+    Type: String
+  Env:
+    Type: String
+  VpcEndpointIds:
+    Type: String
+  Policy:
+    Type: String
+
+Resources:
+### Main API Gateway Base #############
+  APIGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      EndpointConfiguration:
+        Types:
+          - PRIVATE
+        VpcEndpointIds:
+          - !Ref VpcEndpointIds
+      Name: !Sub "${UAI}-${AppName}-${Env}-APIGateway"
+      Policy: !Ref Policy
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${Env}-APIGateway"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: ! Ref Env
+          
+  APIGatewayProxyResource:
+    Type: "AWS::ApiGateway::Resource"
+    Properties:
+      RestApiId: !Ref APIGateway
+      ParentId: !GetAtt [APIGateway, RootResourceId]
+      PathPart: ldap
+
+  ApiGatewayAuthorizer:
+    DependsOn:
+      - APIGateway
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: cognito-authorizer
+      IdentitySource: method.request.header.Authorization
+      RestApiId:
+        Ref: APIGateway
+      Type: COGNITO_USER_POOLS
+      ProviderARNs:
+        - arn:aws:cognito-idp:us-east-1:325381443140:userpool/us-east-1_KGxMjtioK
+        
+  apiGatewayRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiGatewayAuthorizer
+      AuthorizationScopes: 
+        - !Sub "${UAI}-${AppName}-${Env}/ALL"
+      HttpMethod: POST
+      RequestParameters:
+        method.request.header.Authorization: false
+        method.request.querystring.ldap: false
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub 
+          - 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations'
+          - lambdaArn: !ImportValue ldaplambdanaapifetch
+      ResourceId: !Ref APIGatewayProxyResource
+      RestApiId: !Ref APIGateway
+
+  apiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - apiGatewayRootMethod
+    Properties:
+      RestApiId: !Ref APIGateway
+      StageName: prd
+      
+Outputs:
+  APIGateway:
+    Description: API Gateway
+    Value: !Ref APIGateway
+
+  APIGatewayRootResourceID:
+    Description: Root Resource ID
+    Value: !GetAtt APIGateway.RootResourceId
+

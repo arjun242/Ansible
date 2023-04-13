@@ -1,0 +1,10 @@
+NatGatewayId:
+  stack_output: {{prefix}}EIP-Nat-Gateway/NATID
+{% if vpcGatewayId != "NA" -%}
+VgwID:
+  stack_output: {{prefix}}export-vpc-default/ExportVPCGatewayId
+{% endif -%}
+{% if transitGatewayId != "NA" -%}
+TgwID:
+  stack_output: {{prefix}}export-vpc-default/ExportTransitGatewayId
+{% endif -%}

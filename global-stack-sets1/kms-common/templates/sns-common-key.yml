@@ -1,0 +1,104 @@
+---
+  AWSTemplateFormatVersion: "2010-09-09"
+  Description: KMS key will be used to encrypt sns
+  Resources:
+    KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: "Key used to encrypt SNS topic"
+        Enabled: true
+        EnableKeyRotation: true        
+        KeyPolicy: 
+          Version: "2012-10-17"
+          Id: "auto-sns-1"
+          Statement:
+            - Sid: Allow direct access to key metadata to the account
+              Effect: Allow
+              Principal:
+                AWS: 
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              Action: "kms:*"
+              Resource: "*"
+            - Sid: Allow access for Key Administrators
+              Effect: Allow
+              Principal:
+                AWS: 
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed'
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldEAAdmin-fed'
+              Action:
+                - 'kms:Create*'
+                - 'kms:Describe*'
+                - 'kms:Enable*'
+                - 'kms:List*'
+                - 'kms:Put*'
+                - 'kms:Update*'
+                - 'kms:Revoke*'
+                - 'kms:Disable*'
+                - 'kms:Get*'
+                - 'kms:Delete*'
+                - 'kms:TagResource'
+                - 'kms:UntagResource'
+                - 'kms:ScheduleKeyDeletion'
+                - 'kms:CancelKeyDeletion'
+              Resource: '*'
+            - Sid: "Enable Key Access"
+              Effect: "Allow"
+              Principal:
+                AWS:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldSAAdmin-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/hq/bu-pw-cldarch-fed"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/inf/cldarch-jenkins-execution"
+              Action: 
+                - kms:CreateGrant
+                - kms:Encrypt
+                - kms:Decrypt
+                - kms:ReEncrypt*
+                - kms:GenerateDataKey*
+                - kms:DescribeKey
+              Resource: "*"
+            - Sid: "Allow access through SNS for all principals in the account that are authorized to use SNS"
+              Effect: "Allow"
+              Principal: 
+                AWS: '*'
+              Action:
+                - 'kms:Decrypt'
+                - 'kms:GenerateDataKey*'
+                - 'kms:CreateGrant'
+                - 'kms:ListGrants'
+                - 'kms:DescribeKey'
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  'kms:ViaService': !Sub 'sns.${AWS::Region}.amazonaws.com'
+                  'kms:CallerAccount': !Sub '${AWS::AccountId}'
+            - Sid: AWSKMSAccess 
+              Effect: Allow
+              Principal:
+                Service: 
+                  - cloudwatch.amazonaws.com
+                  - events.amazonaws.com
+              Action:
+                - 'kms:Decrypt'
+                - 'kms:GenerateDataKey*'
+                - 'kms:DescribeKey'
+                - 'kms:Encrypt'
+                - 'kms:ReEncrypt*'
+              Resource: "*"
+    KMSAlias:
+      Type: AWS::KMS::Alias
+      Properties: 
+        AliasName: alias/common-sns-key
+        TargetKeyId: !Ref KMSKey
+  Outputs:
+    ExportCommonKMSID:
+      Value: !Ref KMSKey
+      Export:
+        Name: "CommonSNSKSMKeyID"
+    ExportCommonKMSArn:
+      Value: !GetAtt KMSKey.Arn
+      Export: 
+        Name: "CommonSNSKMSKeyArn"
+    ExportCommonKMSAlias:
+      Value: !Ref KMSAlias
+      Export:
+        Name: "CommonSNSKMSKeyAlias"

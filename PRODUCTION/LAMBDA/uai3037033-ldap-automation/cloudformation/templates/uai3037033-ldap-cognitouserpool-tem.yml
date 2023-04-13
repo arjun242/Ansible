@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "A stack for provisioning CognitoUserPool"
+Parameters:
+  AppName:
+    Type: String
+    MaxLength: 25
+    MinLength: 3
+    Description: Short Name of the application, keep to 15 characters or less
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed.
+    ConstraintDescription: The UAI must be valid, but specified as 'uai' followed by 7 digits.
+    AllowedPattern: "^uai[0-9]*$"
+    MinLength: 10
+    MaxLength: 10
+  ClientId:
+    Type: String
+    Description: Client Id
+  ClientSecret:
+    Type: String
+    Description: Client Id
+    NoEcho: true
+  OidcIssuer:
+    Type: String
+    Description: Odic Issuer
+  Env:
+    Type: String
+    Default: prd
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${UAI}-${AppName}-CognitoPool
+      Schema:
+        - Name: sso
+          AttributeDataType: String
+          Mutable: true
+        - Name: cn
+          AttributeDataType: String
+          Mutable: true
+        - Name: country
+          AttributeDataType: String
+          Mutable: true
+        - Name: employeetype
+          AttributeDataType: String
+          Mutable: true
+        - Name: firstname
+          AttributeDataType: String
+          Mutable: true
+        - Name: gehrbusinesssegment
+          AttributeDataType: String
+          Mutable: true
+        - Name: gehrindustrygroup
+          AttributeDataType: String
+          Mutable: true
+        - Name: geHRjobid
+          AttributeDataType: String
+          Mutable: true
+        - Name: gessoaltemail
+          AttributeDataType: String
+          Mutable: true
+        - Name: gessobusinessunit
+          AttributeDataType: String
+          Mutable: true
+        - Name: gessocompanyname
+          AttributeDataType: String
+          Mutable: true
+        - Name: gessojobfunction
+          AttributeDataType: String
+          Mutable: true
+        - Name: lastname
+          AttributeDataType: String
+          Mutable: true
+        - Name: location
+          AttributeDataType: String
+          Mutable: true
+        - Name: mail
+          AttributeDataType: String
+          Mutable: true
+        - Name: mobile
+          AttributeDataType: String
+          Mutable: true
+        - Name: phonenumber
+          AttributeDataType: String
+          Mutable: true
+        - Name: state
+          AttributeDataType: String
+          Mutable: true
+        - Name: street
+          AttributeDataType: String
+          Mutable: true
+        - Name: title
+          AttributeDataType: String
+          Mutable: true
+        - Name: gevdsGroupIDmemberOf
+          AttributeDataType: String
+          Mutable: true
+          StringAttributeConstraints:
+            MaxLength: "2048"
+        - Name: georaclehrid
+          AttributeDataType: String
+          Mutable: true
+        - Name: SM_USER
+          AttributeDataType: String
+          Mutable: true
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Sub ${UAI}-${AppName}-${Env}-domain
+
+  UserPoolIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      UserPoolId: !Ref UserPool
+      ProviderName: "ge.com"
+      ProviderType: "OIDC"
+      ProviderDetails:
+        client_id: !Ref ClientId
+        client_secret: !Ref ClientSecret
+        attributes_request_method: "POST"
+        oidc_issuer: !Ref OidcIssuer
+        authorize_scopes: "profile openid"
+      AttributeMapping:
+        "custom:cn": "cn"
+        "custom:country": "country"
+        "custom:employeetype": "employeetype"
+        "custom:firstname": "firstname"
+        "custom:gehrbusinesssegment": "gehrbusinesssegment"
+        "custom:gehrindustrygroup": "gehrindustrygroup"
+        "custom:geHRjobid": "geHRjobid"
+        "custom:gessoaltemail": "gessoaltemail"
+        "custom:gessobusinessunit": "gessobusinessunit"
+        "custom:gessocompanyname": "gessocompanyname"
+        "custom:gessojobfunction": "gessojobfunction"
+        "custom:lastname": "lastname"
+        "custom:location": "location"
+        "custom:mail": "mail"
+        "custom:mobile": "mobile"
+        "custom:phonenumber": "phonenumber"
+        "custom:state": "state"
+        "custom:street": "street"
+        "custom:title": "title"
+        "custom:gevdsGroupIDmemberOf": "gevdsGroupIDmemberOf"
+        "custom:sso": "SM_USER"
+        "custom:georaclehrid": "georaclehrid"
+        "custom:SM_USER": "SM_USER"
+
+  UserPoolResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      Identifier: !Sub "${UAI}-${AppName}-${Env}"
+      Name: !Sub "${UAI}-${AppName}-${Env}-ResourceServer"
+      Scopes:
+        - ScopeName: "ALL"
+          ScopeDescription: "Permission To Access All the Resources"
+      UserPoolId: !Ref UserPool
+
+
+Outputs:
+  PoolARN:
+    Description: UserPool
+    Value: !GetAtt UserPool.Arn
+  PoolId:
+    Description: UserPoolId
+    Value: !Ref UserPool
+    Export:
+      Name: ldapuserpoolid
+  PoolDomain:
+    Description: UserPoolDomain
+    Value: !Ref UserPoolDomain
+    

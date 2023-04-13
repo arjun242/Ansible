@@ -1,0 +1,10 @@
+---
+- name: Generate the python file
+  template:
+    src: "{{role_path}}/files/test.py"
+    dest: "/tmp/test-playbook/SSM_doc_sharing/"
+    
+- name: Run a python script
+  script: /tmp/test-playbook/files/test.py
+  args:
+    executable: python3

@@ -1,0 +1,6 @@
+---
+# Description: To create a NACLs for each type of subnet(eg. Application, Database, Integration) using Cloudformation
+# Requirements: IAM Admin role access key, secret key and security token
+- hosts: localhost
+  roles:
+    - nacls

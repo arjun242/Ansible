@@ -1,0 +1,6 @@
+# Description: rendering global stacksets files 21-provisioning-remediations.yml
+# Requirements: Stackset Execution role CFT
+---
+- hosts: localhost
+  roles:
+    - provisioning-remediations/stackset-provisioning-remediations

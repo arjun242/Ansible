@@ -1,0 +1,44 @@
+{
+    "params": {
+        "files": {
+            "CODEOWNERS":{{ codeowners[deployment_cloud] | tojson }},
+            "README.md": "{{ app_name }}",
+            "backend.tf": {
+                "resourceGroup":"rg-{{sub_code}}-uai3047228-common",
+                "deploymentSubscriptionID":"{{ deployment_subscription_id }}",
+                "storageAccount":"sa{{sub_code}}uai3047228common",
+                "containerName": "statefilestorage"
+            },
+            "main.tf": {
+                "hubSubscriptionID":"{{ hub_subscription_id }}",
+                "versions": {
+                  "app_infra": "{{ versions['azure'].app_infra }}",
+                  "core_infra": "N/A",
+                  "vm_provisioning": "N/A"
+                }
+            },
+            "main.auto.tfvars": {
+                "deploymentSubscriptionID": "{{ deployment_subscription_id }}",
+                "uai": "{{ app_uai }}"
+            },
+            "Jenkinsfile": "{{ deployment_acct_number }}"
+        },
+        "configs": {
+            "coreInfra": false,
+            "vmss": false,
+            "hookURL": "{{ deployment_hook_url }}"
+        }
+    },
+    "args": {
+        "token": "{{ pat }}",
+        "sso": "{{ sso }}",
+        "provider": "{{ deployment_cloud }}",
+        "mode": "repo",
+        "org": "{{ deployment_subscription_name }}",
+        "region": "{{ deployment_subscription_region }}",
+        "env": "{{ deployment_subscription_env }}",
+        "appUAI": "{{ app_uai }}",
+        "appName": "{{ app_name }}",
+        "aws_acct_number": "{{ deployment_acct_number }}"
+    }
+}

@@ -1,0 +1,66 @@
+# History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to run chef-zero for push-build....
+parameters:
+  ArtifactoryUser:
+    type: String
+    description: Add net groups to the server
+    default: '{{ssm:/automation/artifactory_user}}'
+  ArtifactoryPass:
+    type: String
+    description: Add net groups to the server
+    default: '{{ssm:/automation/artifactory_pass}}'
+  BuildNo:
+    type: String
+    description: Add the build number of the job
+  ModuleName:
+    type: String
+    description: Provide module name of the application
+    default: 'app'
+mainSteps:
+
+- name: WindowsSetup
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Windows 
+  inputs:
+    runCommand:
+    - cd "C:\\chef\\cache\\chef\\cookbooks"
+    ##- Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+    ##- sleep 20
+    ##- choco install jq --force -version 1.5 -Y
+    ##- sleep 10
+    ##- $artifactory_usr=aws secretsmanager get-secret-value --region us-east-1 --secret-id automation/ArtifactorySecrets | jq --raw-output '.SecretString' | jq -r .username
+    ##- $artifactory_pass=aws secretsmanager get-secret-value --region us-east-1 --secret-id automation/ArtifactorySecrets | jq --raw-output '.SecretString' | jq -r .password
+    - $artifactory_usr="{{ArtifactoryUser}}"
+    - $artifactory_pass="{{ArtifactoryPass}}"
+    - Set-Content -Path 'C:\\chef\\artifactory.json' -Value "{ ""artifactory_usr"":""$artifactory_usr"", ""artifactory_pass"":""$artifactory_pass"" }"
+    - sleep 5
+    - chef-client -zr "recipe[pw_web_autoUpdate::zero_push_build]" -j "C:\\chef\\artifactory.json"
+
+- name: LinuxOSType
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - cd /etc/chef/cache/chef/cookbooks
+    ##- yum install jq -y
+    ##- artifactory_usr=`aws secretsmanager get-secret-value --region us-east-1 --secret-id automation/ArtifactorySecrets | jq --raw-output '.SecretString' | jq -r .username`
+    ##- artifactory_pass=`aws secretsmanager get-secret-value --region us-east-1 --secret-id automation/ArtifactorySecrets | jq --raw-output '.SecretString' | jq -r .password`
+    - artifactory_usr="{{ArtifactoryUser}}"
+    - artifactory_pass="{{ArtifactoryPass}}"
+    - build_no="{{BuildNo}}"
+    - module_name="{{ModuleName}}"
+    - echo "{ \"artifactory_usr\":" "\"$artifactory_usr\", \"artifactory_pass\":\"$artifactory_pass\", \"auto_update\":{\"$module_name\":\"$build_no\"} }" > /etc/chef/attribute.json
+    - sleep 5
+    - sudo chef-client -zr "recipe[pw_web_autoUpdate::zero_push_build]" -j /etc/chef/attribute.json -L /var/log/zero.log

@@ -1,0 +1,11 @@
+{
+    "Content": "file://share_existing_ssm_doc.yml", 
+    "Name": "share_existing_ssm_doc", 
+    "VersionName": "1.0",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+	"Tags": [{
+		"Key": "Share-Version",
+		"Value": "LATEST"
+	}]
+ }

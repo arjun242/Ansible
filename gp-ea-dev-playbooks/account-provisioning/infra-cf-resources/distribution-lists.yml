@@ -1,0 +1,9 @@
+---
+- hosts: localhost
+  vars:
+    aws_region: us-east-1
+    access_key: "{{ acc_key }}"
+    secret_key: "{{ sec_key }}"
+    session_token: "{{ security_token }}"
+  roles:
+    - distribution-lists

@@ -1,0 +1,5 @@
+tower_api_inventory_source_url: https://ansible.power.ge.com/api/v2/inventory_sources/
+inventory_id: 7
+#GP-AWS-EC2-INVENTORY
+source_project_id: 35
+#GP-AWS-DYNAMIC-INVENTORY

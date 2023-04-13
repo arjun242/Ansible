@@ -1,0 +1,10 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+stacksets:
+  - name: iam-common-ssm-instanceprofile
+  - name: iam-common-ecsautoscalingsvcrole
+  - name: iam-qualys-cloudview-role
+    parameters:
+      BaseAccountID: '805950163170'
+      ExternalId: '1577911250717'

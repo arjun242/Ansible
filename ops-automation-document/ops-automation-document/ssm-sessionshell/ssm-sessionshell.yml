@@ -1,0 +1,15 @@
+# aws ssm create-document --content "file://gp-ssm-Sessionshell.yml" --name "SSM-RunSessionShell" --document-type "Session" 
+ 
+        schemaVersion: "1.0" 
+        description: "Session Document for Session Shell for app admin" 
+        sessionType: "Standard_Stream" 
+        inputs: 
+          s3BucketName: "gp-us-east-gr-session-bucket" 
+          s3KeyPrefix: "gp-app-admin-session-log" 
+          s3EncryptionEnabled: true 
+          cloudWatchLogGroupName: "GPCloudOpsNotifications" 
+          cloudWatchEncryptionEnabled: true 
+          kmsKeyId: "arn:aws:kms:us-east-1:762713699569:key/38bce9b8-697e-4cfd-a1f2-cf841df6756c" 
+          runAsEnabled: true 
+          runAsDefaultUser: "appadmin" 
+ 

@@ -1,0 +1,281 @@
+custom_resources:
+
+  - name: dbss-rds-postgresql-parameter-groups
+    custom_stackset_name: dbss-rds-postgresql-parameter-groups
+    description: RDS postgresql default parameter groups
+    template_file: templates/pgsql-parameter-groups.cf.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+    
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+
+  - name: dbss-rds-mysql-parameter-groups
+    custom_stackset_name: dbss-rds-mysql-parameter-groups
+    description: RDS mysql default parameter groups
+    template_file: templates/mysql-parameter-group.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/gp-ops.yml
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+
+  - name: dbss-rds-mysql-option-groups
+    custom_stackset_name: dbss-rds-mysql-option-groups
+    description: RDS mysql default option groups
+    template_file: templates/mysql-option-groups.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/gp-ops.yml
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+          
+  - name: dbss-rds-aurora-pgsql-parameters-groups
+    custom_stackset_name: dbss-rds-aurora-pgsql-parameters-groups
+    description: RDS aurora-pgsql default option groups
+    template_file: templates/aurora-pgsql-parameter-groups.cf.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+          
+  - name: dbss-rds-aurora-pgsql-cluster-parameters-groups
+    custom_stackset_name: dbss-rds-aurora-pgsql-cluster-parameters-groups
+    description: RDS aurora-pgsql default option groups
+    template_file: templates/aurora-pgsql-cluster-parameter-groups.cf.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+
+  - name: dbss-rds-aurora-mysql-parameters-groups
+    custom_stackset_name: dbss-rds-aurora-mysql-parameters-groups
+    description: RDS aurora-pgsql default option groups
+    template_file: templates/aurora-mysql-parameter-groups.cf.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+          
+  - name: dbss-rds-aurora-mysql-cluster-parameters-groups
+    custom_stackset_name: dbss-rds-aurora-mysql-cluster-parameters-groups
+    description: RDS aurora-pgsql default option groups
+    template_file: templates/aurora-mysql-cluster-parameter-groups.cf.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+          
+  - name: dbss-rds-oracle-parameter-groups
+    custom_stackset_name: dbss-rds-oracle-parameter-groups
+    description: RDS oracle default parameter groups
+    template_file: templates/oracle-parameter-groups.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+
+  - name: dbss-rds-oracle-option-groups
+    custom_stackset_name: dbss-rds-oracle-option-groups
+    description: RDS oracle default option groups
+    template_file: templates/oracle-option-groups.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+      - account: ent-emea-pnw-preprod
+        regions:
+          - eu-west-1
+     
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+
+  - name: dbss-rds-sqlserver-parameter-groups
+    custom_stackset_name: dbss-rds-sqlserver-parameter-groups
+    description: RDS sqlserver default parameter groups
+    template_file: templates/sqlserver-parameter-groups.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+
+  - name: dbss-rds-sqlserver-option-groups
+    custom_stackset_name: dbss-rds-sqlserver-option-groups
+    description: RDS sqlserver default option groups
+    template_file: templates/sqlserver-option-groups.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1
+
+  - name: dbss-iam-rds-sqlserver-servicerole
+    custom_stackset_name: dbss-iam-rds-sqlserver-servicerole
+    description: IAM RDS sqlserver service role used in options group
+    template_file: templates/iam-rds-sqlserver-backup-service-role.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        override_parameter_file: parameters/gp-power-us-east.yml
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/pp-steam-eu-west.yml
+        regions:
+          - eu-west-1

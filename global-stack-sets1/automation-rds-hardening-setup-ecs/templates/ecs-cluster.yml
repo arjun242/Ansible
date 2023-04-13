@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: '2010-09-09'
+# CF Stack name: dbss-ecs-cluster-${EcsClusterType}-${VPCAlias}
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Details
+        Parameters:
+          - VPCAlias
+          - UAI
+      - Label:
+          default: Common Cluster Settings
+        Parameters:
+          - EcsClusterType
+          - EcsClusterName
+          - SecurityGroupIds
+
+Parameters:
+  VPCAlias:
+    Description: 'Specify the VPC alias within this account. The VPCAlias is a logical label for execution environment.'
+    Type: String
+    Default: gr-db
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' or 'uai' followed by 7 digits
+    AllowedPattern: '^(UAI|uai)[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'uai3036792'
+  EcsClusterType:
+    Type: String
+    Default: 'fargate'
+    AllowedValues:
+      - 'ec2'
+      - 'fargate'
+    Description: 'Type of ECS cluster'
+  EcsClusterName:
+    Type: String
+    Description: "Name of IGR ECS Cluster. Example: 'dbss-ecs-cluster-fargate-db-tasks'."
+    Default: 'dbss-rds-hardening'
+  SecurityGroupIds:
+    Type: CommaDelimitedList # CommaDelimitedList or String or List<AWS::EC2::SecurityGroup::Id>
+    Description: "Optional. Existing Security Group Ids, separated by comma, to be used by the ECS cluster. Example: 'sg-06dc5465aaabd59ef,sg-0d395630c57019725'. Leave blank to have a new Security Group created."
+    Default: ''
+
+
+Conditions:
+  CreateNewSecurityGroup: !Equals [ !Select [0, !Ref SecurityGroupIds] , '' ]
+  CreateEc2Cluster: !Equals [ !Ref EcsClusterType , 'ec2' ]
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref 'EcsClusterName'
+      Tags:
+        - Key: 'Name'
+          Value: !Ref 'EcsClusterName'
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Stack name'
+          Value: !Sub 'ECS cluster - ${AWS::StackName}'
+        - Key: 'Description'
+          Value: 'This cluster was created through for IGR integration'
+  EcsSecurityGroup:
+    Condition: CreateNewSecurityGroup
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS IGR Security Group
+      VpcId: { "Fn::ImportValue" : { "Fn::Sub": "vpc:${VPCAlias}:id" } }
+      SecurityGroupIngress:
+        - Description: HTTPS communication (ECR)
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: HTTP communication (AmazonLinux yum repo)
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        # - Description: ssh from local Servers
+        #   IpProtocol: tcp
+        #   FromPort: 22
+        #   ToPort: 22
+        #   CidrIp: 10.0.0.0/8
+        # the 3.* is sold by GE, it will be insecure to allow a traffic from it
+        #- Description: ssh from local Servers
+        #  IpProtocol: tcp
+        #  FromPort: 22
+        #  ToPort: 22
+        #  CidrIp: 3.0.0.0/8
+        # is any Ingress port needed for EFS mounts?
+        #- Description: High ports from local Servers
+        #  IpProtocol: tcp
+        #  FromPort: 32768
+        #  ToPort: 65535
+        #  CidrIp: 10.0.0.0/8
+        #- Description: High ports from local Servers
+        #  IpProtocol: tcp
+        #  FromPort: 32768
+        #  ToPort: 65535
+        #  CidrIp: 3.0.0.0/8
+      SecurityGroupEgress:
+        - Description: SSL connection to RDS
+          IpProtocol: tcp
+          FromPort: 2481
+          ToPort: 2489
+          CidrIp: 10.0.0.0/8
+        - Description: NoSSL connection to oracle RDS
+          IpProtocol: tcp
+          FromPort: 1521
+          ToPort: 1521
+          CidrIp: 10.0.0.0/8
+        - Description: Access to EFS share
+          IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          CidrIp: 0.0.0.0/0
+        - Description: DNS TCP queries
+          IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+        - Description: DNS UDP queries
+          IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+        - Description: HTTPS communication (ECR)
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: HTTP communication (AmazonLinux yum repo)
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: 'Name'
+          Value: !Join [ '', [!Ref EcsClusterName, !Sub '-${VPCAlias}-ec2-sg' ]]
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'Security Group used by ECS IGR cluster'
+
+  InboundRuletoBaseRds:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: ECS task connection for Hardening
+      IpProtocol: tcp
+      FromPort: 2481
+      ToPort: 2489
+      GroupId: 
+        Fn::ImportValue: !Sub 'rds:${VPCAlias}:base-rds-sg:id'
+      SourceSecurityGroupId: !GetAtt EcsSecurityGroup.GroupId
+
+Outputs:
+  EcsIgrClusterName:
+    Description: 'ECS integration cluster, that runs DBA dockers'
+    Value: !Ref 'EcsClusterName'
+    Export:
+      Name: !Sub 'ecs:${VPCAlias}:igr-cluster-${EcsClusterType}:name'
+
+  ECSIgrClusterSG:
+    Description: 'Security Groups used by ECS integration cluster'
+    Value:  !If [ CreateNewSecurityGroup, !Ref EcsSecurityGroup, !Join [ ',', !Ref SecurityGroupIds ] ]
+    Export:
+      Name: !Sub 'ecs:${VPCAlias}:igr-cluster-${EcsClusterType}:sglist'
+      

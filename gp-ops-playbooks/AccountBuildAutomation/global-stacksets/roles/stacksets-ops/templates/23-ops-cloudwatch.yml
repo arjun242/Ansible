@@ -1,0 +1,11 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: gp-ops-notify-snstopic
+  - name: ops-cloudwatch-notify-automation
+  - name: ops-dlm-cloudwatch-event
+  - name: ops-cloudwatchmetric-sns
+  - name: cloudwatch-phd-health-event
+  - name: cloudwatch-configuration-file-ssm-parameter

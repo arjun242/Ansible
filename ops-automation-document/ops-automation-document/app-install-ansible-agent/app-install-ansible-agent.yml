@@ -1,0 +1,11 @@
+---
+schemaVersion: '2.2'
+description: Install Ansible - Linux (Centos 6 & 7)
+parameters: {}
+mainSteps:
+- action: aws:runShellScript
+  name: echohello
+  inputs:
+    runCommand:
+    - echo "Hello World  !!!!"
+    - "yum -y install ansible"

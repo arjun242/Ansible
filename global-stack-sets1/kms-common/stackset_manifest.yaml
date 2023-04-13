@@ -1,0 +1,35 @@
+custom_resources:
+  - name: kms-common-key
+    description: This stackset is for setting up kms common key
+    custom_stackset_name: kms-common-key
+    template_file: templates/kms-common-key.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change
+
+  - name: common-kms-cloudwatch
+    description: Sets up the common kms key used for encrypting cloudwatch logs
+    custom_stackset_name: common-kms-cloudwatch
+    template_file: templates/cloudwatch-key.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change
+
+  - name: sns-common-key
+    description: This stackset is for setting up sns common key
+    custom_stackset_name: sns-common-key
+    template_file: templates/sns-common-key.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change
+
+  - name: dynamodb-common-key
+    description: This stackset is for setting up dynamodb common key
+    custom_stackset_name: dynamodb-common-key
+    template_file: templates/dynamodb-common-key.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change
+    
+  - name: glue-common-key
+    description: This stackset is for setting up AWS Glue common key
+    custom_stackset_name: glue-common-key
+    template_file: templates/glue-common-key.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role # Default Value Do not change
+    execution_role_name: gp-stackset-execution # Default Value Do not change

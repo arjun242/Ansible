@@ -1,0 +1,25 @@
+---
+- name: Sending Email Notifications
+  mail:
+    host: alpmlip01.e2k.ad.ge.com
+    port: 25
+    from: "{{ from_email_id }}"
+    to:
+      - "{{ to_email_id }}"
+    subject: "New AWS Account - {{ aws_account_name }} is ready"
+    body: 
+        <p>Hi Ivan,</p>
+        <p>This email is to notify you that a new AWS Guardrails Standard account has been provisioned by the EA team. </p>
+        <p>Please find the details of the new AWS account below - </p>
+        <p style="margin:0; padding:0;"><strong>Account ID:</strong> {{ aws_account_id }}</p>
+        <p style="margin:0; padding:0;"><strong>Account Name:</strong> {{ aws_account_name }}</p>
+        <p style="margin:0; padding:0;"><strong>VPC ID:</strong> {{ vpc_id }}</p>
+        <p style="margin:0; padding:0;">&nbsp;</p>
+        <p style="margin:0; padding:0;">Please reach out to the EA team if there are any questions.</p>
+        <p style="margin:0; padding:0;">&nbsp;</p>
+        <p style="margin:0; padding:0;">Thanks</p>
+        <p style="margin:0; padding:0;">EA Team</p>
+     
+    subtype: html
+    charset: utf8
+  delegate_to: localhost

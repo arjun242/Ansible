@@ -1,0 +1,41 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation template to create cloud-watch configuration file as parameters in the SSM parameter store
+
+Parameters:
+ 
+  CloudWatchLinuxCfg:
+    Type: String
+    Description: "CloudWatch config file content"
+    Default: '{
+          "agent": { "metrics_collection_interval": 60, "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log" },
+          "metrics": { "metrics_collected": { "disk": { "resources": [ "*" ], "measurement": [ "used_percent" ], "metrics_collection_interval": 60 }, "mem": { "measurement": [ "mem_used_percent", "mem_free" ], "metrics_collection_interval": 60 } }, "append_dimensions": { "InstanceId": "${aws:InstanceId}" }, "force_flush_interval": 30 }, 
+          "logs": { "logs_collected": { "files": { "collect_list": [{ "file_path": "/var/log/cfn-init.log", "log_group_name": "common/build/linux/cloud-init-log", "log_stream_name": "{instance_id}" }, { "file_path": "/var/log/cfn-init-cmd.log", "log_group_name": "common/build/linux/cfn-init-cmd-log", "log_stream_name": "{instance_id}" }, { "file_path": "/var/log/cloud-init.log", "log_group_name": "common/build/linux/cloud-init-log", "log_stream_name": "{instance_id}" }] } } }
+        }'
+  
+  CloudWatchWinCfg:
+    Type: String
+    Description: "CloudWatch config file content"
+    Default: '{
+          "agent": { "metrics_collection_interval": 60, "logfile": "c:\\ProgramData\\Amazon\\AmazonCloudWatchAgent\\Logs\\amazon-cloudwatch-agent.log" }, 
+          "metrics": { "metrics_collected": { "LogicalDisk": { "measurement": [ "% Free Space" ], "resources": [ "*" ] }, "Memory": { "metrics_collection_interval": 60, "measurement": [ "Available Bytes", "% Committed Bytes In Use" ] } }, "append_dimensions": { "InstanceId": "${aws:InstanceId}" } }, 
+          "logs": { "logs_collected": { "files": { "collect_list": [ { "file_path": "c:\\cfn\\log\\cfn-init-cmd.log", "log_group_name": "common/build/win/cfn-init-cmd-log", "log_stream_name": "{instance_id}", "timezone": "UTC" }, { "file_path": "c:\\cfn\\log\\cfn-init.log", "log_group_name": "common/build/win/cfn-init-log", "log_stream_name": "{instance_id}", "timezone": "UTC" }, { "file_path": "c:\\cfn\\log\\cfn-wire.log", "log_group_name": "common/build/win/cfn-wire-log", "log_stream_name": "{instance_id}", "timezone": "UTC" } ] }, "windows_events": { "collect_list": [ { "event_name": "System", "event_levels": [ "INFORMATION", "ERROR" ], "log_group_name": "System", "log_stream_name": "System", "event_format": "xml" } ] } }, "log_stream_name": "windows_log_stream" }
+        }'
+
+Resources:
+
+  LinuxCloudWatchConfigD:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/LinuxCloudWatchConfigD
+        Description: Linux CloudWatch config file content
+        Type: String
+        Value: !Ref CloudWatchLinuxCfg
+
+  WindowsCloudwatchConfigD:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+        Name: /automation/WindowsCloudwatchConfigD
+        Description: Windows CloudWatch config file content
+        Type: String
+        Value: !Ref CloudWatchWinCfg

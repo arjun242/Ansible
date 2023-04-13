@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: GP Managed Read Only Policy
+Resources:
+  #SSM Default Instance Profile          
+  DefaultSSMSessionInstanceProfileRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - !ImportValue SSMManagedSessionPolicyARN
+      Path: '/app/'
+      RoleName: ssm-default-instance-profile-role
+
+  DefaultSSMSessionInstanceProfile:
+    Type: AWS::IAM::InstanceProfile    
+    Properties:
+      Path: '/app/'
+      InstanceProfileName: default-ssm-instance-profile
+      Roles:
+      - !Ref DefaultSSMSessionInstanceProfileRole
+
+Outputs:
+# Bastion SG
+  InstanceProfile:
+    Description: Default SSM-managed Instance Profile
+    Value: !Ref DefaultSSMSessionInstanceProfile
+    Export:
+      Name: default:ssm-managed:instanceprofile

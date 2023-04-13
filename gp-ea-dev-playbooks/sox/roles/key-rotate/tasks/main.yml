@@ -1,0 +1,146 @@
+---
+- name: Gathering metadata facts
+  ec2_metadata_facts:
+
+- name: Set variables for instance id, acc_id and private_ip of the target server
+  set_fact:
+    id: "{{ ansible_ec2_instance_id }}"
+    accid: "{{ ansible_ec2_identity_credentials_ec2_info_accountid }}"
+    private_ip: "{{ansible_ec2_instance_identity_document_privateip}}"
+    remote_host_ipv4_dns: "{{ansible_ec2_hostname}}"
+
+- name: Include Tower variables
+  include_vars: tower-qa-vars.yml
+
+- name: Include vars file
+  include_vars: key-pair.yml
+
+- name: Include vars file
+  include_vars: controller-token.yml
+
+- name: Create directory for backup
+  file:
+    path: /tmp/ansible-backup/
+    state: directory
+    mode: '0755'
+
+- name: Take backup of authorized_keys in tmp folder of remote server
+  copy:
+    src: /home/ansible/.ssh/authorized_keys
+    dest: /tmp/ansible-backup/authorized_keys_backup
+    remote_src: yes
+  become: yes
+
+# - name: Upload backup to S3 bucket
+#   aws_s3:
+#     bucket: "{{ backup_bucket }}"
+#     src: /home/ansible/.ssh/authorized_keys
+#     object: /SSH-Backup/{{id}}/authorized_keys
+#     mode: put
+#   delegate_to: localhost
+
+- name: Create temp Credential
+  ansible.controller.credential:
+    credential_type: Machine
+    name: "{{new_credential_name}}"
+    description: This is a temp credential to test connectivity with new key pair
+    organization: "{{org_to_be_created_in}}"
+    controller_oauthtoken: "{{controller_bearer_token | b64decode }}"
+    inputs:
+      ssh_key_data: "{{private_ssh_key}}"
+    state: "present"
+    validate_certs: no
+  delegate_to: localhost
+
+- name: Create new inventory
+  ansible.controller.inventory:
+    name: "{{new_inventory_name}}"
+    description: This is a temp inventory that is created to check connectivity using new key pair
+    organization: "{{org_to_be_created_in}}"
+    controller_oauthtoken: "{{controller_bearer_token | b64decode }}"
+    validate_certs: no
+  register: new_inventory_var
+  delegate_to: localhost
+
+- name: Create JT for ping
+  ansible.controller.job_template:
+    name: "{{new_job_template_name}}"
+    description: This is a temp job template that is created to check connectivity using new key pair
+    organization: "{{org_to_be_created_in}}"
+    job_type: run
+    controller_oauthtoken: "{{controller_bearer_token | b64decode }}"
+    credentials: 
+      - "{{new_credential_name}}"
+    extra_vars:
+      ansible_user: ansible
+    project: "{{existing_project_name}}"
+    playbook: "{{playbook_path}}"
+    inventory: "{{new_inventory_name}}"
+    verbosity: 3
+    validate_certs: no
+  delegate_to: localhost
+    
+- name: 
+  block:
+    - name: Adding test line in backup file
+      lineinfile:
+        line: "{{public_ssh_key}}"
+        path: /home/ansible/.ssh/authorized_keys
+      become: yes
+    
+    - name: Add host to the new inventory to check connectivity
+      ansible.controller.tower_host:
+        name: "{{ remote_host_ipv4_dns }}"
+        inventory: "{{new_inventory_name}}"
+        description: "This host is in {{accid}}"
+        controller_oauthtoken: "{{controller_bearer_token | b64decode }}"
+        validate_certs: no
+      delegate_to: localhost
+
+    - name: Launch the ping template in the new inventory
+      ansible.controller.job_launch:
+        name: "{{new_job_template_name}}"
+        organization: "{{org_to_be_created_in}}"
+        controller_oauthtoken: "{{controller_bearer_token | b64decode }}"
+        validate_certs: no
+      register: job_launch_response
+      delegate_to: localhost
+
+    - name: Wait for the ping JT to complete
+      ansible.controller.job_wait:
+        job_id: "{{job_launch_response.id}}"
+        controller_oauthtoken: "{{controller_bearer_token | b64decode }}"
+        validate_certs: no
+      register: job_wait_response
+      delegate_to: localhost
+      ignore_errors: true
+
+    - name: Get logs of the job to find failed hosts
+      uri:
+        url: "{{base_tower_url}}/jobs/{{job_launch_response.id}}/stdout?format=txt"
+        method: GET
+        validate_certs: no
+        force_basic_auth: no
+        follow_redirects: safe
+        force: no
+        return_content: yes
+        status_code: 200
+        timeout: 30
+        headers:
+          Authorization: "Bearer {{controller_bearer_token | b64decode }}"
+          Content-Type: "application/json"
+      delegate_to: localhost
+
+    - name: Fail the execution on remote server if job is unsuccessful
+      fail:
+        msg: "Connectivity not established to {{remote_host_ipv4_dns}} in account {{accid}}"
+      when: job_wait_response.status != 'successful'
+
+  rescue:
+    - name: Restore the backup file
+      copy:
+        src: /tmp/ansible-backup/authorized_keys_backup
+        dest: /home/ansible/.ssh/authorized_keys
+        remote_src: yes
+      become: yes
+

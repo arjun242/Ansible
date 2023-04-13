@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+    LambdaCustomOpsRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: OpsLambdaAutomationRole
+        Description: Custom role for Lambda
+        Path: /inf/
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+        Tags:
+        - Key: uai
+          Value: 'uai2000020'
+        - Key: env
+          Value: 'dev'
+
+    LambdaOpstestPolicy:
+      Type: 'AWS::IAM::Policy'
+      Properties:
+        PolicyName: OpsLambdaAutomationPolicy
+        Roles:
+          - !Ref LambdaCustomOpsRole
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Sid: loggroup
+              Effect: Allow
+              Action:
+                - 'logs:CreateLogGroup'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: 'arn:aws:logs:*:*:*'
+            - Sid: S3bucketaccess
+              Effect: Allow             
+              Action:
+                - 's3:Get*'
+                - 's3:Put*'
+                - 's3:List*'
+                - 's3:PutObject'
+                - 's3:PutObjectAcl'
+                - 's3:PutBucketTagging'
+              Resource:
+                - 'arn:aws:s3:::gp-us-east-ops-automation-common-tools'
+                - 'arn:aws:s3:::gp-us-east-ops-automation-common-tools/*'
+                - 'arn:aws:s3:::gp-ops*'
+                - 'arn:aws:s3:::gp-ops/*'
+
+            - Sid: InvokeLambda
+              Effect: Allow
+              Action:
+                - 'lambda:InvokeFunction'
+                - 'lambda:InvokeAsync'
+              Resource:
+                - '*'
+            - Sid: OpsKMSKeys
+              Effect: Allow
+              Action:
+                - 'kms:Decrypt'
+                - 'kms:ReEncrypt*'
+                - 'kms:Encrypt'
+                - 'kms:Describe*'
+                - 'kms:GenerateDataKey*'
+                - 'kms:List*'
+                - 'kms:Put*'
+                - 'kms:Get*'
+                - 'kms:CreateGrant'
+              Resource: '*'
+            - Sid: DLM
+              Effect: Allow
+              Action:
+                - 'dlm:*'
+              Resource:
+                - '*'
+            - Sid: IamPassrole
+              Effect: Allow
+              Action:
+                - 'iam:PassRole'
+              Resource:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/AWSDataLifecycleManagerDefaultRole'
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/AWSDataLifecycleManagerDefaultRoleForAMIManagement'
+            - Sid: Ec2Permissions
+              Effect: Allow
+              Action:
+                - 'ec2:DescribeInstances'
+                - 'ec2:StartInstances'
+                - 'ec2:StopInstances'
+                - 'ec2:RebootInstances'
+                - 'ec2:ModifyInstanceAttribute'
+                - 'ec2:Describe*'
+              Resource:
+                - '*'                
+            - Sid: NetworkInterface
+              Effect: Allow
+              Action:
+                - 'ec2:DescribeNetworkInterfaces'
+                - 'ec2:CreateNetworkInterface'
+                - 'ec2:DeleteNetworkInterface'
+                - 'ec2:AttachNetworkInterface'
+              Resource:
+                - '*'
+                
+            - Sid: Unconditional
+              Effect: Allow
+              Action:
+                - 'iam:ListAccountAliases'
+                - 'ses:SendRawEmail'
+                - 'ses:SendEmail'
+                - 'ssm:DescribeInstanceInformation'
+                - 'ec2:CreateTags'
+              Resource:
+                - '*'    

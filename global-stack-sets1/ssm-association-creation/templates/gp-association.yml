@@ -1,0 +1,36 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to create associations
+Resources:
+  QualysLinuxWindowsConfig:
+    Type: AWS::SSM::Association
+    Properties:
+      AssociationName: Qualys-Linux-Windows-Config
+      Name: !Sub 'arn:aws:ssm:${AWS::Region}:325381443140:document/SSM-App-Qualys-Linux-Windows-Config'
+      ScheduleExpression: cron(0 30 23 ? * * *)
+      Targets:
+      - Key: InstanceIds
+        Values:
+        - "*"
+  
+  SplunkLinuxWindowsConfig:
+    Type: AWS::SSM::Association
+    Properties:
+      AssociationName: Splunk-Linux-Windows-Config
+      Name: !Sub 'arn:aws:ssm:${AWS::Region}:325381443140:document/SSM-App-Splunk-Linux-Windows-Config'
+      ScheduleExpression: cron(0 30 23 ? * * *)
+      Targets:
+      - Key: InstanceIds
+        Values:
+        - "*"
+
+  CrowdStrikeConfig:
+    Type: AWS::SSM::Association
+    Properties:
+      AssociationName: app-crowdstrike
+      Name: !Sub 'arn:aws:ssm:${AWS::Region}:325381443140:document/app-crowdstrike'
+      ScheduleExpression: cron(0 30 23 ? * * *)
+      Targets:
+      - Key: InstanceIds
+        Values:
+        - "*"

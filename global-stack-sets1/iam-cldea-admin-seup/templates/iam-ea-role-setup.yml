@@ -1,0 +1,243 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: 'CldEAAdmin Federated or switch role for EA Team.
+              Template ref: https://github.build.ge.com/gp-ops/global-stack-sets/blob/master/iam-cldsa-admin-setup/templates/iam-ea-role-setup.yml'
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Description: Name of the  Role... e.g.
+    Default: 'cldEAAdmin'
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'hq'
+  AdminAccountId:
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    Default: "325381443140"
+    Description: 12 digit AWS Account Id of the identity/federation account containing the users to which you're granting access. This is a trusted account.
+  MultiFactorAuthRequired:
+    Default: "False"
+    Type: String
+    AllowedValues:
+      - "True"
+      - "False"
+
+Conditions:
+  AdminSetup: !Equals [!Ref AWS::AccountId, '325381443140']
+  SwitchSetup: !Not [!Equals [!Ref AWS::AccountId, '325381443140']]
+
+Resources:
+  EAAdminRole:
+    Type: AWS::IAM::Role
+    Condition: AdminSetup
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - # Allow the role to be assumed from SAML Auth.
+            Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action: 'sts:AssumeRoleWithSAML'
+            Condition:
+              StringEquals:
+                'SAML:aud': 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"  # IamFullAceess Managed Policy
+        - "arn:aws:iam::aws:policy/AWSOrganizationsReadOnlyAccess"  # AWS OrganizationReadonly Access
+      Policies:
+        - PolicyName: AssumeRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+
+              - Sid: AssumeRole
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - "arn:aws:iam::*:role/hq/*"
+                Effect: Allow
+  EAAdminSwitchRole:
+    Type: AWS::IAM::Role
+    Condition: SwitchSetup
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - # Allow the role to be assumed from Admin account.
+            Effect: Allow 
+            Principal:
+              "AWS": !Sub "arn:${AWS::Partition}:iam::${AdminAccountId}:role/hq/bu-pw-cldEAAdmin-fed"
+            Action:
+              - sts:AssumeRole
+            Condition:
+              Bool:
+                "aws:MultiFactorAuthPresent": !Ref MultiFactorAuthRequired
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"  # IamFullAceess Managed Policy
+        - "arn:aws:iam::aws:policy/AWSOrganizationsReadOnlyAccess"  # AWS OrganizationReadonly Access
+
+  EAAdminPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${RoleName}-access"
+      Roles:
+        'Fn::If':
+        - AdminSetup
+        - 
+          - !Ref EAAdminRole
+        - 
+          - !Ref EAAdminSwitchRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: PassRole
+            Action:
+              - iam:PassRole
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/lam/*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/bu-pw-*-app"
+            Effect: Allow
+
+          - Sid: IAMControlsLimited
+            Effect: Allow
+            Action:
+              - iam:List*
+              - iam:Get*
+              - iam:UpdateServerCertificate
+              - iam:UpdateSigningCertificate
+              - iam:UploadServerCertificate
+              - iam:UploadSigningCertificates
+              - iam:CreateServiceLinkedRole
+            Resource:
+              - "*"
+
+          - Sid: CognitoFullAccess
+            Effect: Allow
+            Action:
+              - cognito-identity:*
+              - cognito-idp:*
+              - cognito-sync:*
+            Resource:
+              - "*"
+              
+          - Sid: EnableAllControls
+            Action:
+              - a4b:*
+              - acm:*
+              - apigateway:*
+              - application-autoscaling:*
+              - appstream:*
+              - kinesisvideo:*
+              - athena:*
+              - autoscaling:*
+              - aws-marketplace:*
+              - cloud9:*
+              - codedeploy:*
+              - codepipeline:*
+              - codestar:*
+              - codestar-connections:*
+              - compute-optimizer:*
+              - codebuild:*
+              - codecommit:*
+              - config:*
+              - cloudformation:*
+              - cloudtrail:*
+              - cloudfront:*
+              - cloudsearch:*
+              - cloudwatch:*
+              - datapipeline:*
+              - dlm:*
+              - dms:*
+              - dynamodb:*
+              - ec2:*
+              - ec2-reports:*
+              - ec2-instance-connect:*
+              - ecs:*
+              - ecr:*
+              - elasticfilesystem:*
+              - elasticache:*
+              - elasticbeanstalk:*
+              - elasticloadbalancing:*
+              - elasticmapreduce:*
+              - es:*
+              - events:*
+              - execute-api:*
+              - glacier:*
+              - glue:*
+              - greengrass:*
+              - inspector:*
+              - kms:*
+              - lambda:*
+              - logs:*
+              - machinelearning:*
+              - opsworks:*
+              - opsworks-cm:*
+              - quicksight:*
+              - rds:*
+              - redshift:*
+              - resource-groups:*
+              - sdb:*
+              - s3:*
+              - ses:*
+              - snowball:*
+              - sns:*
+              - sqs:*
+              - ssm:*
+              - sts:DecodeAuthorizationMessage
+              - support:*
+              - swf:*
+              - tag:*
+              - trustedadvisor:*
+              - waf:*
+              - wafv2:*
+              - waf-regional:*
+              - xray:*
+              - health:*
+              - route53:*
+              - route53domains:*
+              - route53resolver:*
+              - states:*
+              - servicecatalog:*
+              - sagemaker:*
+              - serverlessrepo:*
+              - secretsmanager:*
+              - access-analyzer:*
+              - servicequotas:*
+              - appconfig:*
+              - license-manager:*
+              - backup:*
+            Resource: "*"
+            Effect: Allow
+
+Outputs:
+
+  AdminEAFederatedRoleName:
+    Condition: AdminSetup
+    Value: !Ref EAAdminRole
+  AdminEAFederatedRoleArn:
+    Condition: AdminSetup
+    Value: !GetAtt EAAdminRole.Arn
+
+  SwitchEAFederatedRoleName:
+    Condition: SwitchSetup
+    Value: !Ref EAAdminSwitchRole
+  SwitchEAFederatedRoleArn:
+    Condition: SwitchSetup
+    Value: !GetAtt EAAdminSwitchRole.Arn

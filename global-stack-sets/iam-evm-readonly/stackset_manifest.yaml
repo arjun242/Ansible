@@ -1,0 +1,7 @@
+custom_resources:
+  - name: iam-evm-readonly
+    custom_stackset_name: iam-evm-readonly
+    description: Stack Setup for Read only Fed role and policy foe evm team
+    template_file: templates/iam-evm-readonly.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

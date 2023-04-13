@@ -1,0 +1,5 @@
+- name: configure githuborg lists file for enrolling new accounts
+  include_tasks: orgs-enrollment.yml
+
+- name: execute github-org setup script
+  include_tasks: org-configure.yml

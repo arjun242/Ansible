@@ -1,0 +1,12 @@
+---
+# handlers file for ansible-splunk
+- name: restart splunk
+  shell: /opt/splunkforwarder/bin/splunk restart
+  become: yes
+
+- name: restart splunk windows
+  become_method: runas
+  win_service:
+    name: SplunkForwarder
+    state: restarted
+  

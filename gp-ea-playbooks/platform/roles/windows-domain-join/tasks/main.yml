@@ -1,0 +1,109 @@
+---
+#This Playbook checks if the necessary certificates are present and joins a Windows host to the specified Domain
+
+   #This task finds the thumbprint of the root certificate, if present
+   - name: thumbprint
+     win_shell: (Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object {$_.Thumbprint -eq "18ADD034A2EF3E6DC88BA23F65B90BD50FFE08B0"})
+     register: mycert
+
+   #This block is executed when the certificate is absent
+   - block:
+
+       #Creating a directory to store the certificates
+       - name: Create Certs directory
+         win_file:
+           path: C:\Certs\
+           state: directory
+
+       #Downloading the certificates on the Master Node
+       - name: Download Certificates on Master Node
+         delegate_to: localhost
+         aws_s3:
+           bucket: gp-us-east-ops-automation-common-tools
+           object: "{{ item }}"
+           dest: /tmp/{{ item }}
+           mode: get
+           region: 'us-east-1'
+          # overwrite: different
+         with_items:
+           - GE_External_Root_CA_2_1.cer
+           - TrustStoreImport.reg
+
+       #Copying from master node to windows target host
+       - name: Copy downloaded files from Master Node to Windows Server
+         win_copy:
+           src: "{{ item.sr }}"              #/tmp/certs/GE_External_Root_CA_2_1.cer
+           dest: "{{ item.dst }}"            #C:\Certs\GE_External_Root_CA_2_1.cer
+         with_items:
+         - { sr: '/tmp/GE_External_Root_CA_2_1.cer', dst: 'C:\Certs\GE_External_Root_CA_2_1.cer' }
+         - { sr: '/tmp/TrustStoreImport.reg', dst: 'C:\Certs\TrustStoreImport.reg' }
+
+       - name: Install the certificate
+         win_certificate_store:
+           path: C:\Certs\GE_External_Root_CA_2_1.cer
+           state: present
+
+       - name: Merge in a registry file
+         win_regmerge:
+           path: C:\Certs\TrustStoreImport.reg
+
+     when: mycert.stdout == ""
+
+   #To find the hostname
+   - name: Find Hostname
+     win_shell: hostname
+     register: hname
+     
+    #This task sets the domain username and password
+   - name: Extracting and Setting the Username & Password from Parameter Store
+     #no_log: true
+     set_fact:
+       userName: "{{ lookup('aws_ssm', '/automation/domainJoinUserName', region='us-east-1') }}"
+       password: "{{ lookup('aws_ssm', '/automation/domainJoinPassword', region='us-east-1' ) }}"
+     delegate_to: localhost
+     
+   #This task loads the ARS data from the file 
+   - set_fact:
+      payLoad: "{{ lookup('file', 'ARS_XML.xml') }}"
+      hostname: "{{ hname.stdout | trim }}"
+      username: '{{ userName | replace("\\","\;") | replace(";","") }}'
+
+   #Replacing the hostname in the ARS data
+   - name: Replace the hostname in the ARS data
+     win_shell: $body = '{{ payLoad }}'; $body = $body.Replace('changehostname', "{{ hostname }}");  echo $body 
+     register: output
+     
+   - set_fact:
+      payload: "{{ output.stdout | trim  }}"
+   
+   #This task POSTs the ARS data to the URI
+   - name: ARS Entry
+     win_uri:
+       body: "{{ payload }}"
+       url: 'https://ars.cloudad.tools.ds.ge.com/spml/SPMLProvider.asmx'
+       url_username: "{{ username }}"
+       url_password: "{{ password }}"
+       method: POST
+       content_type: "text/xml"
+
+   #This task joins the target Windows host to the specified Domain
+   - name: Domain join
+     win_domain_membership:
+       dns_domain_name: mgmt.cloud.ds.ge.com
+       domain_admin_user: "{{ username }}"
+       domain_admin_password: "{{ password }}"
+       state: domain
+     register: result
+
+   - name: Reboot 
+     win_reboot:
+     when: result.reboot_required
+
+   #Adds the domain groups to the administrators group
+   - name: Add domain group to administrators
+     win_group_membership:
+       name: administrators
+       members:
+         - mgmt.cloud.ds.ge.com\SVR_TCS_NIMBUS_2018_ADMIN
+         - mgmt.cloud.ds.ge.com\SVR_GE009000000_PWT_Migration_Factory
+       state: present

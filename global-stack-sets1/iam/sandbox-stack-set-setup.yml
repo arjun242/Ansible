@@ -1,0 +1,592 @@
+---
+# Shaun 02/05/2020 - Added Permission SSM Start Session policy to cldarch and ops role.  
+#                    Added Qualys Connector Role.
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: GP Managed Read Only Policy
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the admin Role... e.g. 'cldSAAdmin'
+    Default: 'cldSAAdmin'
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'hq'
+  EnableMFA:
+    Type: String
+    Description: "Require MFA for role access, True or False"
+    Default: "True"
+    AllowedValues:
+      - "True"
+      - "False"
+  ArnStart:
+    Type: String
+    Description: "The start of an ARN. 'arn:aws-us-gov' for GovCloud, 'arn:aws' otherwise"
+    Default: 'arn:aws'
+Conditions:
+  UseMFA: !Equals [ !Ref EnableMFA, "True"]
+Resources:
+  GPReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Basic managed policy modeled after the AmazonSSMManagedInstanceCore'
+      ManagedPolicyName: 'GP-Read-Only-Policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AccessToCommonKMS
+            Effect: Allow
+            Action:
+            - "kms:GenerateDataKey"
+            - "kms:Decrypt"
+            - "kms:Encrypt"
+            - "kms:ReEncrypt"
+            - "kms:CreateGrant"
+            - "kms:DescribeKey"
+            Resource: !Sub ${ArnStart}:kms::${AWS::AccountId}:alias/common-kms-key
+
+          - Sid: ReadOnlyAccess
+            Effect: Allow
+            Action:
+            - acm:Describe*
+            - acm:List*
+            - application-autoscaling:Describe*              
+            - athena:List*
+            - autoscaling:Describe*
+            - batch:DescribeComputeEnvironments
+            - batch:DescribeJobDefinitions
+            - cloudformation:DescribeStack*
+            - cloudformation:GetTemplate
+            - cloudformation:ListStack*
+            - cloudformation:GetStackPolicy
+            - cloudfront:Get*
+            - cloudfront:List*              
+            - cloudtrail:DescribeTrails
+            - cloudtrail:GetEventSelectors
+            - cloudtrail:GetTrailStatus
+            - cloudtrail:ListTags
+            - cloudtrail:LookupEvents
+            - cloudwatch:Describe*
+            - codebuild:ListProjects             
+            - codedeploy:Batch*
+            - codedeploy:Get*
+            - codedeploy:List*
+            - codepipeline:ListPipelines
+            - codestar:Describe*
+            - codestar:List*
+            - cognito-identity:ListIdentityPools
+            - cognito-idp:ListUserPools
+            - cognito-sync:Describe*
+            - cognito-sync:List*
+            - comprehend:Describe*
+            - comprehend:List*
+            - config:BatchGetAggregateResourceConfig
+            - config:BatchGetResourceConfig
+            - config:Deliver*
+            - config:Describe*
+            - config:Get*
+            - config:List*
+            - datapipeline:DescribeObjects
+            - datapipeline:DescribePipelines
+            - datapipeline:EvaluateExpression
+            - datapipeline:GetPipelineDefinition
+            - datapipeline:ListPipelines
+            - datapipeline:QueryObjects
+            - datapipeline:ValidatePipelineDefinition
+            - datasync:Describe*
+            - datasync:List*
+            - dax:Describe*
+            - dax:ListTags
+            - directconnect:Describe*
+            - dms:Describe*
+            - dms:ListTagsForResource              
+            - dynamodb:DescribeContinuousBackups
+            - dynamodb:DescribeGlobalTable
+            - dynamodb:DescribeTable
+            - dynamodb:DescribeTimeToLive
+            - dynamodb:ListBackups
+            - dynamodb:ListGlobalTables
+            - dynamodb:ListStreams
+            - dynamodb:ListTables
+            - ec2:Describe*
+            - ecr:DescribeRepositories
+            - ecr:GetRepositoryPolicy
+            - ecs:Describe*
+            - ecs:List*             
+            - elasticache:Describe*
+            - elasticbeanstalk:Describe*
+            - elasticfilesystem:DescribeFileSystems
+            - elasticfilesystem:DescribeMountTargetSecurityGroups
+            - elasticfilesystem:DescribeMountTargets
+            - elasticloadbalancing:Describe*
+            - elasticmapreduce:Describe*
+            - elasticmapreduce:ListClusters
+            - elasticmapreduce:ListInstances
+            - es:Describe*
+            - es:ListDomainNames
+            - events:Describe*
+            - events:List*
+            - firehose:Describe*
+            - firehose:List*
+            - fms:ListComplianceStatus
+            - fms:ListPolicies             
+            - glacier:DescribeVault
+            - glacier:GetVaultAccessPolicy
+            - glacier:ListVaults
+            - globalaccelerator:Describe*
+            - globalaccelerator:List*              
+            - guardduty:Get*
+            - guardduty:List*
+            - iam:GenerateCredentialReport
+            - iam:GenerateServiceLastAccessedDetails
+            - iam:Get*
+            - iam:List*
+            - iam:SimulateCustomPolicy
+            - iam:SimulatePrincipalPolicy
+            - inspector:Describe*
+            - inspector:Get*
+            - inspector:List*
+            - inspector:Preview*              
+            - kinesis:DescribeStream
+            - kinesis:ListStreams
+            - kinesis:ListTagsForStream
+            - kinesisanalytics:ListApplications
+            - kms:Describe*
+            - kms:Get*
+            - kms:List*
+            - lambda:GetAccountSettings
+            - lambda:GetFunctionConfiguration
+            - lambda:GetLayerVersionPolicy
+            - lambda:GetPolicy
+            - lambda:List*
+            - license-manager:List*
+            - logs:Describe*
+            - logs:ListTagsLogGroup
+            - machinelearning:DescribeMLModels            
+            - rds:Describe*
+            - rds:DownloadDBLogFilePortion
+            - rds:ListTagsForResource
+            - redshift:Describe*
+            - rekognition:Describe*
+            - rekognition:List*
+            - route53:Get*
+            - route53:List*
+            - route53domains:GetDomainDetail
+            - route53domains:GetOperationDetail
+            - route53domains:ListDomains
+            - route53domains:ListOperations
+            - route53domains:ListTagsForDomain
+            - route53resolver:List*
+            - route53resolver:Get*
+            - s3:GetAccelerateConfiguration
+            - s3:GetAccountPublicAccessBlock
+            - s3:GetAnalyticsConfiguration
+            - s3:GetBucket*
+            - s3:GetEncryptionConfiguration
+            - s3:GetInventoryConfiguration
+            - s3:GetLifecycleConfiguration
+            - s3:GetMetricsConfiguration
+            - s3:GetObjectAcl
+            - s3:GetObjectVersionAcl
+            - s3:GetReplicationConfiguration
+            - s3:ListAllMyBuckets
+            - sagemaker:Describe*
+            - sagemaker:List*
+            - sdb:DomainMetadata
+            - sdb:ListDomains
+            - secretsmanager:GetResourcePolicy
+            - secretsmanager:ListSecrets
+            - secretsmanager:ListSecretVersionIds
+            - securityhub:Describe*
+            - securityhub:Get*
+            - securityhub:List*
+            - serverlessrepo:GetApplicationPolicy
+            - serverlessrepo:List*              
+            - sns:GetTopicAttributes
+            - sns:ListSubscriptionsByTopic
+            - sns:ListTopics
+            - sqs:GetQueueAttributes
+            - sqs:ListDeadLetterSourceQueues
+            - sqs:ListQueues
+            - sqs:ListQueueTags
+            - ssm:Describe*
+            - ssm:ListDocuments             
+            - tag:GetResources
+            - tag:GetTagKeys
+            - transfer:Describe*
+            - transfer:List*
+            - translate:List*
+            - trustedadvisor:Describe*
+            - waf:ListWebACLs
+            - waf-regional:ListWebACLs
+            Resource: "*"
+
+  CldReadOnlyRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "readonly-fed"
+      Path: '/gp/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Federated:                 
+                - !Join 
+                    - ':'
+                    - - "arn"
+                      - !Ref AWS::Partition
+                      - "iam:"
+                      - !Ref AWS::AccountId
+                      - !If [UseMFA, "saml-provider/ge-saml-for-aws-mfa", "saml-provider/ge-saml-for-aws"]
+            Action: 'sts:AssumeRoleWithSAML'
+            Condition:
+              StringEquals:
+                'SAML:aud': 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+      - !Ref GPReadOnlyPolicy
+  
+  CldSAAdminRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      ManagedPolicyArns: 
+        - !Ref SSMStartSessionPolicy
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Federated:
+                - !Sub "${ArnStart}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa"
+            Action: 'sts:AssumeRoleWithSAML'
+            Condition:
+              StringEquals:
+                'SAML:aud': 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"  # IamFullAceess Managed Policy
+        - "arn:aws:iam::aws:policy/AWSOrganizationsReadOnlyAccess"  # AWS OrganizationReadonly Access
+  
+  SAAdminPolicies:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${RoleName}-policy"
+      Roles:
+        - !Ref CldSAAdminRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PassRole
+            Action:
+              - 'iam:PassRole'
+            Resource:
+              - !Sub "${ArnStart}:iam::${AWS::AccountId}:role/app/*"
+              - !Sub "${ArnStart}:iam::${AWS::AccountId}:role/lam/*"
+              - !Sub "${ArnStart}:iam::${AWS::AccountId}:role/*/bu-pw-*-app"
+            Effect: Allow
+
+          - Sid: EnableAllControls
+            Action:
+              - 'a4b:*'
+              - 'acm:*'
+              - 'apigateway:*'
+              - 'application-autoscaling:*'
+              - 'appstream:*'
+              - 'athena:*'
+              - 'autoscaling:*'
+              - 'aws-marketplace:*'
+              - 'cloud9:*'
+              - 'codedeploy:*'
+              - 'codepipeline:*'
+              - 'codebuild:*'
+              - 'codecommit:*'
+              - 'config:*'
+              - 'cloudformation:*'
+              - 'cloudtrail:*'
+              - 'cloudfront:*'
+              - 'cloudsearch:*'
+              - 'cloudwatch:*'
+              - 'datapipeline:*'
+              - 'dlm:*'
+              - 'dms:*'
+              - 'dynamodb:*'
+              - 'ec2:*'
+              - 'ec2-reports:*'
+              - 'ecs:*'
+              - 'ecr:*'
+              - 'elasticfilesystem:*'
+              - 'elasticache:*'
+              - 'elasticbeanstalk:*'
+              - 'elasticloadbalancing:*'
+              - 'elasticmapreduce:*'
+              - 'es:*'
+              - 'events:*'
+              - 'execute-api:*'
+              - 'glacier:*'
+              - 'glue:*'
+              - 'inspector:*'
+              - 'kms:*'
+              - 'lambda:*'
+              - 'logs:*'
+              - 'machinelearning:*'
+              - 'opsworks:*'
+              - 'opsworks-cm:*'
+              - 'quicksight:*'
+              - 'rds:*'
+              - 'redshift:*'
+              - 'resource-groups:*'
+              - 'sdb:*'
+              - 's3:*'
+              - 'ses:*'
+              - 'snowball:*'
+              - 'sns:*'
+              - 'sqs:*'
+              - 'ssm:*'
+              - 'sts:DecodeAuthorizationMessage'
+              - 'support:*'
+              - 'swf:*'
+              - 'tag:*'
+              - 'trustedadvisor:*'
+              - 'waf:*'
+              - 'wafv2:*'
+              - 'xray:*'
+              - 'health:*'
+              - 'route53:*'
+              - 'route53domains:*'
+              - 'route53resolver:*'
+              - 'states:*'
+              - 'servicecatalog:*'
+              - 'serverlessrepo:*'
+            Resource: '*'
+            Effect: Allow
+
+          - Sid: IAMControlsLimited
+            Effect: Allow
+            Action:
+              - 'iam:List*'
+              - 'iam:Get*'
+              - 'iam:UpdateServerCertificate'
+              - 'iam:UpdateSigningCertificate'
+              - 'iam:UploadServerCertificate'
+              - 'iam:UploadSigningCertificate'
+            Resource:
+              - '*'
+
+          - Sid: IAMControlCreateServiceRole
+            Effect: Allow
+            Action:
+              - 'iam:CreateServiceLinkedRole'
+            Resource:
+              - !Sub "${ArnStart}:iam::${AWS::AccountId}:role/aws-service-role/replicator.lambda.amazonaws.com/AWSServiceRoleForLambdaReplicator"
+
+          - Sid: CognitoFullAccess
+            Effect: Allow
+            Action:
+              - 'cognito-identity:*'
+              - 'cognito-idp:*'
+              - 'cognito-sync:*'
+            Resource:
+              - '*'
+
+################################################################################
+# Resources Section
+#   10/4/2019 - Initial Version
+#     Allowed IPs are found from 
+#       - https://internet.ge.com/docs/zscaler-public-ip-space/  - Internal GE IPs
+#       - https://ips.zscalertwo.net/cenr - zscalr service
+################################################################################ 
+
+
+# Start Session Policy.  
+# MUST BE ATTACHED TO ANY ROLE with ssm:StartSession...   
+  SSMStartSessionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'This is a deny policy to block all traffic not comming from '   
+      ManagedPolicyName: 'ssm-session-deny'     
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: SSMBlockSessions
+            Effect: Deny
+            Action: "ssm:StartSession"
+            Resource: "*"
+            Condition:
+              NotIpAddress:
+                aws:SourceIp:
+                - 165.225.34.0/23   #Dallas
+                - 104.129.204.0/23  #Atlanta
+                - 104.129.200.0/24  #Denver
+                - 104.129.198.0/23  #LA
+                - 165.225.32.0/23   #Mami
+                - 165.225.38.0/23   #New york
+                - 104.129.192.0/23  #San Fran
+                - 165.225.50.0/23   #Seattle
+                - 165.225.36.0/23   #Toronto
+                - 104.129.194.0/23  #DC
+                #- 185.46.212.0/23  #Future use removing
+                - 165.225.88.0/23   #Brussels
+                - 165.225.72.0/22   #Frankfurt
+                - 165.225.92.0/23   #Madrid
+                - 165.225.196.0/23  #Manchester
+                - 165.225.86.0/23   #Milan
+                #- 165.225.66.0/24  #Moscow Removing
+                #- 213.52.102.0/24   #Oslo Removing
+                - 165.225.76.0/23   #Paris
+                - 165.225.192.0/23  #Stockholm
+                - 165.225.84.0/23   #Warsaw
+                - 185.46.214.0/23   #Zurich
+                - 165.225.104.0/24  #Chennai
+                - 165.225.116.0/23  #Hong Kong
+                - 165.225.106.0/23  #Mumbai
+                - 165.225.112.0/23  #Singapore
+                - 165.225.110.0/23  #Tokyo
+                - 165.156.39.0/26	  #3PR – Cincinnati
+                - 165.156.40.0/26   #3PR – Alpharetta
+                - 165.156.34.0/24	  #Ashburn
+                - 165.156.37.0/24	  #Ashburn
+                - 165.156.29.64/26  #3PR – Bangalore
+                - 165.156.28.64/26	#3PR – Singapore
+                - 165.156.31.64/26	#3PR – Tokyo    
+                
+  #Default SSM Policy allowing EC2s to be Manaed by SSM.              
+  SSMPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Basic managed policy modeled after the AmazonSSMManagedInstanceCore'   
+      ManagedPolicyName: 'ssm-automation-managed-policy'     
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: SSMAccess
+            Effect: Allow
+            Action:
+            - ssm:DescribeAssociation
+            - ssm:GetDeployablePatchSnapshotForInstance
+            - ssm:GetDocument
+            - ssm:DescribeDocument
+            - ssm:ListDocuments*
+            - ssm:GetManifest
+            - ssm:ListAssociations
+            - ssm:ListTagsForResource
+            - ssm:ListInstanceAssociations
+            #- ssm:PutComplianceItems
+            - ssm:PutConfigurePackageResult
+            - ssm:UpdateAssociationStatus
+            - ssm:UpdateInstanceAssociationStatus
+            - ssm:UpdateInstanceInformation
+            - ssm:PutInventory
+            Resource: "*"
+          - Sid: AutomationGetParameters
+            Effect: Allow
+            Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/automation/*"
+          - Sid: SSMMessages
+            Effect: Allow
+            Action:
+            - ssmmessages:CreateControlChannel
+            - ssmmessages:CreateDataChannel
+            - ssmmessages:OpenControlChannel
+            - ssmmessages:OpenDataChannel
+            Resource: "*"
+          - Sid: EC2Messages
+            Effect: Allow
+            Action:
+            - ec2messages:AcknowledgeMessage
+            - ec2messages:DeleteMessage
+            - ec2messages:FailMessage
+            - ec2messages:GetEndpoint
+            - ec2messages:GetMessages
+            - ec2messages:SendReply
+            Resource: "*"
+          - Sid: S3GetforSSM
+            Effect: Allow
+            Action: 
+              - s3:GetObject
+            Resource: 
+              - !Sub arn:aws:s3:::aws-ssm-${AWS::Region}/*
+              - !Sub arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*
+              - !Sub arn:aws:s3:::amazon-ssm-${AWS::Region}/*
+              - !Sub arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*
+              - !Sub arn:aws:s3:::region-birdwatcher-${AWS::Region}/*
+              - !Sub arn:aws:s3:::patch-baseline-snapshot-${AWS::Region}/*              
+              - !Sub arn:aws:s3:::gp-us-east-ops-automation-common-tools/*
+            #Centralized Bucket for SSM Logging.
+            #Need to upate bucket policy.
+          - Sid: S3Logs
+            Effect: Allow
+            Action: 
+            - s3:GetObject*
+            - s3:ListBucket
+            - s3:PutObject*
+            Resource: 
+              - arn:aws:s3:::gp-ops-ssm-logs/*              
+              - arn:aws:s3:::gp-ops-ssm-logs 
+                
+          - Sid: Logs
+            Effect: Allow
+            Action:
+              - cloudwatch:PutMetricData
+              - ec2:DescribeInstanceStatus
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:PutLogEvents
+            Resource: '*'
+  
+  #SSM Default Instance Profile          
+  SSMDefaultInstanceProfileRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - !Ref SSMPolicy
+      Path: '/app/'
+      RoleName: ssm-default-instance-profile-role
+
+  DefaultEC2SSMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile    
+    Properties:
+      Path: '/app/'
+      InstanceProfileName: default-ssm-instance-profile
+      Roles:
+      - !Ref SSMDefaultInstanceProfileRole
+
+#Adding Qualys connector Role.      
+  QualysConnectorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'QualysCloudViewRole'
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/SecurityAudit"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::805950163170:root
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': '1577911250717'
+
+
+
+                
+
+

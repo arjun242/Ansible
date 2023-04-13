@@ -1,0 +1,22 @@
+--- 
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CodeStar Connection Creation CloudFormation template 
+Parameters:
+  ConnectionName:
+    Type: String
+    Description: The name of the connection. Connection names must be unique in an AWS user account.
+  ConnectionHostArn:
+    Type: String
+    Description: The Amazon Resource Name (ARN) of the host associated with the connection.
+Resources:
+  CodeStarConnection:
+    Type: AWS::CodeStarConnections::Connection
+    Properties: 
+      ConnectionName: !Ref ConnectionName
+      HostArn: !Ref ConnectionHostArn
+Outputs:
+  CodeStarConnectionArn:
+    Description: Code Star Connection Arn
+    Value: !Ref CodeStarConnection
+    Export:
+      Name: "{{prefix}}codestar-connection-arn"

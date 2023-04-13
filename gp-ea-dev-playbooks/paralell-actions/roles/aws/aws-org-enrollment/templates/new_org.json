@@ -1,0 +1,4 @@
+{ 
+    "aws_acct_number": "{{ aws_account_id}}",
+    "name": "{{aws_account_name}}"
+}

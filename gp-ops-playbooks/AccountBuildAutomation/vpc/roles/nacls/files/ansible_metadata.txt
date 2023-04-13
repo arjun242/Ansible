@@ -1,0 +1,2 @@
+Ansible last pushed to this repository on
+{{current_date_jinja}}

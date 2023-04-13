@@ -1,0 +1,8 @@
+UAI: uai3037033
+App: ldap
+Env: prd
+ContainerPort: 5001
+ServiceName: uai3037033-ldap-ui
+TaskName: frontend
+TaskDefinition: arn:aws:ecs:us-east-1:325381443140:task-definition/uai3037033-ldap-prd-frontend-baseline:2
+DesiredCount: 0

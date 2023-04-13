@@ -1,0 +1,49 @@
+---
+# fetch directories & state files
+- name: Include vars file
+  include_vars: templates-directory.yml
+- name: Include secret vars
+  include_vars: secret.yml
+  no_log: true
+
+# create parameter directories
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/"
+
+# clone ado scripts repository
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-azr-core/ado-setup-scripts"
+    dest: "{{source_directory}}/{{resource_folder}}/"
+    clone: yes
+    recursive: yes
+    version: master
+
+# Invoke ADO App Script
+- name: Invoke ADO App Environment Script
+  command: "pwsh {{source_directory}}/{{resource_folder}}/ADO_App_Setup.ps1 'APP' '{{project_name}}' '{{webhook_name}}' '{{subscription_id}}' '{{subscription_name}}' '{{rg_name}}' '{{rg_region}}' '{{env}}' '{{uai}}' '{{agent_pool}}' '{{adoPat}}'"
+  register: output
+  args:
+    chdir: "{{source_directory}}/{{resource_folder}}"
+  environment:
+    AZURE_DEVOPS_EXT_PAT: '{{adoPat}}'
+  when: lookup('vars','mode') == "app"
+
+# Invoke ADO Orgs Script
+- name: Invoke ADO Org Environment Script
+  command: "pwsh {{source_directory}}/{{resource_folder}}/ADO_Org_Setup.ps1 '{{subscription_id}}' '{{subscription_name}}'"
+  register: output
+  args:
+    chdir: "{{source_directory}}/{{resource_folder}}"
+  environment:
+    AZURE_DEVOPS_EXT_PAT: '{{adoPat}}'
+  when: lookup('vars','mode') == "org"
+
+
+# Clear File Path For Future Invocation
+- name: Delete directory for parameter file
+  file:
+    state: absent
+    path: "{{source_directory}}/{{resource_folder}}/"

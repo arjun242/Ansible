@@ -1,0 +1,91 @@
+#AWS SSM Role
+
+#Service Role.
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+    ScheduleStopStartSSMRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: ScheduleStopStartSSMRole
+        Description: Custom role for Schedule Stop and Start of servers via SSM
+        Path: /inf/
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - ssm.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+
+    SSMCustomSchedulePolicy:
+      Type: 'AWS::IAM::Policy'
+      Properties:
+        PolicyName: SSMCustomSchedulePolicy
+        Roles:
+          - !Ref ScheduleStopStartSSMRole
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+
+              - Action:
+                  - 'ec2:StartInstances'
+                  - 'ec2:RunInstances'
+                  - 'ec2:StopInstances'
+                  - 'ec2:DescribeInstanceStatus'
+                  - 'ec2:CreateTags'
+                  - 'ec2:DeleteTags'
+                  - 'ec2:DescribeTags'
+                  - 'ec2:CreateImage'
+                  - 'ec2:CopyImage'
+                  - 'ec2:DeregisterImage'
+                  - 'ec2:DescribeImages'
+                  - 'ec2:DeleteSnapshot'
+                  - 'ec2:TerminateInstances'
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:DescribeStackEvents'
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:UpdateStack'
+                  - 'cloudformation:DeleteStack'
+                Resource: 
+                  - '*'
+                Effect: Allow
+                Sid: EC2
+                
+              - Action:
+                  - 'rds:StopDBInstance'
+                  - 'rds:StartDBInstance'
+                  - 'rds:DescribeDBInstances'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: RDS
+                
+              - Action:
+                  - 'lambda:InvokeFunction'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: InvokeLambda
+                
+              - Action:
+                  - 'kms:*'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: KMS
+                
+              - Action:
+                  - 'ssm:*'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: SSM
+              
+              - Action:
+                  - 'sns:Publish'
+                Resource:
+                  - '*'
+                Effect: Allow
+                Sid: SNS

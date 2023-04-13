@@ -1,0 +1,50 @@
+---
+  AWSTemplateFormatVersion: "2010-09-09"
+  Description: KMS key will be used to encrypt AMIs
+  Resources:
+    KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: "Key used to encrypt AWS Glue Resources"
+        Enabled: true
+        EnableKeyRotation: true        
+        KeyPolicy: 
+          Version: "2012-10-17"
+          Id: "automation-key-glue"
+          Statement:
+            - Sid: "Enable IAM User Permissions"
+              Effect: "Allow"
+              Principal: 
+                AWS: 
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              Action: "kms:*"
+              Resource: "*"
+            - Sid: "Enable Key Access for AWS Glue"
+              Effect: "Allow"
+              Principal:
+                Service: !Sub "glue.${AWS::Region}.amazonaws.com"
+              Action: 
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+              Resource: "*"
+    KMSAlias:
+      Type: AWS::KMS::Alias
+      Properties: 
+        AliasName: alias/common-glue-key
+        TargetKeyId: !Ref KMSKey
+  Outputs:
+    ExportCommonKMSID:
+      Value: !Ref KMSKey
+      Export:
+        Name: "GlueCommonKSMKeyID"
+    ExportCommonKMSArn:
+      Value: !GetAtt KMSKey.Arn
+      Export: 
+        Name: "GlueCommonKMSKeyArn"
+    ExportCommonKMSAlias:
+      Value: !Ref KMSAlias
+      Export:
+        Name: "GlueCommonKMSKeyAlias"

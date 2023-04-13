@@ -1,0 +1,63 @@
+---
+- name: Including secret vars
+  include_vars: main.yml
+  no_log: true
+
+- name: Create empty directory
+  file:
+    path: /tmp/repo
+    state: directory
+
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-ansible-dev/gp-ea-dev-playbooks"
+    dest: /tmp/repo
+    clone: yes
+    recursive: yes
+
+- name: Copy new file into new directory
+  copy:
+    src: /tmp/repo/ping.yml
+    dest: /tmp/repo/account-provisioning/infra-ansible-native
+
+- name: Reinitialize existing repo
+  shell:
+    cmd: "cd /tmp/repo && git init"
+
+#### Check feasibility for CWD or PWD 
+
+- name: Add remote
+  shell:
+    cmd: "cd /tmp/repo && git remote add checkGit \"https://{{sso}}:{{pat}}@github.build.ge.com/gp-ansible-dev/gp-ea-dev-playbooks\" "
+
+- name: Add identity
+  shell:
+    cmd: "cd /tmp/repo && git config user.name \"Vikram\" && git config user.email vikram.chandrasekaran@ge.com"
+
+- name: Pull the latest revision of repo
+  shell:
+    cmd: "cd /tmp/repo && git pull checkGit master"
+
+- name: Add the modified files using git add
+  shell:
+    cmd: "cd /tmp/repo && git add --all"
+
+- name: Commit the changes
+  shell:
+    cmd: "cd /tmp/repo && git commit -a -m \"New file pushed to account-provisioning repo using Ansible\" "  
+
+- name: Push the changes
+  shell:
+    cmd: "cd /tmp/repo && git push checkGit master"
+
+- name: Remove remote
+  shell:
+    cmd: " cd /tmp/repo && git remote rm checkGit"
+
+- name: Delete directory
+  shell: 
+    cmd: "cd /tmp/ && rm -rf /tmp/repo" # Change to module
+  
+
+# - name: Remove the new directory
+

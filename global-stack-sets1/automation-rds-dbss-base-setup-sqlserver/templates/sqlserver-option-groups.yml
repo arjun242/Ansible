@@ -1,0 +1,392 @@
+---                
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: gr-db
+
+Resources: 
+
+  rdssqlserversedefault13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+
+  rdssqlservereedefault13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'          
+  
+  rdssqlserversesox13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+  
+  rdssqlservereesox13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+  
+  rdssqlserversegxp13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+
+  rdssqlservereegxp13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+ 
+  rdssqlserverseiso13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+  
+  rdssqlservereeiso13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+ 
+  rdssqlserversedod13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+  
+  rdssqlservereedod13:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '13.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'  
+  
+  rdssqlserversedefault14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup' 
+  
+  rdssqlservereedefault14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup' 
+  
+  rdssqlserversesox14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup' 
+  
+  rdssqlservereesox14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup' 
+    
+  rdssqlserversegxp14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup' 
+      
+  rdssqlservereegxp14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'   
+  
+  rdssqlserverseiso14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'   
+
+  rdssqlservereeiso14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'   
+
+  rdssqlserversedod14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-se
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'   
+
+  rdssqlservereedod14:
+    Type: 'AWS::RDS::OptionGroup'
+    Properties:
+      EngineName: sqlserver-ee
+      MajorEngineVersion: '14.00'
+      OptionGroupDescription: SQL Server Native Backup and Restore
+      OptionConfigurations:
+        - OptionName: SQLSERVER_BACKUP_RESTORE
+          OptionSettings:
+            - Name: IAM_ROLE_ARN
+              #Value: 'arn:aws:iam::156405602218:role/service-role/dbss-sqlbackup'
+              Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/dbss-sqlbackup'   
+Outputs:
+  rdssqlserversedefault13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlserversedefault13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:default:13'
+
+  rdssqlservereedefault13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlservereedefault13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:default:13'
+
+  rdssqlserversesox13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlserversesox13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:sox:13'
+
+  rdssqlservereesox13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlservereesox13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:sox:13'
+
+  rdssqlserversedod13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlserversedod13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:dod:13'
+
+  rdssqlservereedod13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlservereedod13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:dod:13'
+  
+  rdssqlserversegxp13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlserversegxp13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:gxp:13'
+
+  rdssqlservereegxp13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlservereegxp13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:gxp:13'
+
+  rdssqlserverseiso13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlserverseiso13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:iso:13'
+
+  rdssqlservereeiso13:
+    Description: MS Sql Server 2016 Backup restore to S3
+    Value: !Ref rdssqlservereeiso13
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:iso:13'
+
+  rdssqlserversedefault14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlserversedefault14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:default:14'
+
+  rdssqlservereedefault14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlservereedefault14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:default:14'
+
+  rdssqlserversesox14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlserversesox14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:sox:14'
+
+  rdssqlservereesox14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlservereesox14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:sox:14'
+
+  rdssqlserversedod14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlserversedod14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:dod:14'
+
+  rdssqlservereedod14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlservereedod14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:dod:14'
+  
+  rdssqlserversegxp14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlserversegxp14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:gxp:14'
+
+  rdssqlservereegxp14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlservereegxp14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:gxp:14'
+
+  rdssqlserverseiso14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlserverseiso14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-se:iso:14'
+
+  rdssqlservereeiso14:
+    Description: MS Sql Server 2017 Backup restore to S3
+    Value: !Ref rdssqlservereeiso14
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:optiongroups:sqlserver-ee:iso:14'
+
+
+  
+

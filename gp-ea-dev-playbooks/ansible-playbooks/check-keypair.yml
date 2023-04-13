@@ -1,0 +1,27 @@
+#This will call the keyrotation role
+---
+- hosts: all
+  tasks:
+    - block:
+       - name: Check python3 version to install lib-selinux package
+#        ignore_errors: yes
+         shell: python3 --version
+         register: py_version
+         ignore_errors: true
+
+       #If python3 is present on the server then installing libselinux package
+       - name: Installing libselinux pkg if python3 is installed on target server
+         become: yes
+         shell: yum install -y libselinux-python3
+         register: selinux_pkg
+         when: py_version is not failed
+           
+      rescue:
+        # Printing a debug msg 
+       - debug: 
+           msg: "This instance does not have python3 installed on the server to execute the command python3 --version, calling the role anyways to execute the playbook "
+           
+    #Including the role for keyrotation if only pyton2 is present on the server
+    - name: Including the role if only python2 is present on the instance
+      include_role:
+        name: keyrotation

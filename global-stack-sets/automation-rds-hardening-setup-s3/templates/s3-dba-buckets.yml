@@ -1,0 +1,290 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create common (per region) buckets in the account(s) which will be used by workload account in that region
+                Last version from 11-Oct-2019
+
+# See "s3-master-buckets" stack in mas-co-lab for reference
+# This stack will create bucket for DBA atifacts
+             
+Parameters:
+  VPCAlias:
+    Type: String
+    Description: "Provide VPCAlias value to designate the instance of this app"
+    Default: gr-db
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' in upper case followed by 7 digits
+    AllowedPattern: '^(UAI|uai)[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'uai3036792'
+  RetentionPeriodForLogs:
+    Type: Number
+    Description: "For how many days to keep the logs?"
+    Default: '35'
+  KmsKeyArn:
+    Type: String
+    Description: "KMS key to encrypt the S3 Buckets"
+    Default: 'import-common-kms-key-arn'
+
+Conditions:
+  UseCommonKmsKey: !Equals 
+    - !Ref KmsKeyArn
+    - import-common-kms-key-arn
+
+Resources:
+     ### S3 bucket that stores access logs for all other S3 buckets in THIS account in this region.
+     #   AWS does not allow other accounts to write to your S3 logging bucket
+     #   Each account (per region) HAS TO have its own logging bucket
+    S3AuditBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        # https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+        AccessControl: LogDeliveryWrite
+        BucketName: !Sub "dbss-audit-${VPCAlias}-${AWS::Region}-s3"
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: 
+                  'Fn::If':
+                      - UseCommonKmsKey
+                      - !ImportValue "CommonKMSKeyArn"
+                      - !Ref KmsKeyArn
+        Tags:
+          - Key: 'Name'
+            Value: !Sub 'dbss-audit-${VPCAlias}-${AWS::Region}-s3'
+          - Key: 'env'
+            Value: 'prd'
+          - Key: 'uai'
+            Value: !Sub '${UAI}'
+          - Key: 'support-group'
+            Value: 'dig-tech-cts-cloud-db-support-team'
+          - Key: 'Description'
+            Value: 'Logging bucket. All other buckets in this VPC should point to this bucket for s3 logging'
+          # Add tag 'account-logging' to conform with policy S3-070 - https://devcloud.swcoe.ge.com/devspace/display/TKUWA/S3+Bucket
+          - Key: 'account-logging'
+            Value: 'true'
+
+        LifecycleConfiguration:
+            Rules:
+               # this rule will delete any objects older than 35 days
+                - Id: !Sub '${RetentionPeriodForLogs} Day Retention'
+                  ExpirationInDays: !Ref RetentionPeriodForLogs
+                  Status: Enabled
+               # delete any incomplete MultipartUpload parts older than 3 days
+                - Id: ExpireMultipartUploads
+                  Status: Enabled
+                  AbortIncompleteMultipartUpload:
+                    DaysAfterInitiation: 3
+
+    ### bucket to hold source code for Lambda functions that will be deployed in the account. (at this point) NOT intended to be used in workload accounts for applications
+    # we can create a per 'workload account' bucket for applicatins that need to deploy Lambdas
+    CodeBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        # https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+        AccessControl: Private
+        BucketName: !Sub "dbss-code-${VPCAlias}-${AWS::Region}"
+
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: 
+                  'Fn::If':
+                      - UseCommonKmsKey
+                      - !ImportValue "CommonKMSKeyArn"
+                      - !Ref KmsKeyArn
+
+        LoggingConfiguration:
+          DestinationBucketName: !Ref S3AuditBucket
+          LogFilePrefix: !Sub "dbss-code-${VPCAlias}-${AWS::Region}/"
+
+        Tags:
+          - Key: 'Name'
+            Value: !Sub 'dbss-code-${VPCAlias}-${AWS::Region}'
+          - Key: 'env'
+            Value: 'prd'
+          - Key: 'uai'
+            Value: !Sub '${UAI}'
+          - Key: 'support-group'
+            Value: 'dig-tech-cts-cloud-db-support-team'
+          - Key: 'Description'
+            Value: 'Bucket to hold Lambda functions and other automation code used in the account'
+
+    # bucket to store logs of execution of DBA automation
+    S3LogsBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        # https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+        AccessControl: Private
+        BucketName: !Sub "dbss-logs-${VPCAlias}-${AWS::Region}"
+
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: 
+                  'Fn::If':
+                      - UseCommonKmsKey
+                      - !ImportValue "CommonKMSKeyArn"
+                      - !Ref KmsKeyArn
+
+        LoggingConfiguration:
+          DestinationBucketName: !Ref S3AuditBucket
+          LogFilePrefix: !Sub "dbss-logs-${VPCAlias}-${AWS::Region}/"
+
+        Tags:
+          - Key: 'Name'
+            Value: !Sub 'dbss-logs-${VPCAlias}-${AWS::Region}'
+          - Key: 'env'
+            Value: 'prd'
+          - Key: 'uai'
+            Value: !Sub '${UAI}'
+          - Key: 'support-group'
+            Value: 'dig-tech-cts-cloud-db-support-team'
+          - Key: 'Description'
+            Value: 'Bucket to hold execution logs of hardening and other DBA automation in the account'
+            
+        LifecycleConfiguration:
+            Rules:
+               # this rule will delete any objects older than 35 days
+                - Id: !Sub '${RetentionPeriodForLogs} Day Retention'
+                  ExpirationInDays: !Ref RetentionPeriodForLogs
+                  Status: Enabled
+               # delete any incomplete MultipartUpload parts older than 3 days
+                - Id: ExpireMultipartUploads
+                  Status: Enabled
+                  AbortIncompleteMultipartUpload:
+                    DaysAfterInitiation: 8
+
+    # bucket to hold sql scripts to be executed by script-execution automation          
+    ArtifactsBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        # https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+        AccessControl: Private
+        BucketName: !Sub "dbss-artifacts-${VPCAlias}-${AWS::Region}"
+
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: 
+                  'Fn::If':
+                      - UseCommonKmsKey
+                      - !ImportValue "CommonKMSKeyArn"
+                      - !Ref KmsKeyArn
+
+        LoggingConfiguration:
+          DestinationBucketName: !Ref S3AuditBucket
+          LogFilePrefix: !Sub "dbss-artifacts-${VPCAlias}-${AWS::Region}/"
+
+        Tags:
+          - Key: 'Name'
+            Value: !Sub 'dbss-artifacts-${VPCAlias}-${AWS::Region}'
+          - Key: 'env'
+            Value: 'prd'
+          - Key: 'uai'
+            Value: !Sub '${UAI}'
+          - Key: 'support-group'
+            Value: 'dig-tech-cts-cloud-db-support-team'
+          - Key: 'Description'
+            Value: 'Bucket to store application specific artifacts in this account'
+
+    # bucket to hold sql scripts to be executed by script-execution automation          
+    MigrationsBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        # https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+        AccessControl: Private
+        BucketName: !Sub "dbss-migrations-${VPCAlias}-${AWS::Region}"
+
+        BucketEncryption: # when we start supporting KMS key then use KMS key; change bucket policy MigrationsBucketPolicy as well
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: 
+                  'Fn::If':
+                      - UseCommonKmsKey
+                      - !ImportValue "CommonKMSKeyArn"
+                      - !Ref KmsKeyArn
+
+        LoggingConfiguration:
+          DestinationBucketName: !Ref S3AuditBucket
+          LogFilePrefix: !Sub "dbss-migrations-${VPCAlias}-${AWS::Region}/"
+
+        Tags:
+          - Key: 'Name'
+            Value: !Sub 'dbss-migrations-${VPCAlias}-${AWS::Region}'
+          - Key: 'env'
+            Value: 'prd'
+          - Key: 'uai'
+            Value: !Sub '${UAI}'
+          - Key: 'support-group'
+            Value: 'dig-tech-cts-cloud-db-support-team'
+          - Key: 'Description'
+            Value: 'Bucket to store application specific migration files in this account'
+
+Outputs:
+    S3AuditBucketName:
+      Description: "S3 bucket that stores access logs for all other S3 buckets in this region"
+      Value: !Ref S3AuditBucket
+      Export:
+        Name: !Sub "s3:${VPCAlias}:audit-s3:name"
+
+    S3AuditBucketArn:
+      Description: "S3 bucket that stores access logs for all other S3 buckets in this region"
+      Value: !GetAtt S3AuditBucket.Arn
+      Export:
+        Name: !Sub "s3:${VPCAlias}:audit-s3:arn"
+
+    CodeBucketName:
+      Description: "S3 bucket to hold source code for Lambda functions that will be deployed in the all accounts"
+      Value: !Ref CodeBucket
+      Export:
+        Name: !Sub "s3:${VPCAlias}:code:name"
+
+    CodeBucketArn:
+      Description: "S3 bucket to hold source code for Lambda functions that will be deployed in the all accounts"
+      Value: !GetAtt CodeBucket.Arn
+      Export:
+        Name: !Sub "s3:${VPCAlias}:code:arn"
+
+    S3LogsBucketName:
+      Description: "S3 bucket to hold execution logs of hardening and other DBA automation in the all accounts"
+      Value: !Ref S3LogsBucket
+      Export:
+        Name: !Sub "s3:${VPCAlias}:logs:name"
+
+    S3LogsBucketArn:
+      Description: "S3 bucket to hold execution logs of hardening and other DBA automation in the all accounts"
+      Value: !GetAtt S3LogsBucket.Arn
+      Export:
+        Name: !Sub "s3:${VPCAlias}:logs:arn"
+
+    ArtifactsBucketName:
+      Description: "Name of S3 bucket to store application specific artifacts"
+      Value: !Ref ArtifactsBucket
+      Export:
+        Name: !Sub "s3:${VPCAlias}:artifacts:name"
+  
+    ArtifactsBucketArn:
+      Description: "ARN of S3 bucket to store application specific artifacts"
+      Value: !GetAtt ArtifactsBucket.Arn
+      Export:
+        Name: !Sub "s3:${VPCAlias}:artifacts:arn"
+
+    MigrationsBucketName:
+      Description: "Name of S3 bucket to store application specific migration files"
+      Value: !Ref MigrationsBucket
+      Export:
+        Name: !Sub "s3:${VPCAlias}:migrations:name"
+  
+    MigrationsBucketArn:
+      Description: "ARN of S3 bucket to store application specific migration files"
+      Value: !GetAtt MigrationsBucket.Arn
+      Export:
+        Name: !Sub "s3:${VPCAlias}:migrations:arn"

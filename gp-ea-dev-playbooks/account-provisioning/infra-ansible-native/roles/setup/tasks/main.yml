@@ -1,0 +1,3 @@
+---
+- name: Execute the Init Script playbook
+  import_tasks: init_file.yml

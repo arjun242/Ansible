@@ -1,0 +1,7 @@
+custom_resources:
+  - name: standard-patch-windows
+    description: This stackset is for setting up standard patching windows
+    template_file: templates/patching-instance-cf.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    custom_stackset_name: standard-patch-windows

@@ -1,0 +1,74 @@
+# Include variables for directory path & github + IDM api secrets.
+- name: Include vars file
+  include_vars: templates-directory.yml
+- name: Include secret vars
+  include_vars: secret.yml
+  no_log: true
+
+# Creating directory to invoke script
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/"
+
+- name: Clone target repository to local directory
+  no_log: true
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/{{org}}/{{repo}}"
+    dest: "{{source_directory}}/{{resource_folder}}/{{repo}}"
+    clone: yes
+    recursive: yes
+    version: master
+
+# Creating directory for newly specified resource/target module
+- name: Create directory for target module file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/{{repo}}/src/{{resource}}"
+
+# Fetch Template Based On Specified Resource To Build
+# Key Vault
+- name: Resource Population Step -- Key Vault
+  template:
+    src: "kv.tf"
+    dest: "{{source_directory}}/{{resource_folder}}/{{repo}}/src/{{resource}}/{{module}}.tf"
+  when: lookup('vars','resource') == "key_vault"
+
+# Storage Account
+- name: Resource Population Step -- Storage Account
+  template:
+    src: "sa.tf"
+    dest: "{{source_directory}}/{{resource_folder}}/{{repo}}/src/{{resource}}/{{module}}.tf"
+  when: lookup('vars','resource') == "storage_account"
+# Virtual Machine Windows
+- name: Resource Population Step -- Virtual Machine Windows
+  template:
+    src: "vm-win.tf"
+    dest: "{{source_directory}}/{{resource_folder}}/{{repo}}/src/{{resource}}/{{module}}.tf"
+  when: lookup('vars','resource') == "vm_gp_windows_standard"
+# Virtual Machine Linux
+- name: Resource Population Step -- Virtual Machine Linux
+  template:
+    src: "vm-nix.tf"
+    dest: "{{source_directory}}/{{resource_folder}}/{{repo}}/src/{{resource}}/{{module}}.tf"
+  when: lookup('vars','resource') == "vm_gp_linux_standard"
+
+# Commit newly created/copied file to remote github
+- name: Commit newly created/copied file to remote github
+  no_log: true
+  command: "{{ item }}"
+  args:
+    chdir: "{{source_directory}}/{{resource_folder}}/{{repo}}"
+  with_items:
+    - git config --global user.email '502813500@ge.com'
+    - git config --global user.name 'github-functional-sso'
+    - git checkout -b {{repo}}
+    - git add src/{{resource}}/{{module}}.tf
+    - git commit -m 'Committing newly created terraform module - {{ module }}'
+    - git push origin {{repo}}
+
+# Delete Local Project directory
+- name: Delete directory for parameter file
+  file:
+    state: absent
+    path: "{{source_directory}}/{{resource_folder}}/"

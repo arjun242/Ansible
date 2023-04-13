@@ -1,0 +1,5 @@
+AzName: AZ2
+SubnetName: "{{prefix}}{{ subnet.subnetNames.igr2 }}"
+SubnetCidrBlock: "{{ igrSubnet2}}"
+NaclExportName: "{{ subnet.IgrNaclExportName }}"
+RouteTableExportName: "{{ subnet.AppRouteTableExportName }}"

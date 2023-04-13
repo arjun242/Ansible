@@ -1,0 +1,180 @@
+---
+#####
+# The Exe role for CF stack-set with basic access.
+# Additional access are granted by a attached managed policy created and maintained as a stacksetInstance (iam-stackset-execution-policy).
+#####
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "AWS IAM role for StackSet execution"
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the execution Role... e.g. 'gp-stackset-execution'
+    Default: 'gp-stackset-execution'
+
+  AdminRoleArn:
+    Type: String
+    Description: Name of the Admin Role... 
+    Default: 'arn:aws:iam::325381443140:role/inf/gp-ops-cft-stackset-admin-role'
+
+Resources:
+  SvcRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${RoleName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref AdminRoleArn
+            Action: sts:AssumeRole
+  SvcPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub '${RoleName}'
+      Roles:
+         - !Ref 'SvcRole'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          #Required per AWS Documentation to have S3*, SNS* and CF*
+          - Sid: "StackSetReq"
+            Effect: "Allow"
+            Action: 
+            - s3:*
+            - sns:*
+            - cloudformation:*
+            Resource:
+            - "*"
+
+          - Sid: "IamAccess"
+            Effect: "Allow"
+            Action:
+            - iam:AddRoleToInstanceProfile
+            - iam:AddUserToGroup
+            - iam:AttachGroupPolicy
+            - iam:AttachRolePolicy
+            - iam:AttachUserPolicy
+            - iam:ChangePassword
+            - iam:CreateAccessKey
+            - iam:CreateAccountAlias
+            - iam:CreateGroup
+            - iam:CreateInstanceProfile
+            - iam:CreatePolicy
+            - iam:CreatePolicyVersion
+            - iam:CreateRole
+            - iam:CreateUser
+            - iam:DeleteAccessKey
+            - iam:DeleteAccountPasswordPolicy
+            - iam:DeleteGroup
+            - iam:DeleteGroupPolicy
+            - iam:DeleteInstanceProfile
+            - iam:DeleteLoginProfile
+            - iam:DeletePolicy
+            - iam:DeletePolicyVersion
+            - iam:DeleteRole
+            - iam:DeleteRolePolicy
+            - iam:DeleteSAMLProvider
+            - iam:DeleteServerCertificate
+            - iam:DeleteSigningCertificate
+            - iam:DeleteUser
+            - iam:DeleteUserPolicy
+            - iam:DetachGroupPolicy
+            - iam:DetachRolePolicy
+            - iam:DetachUserPolicy
+            - iam:GetAccessKeyLastUsed
+            - iam:GetAccountAuthorizationDetails
+            - iam:GetAccountPasswordPolicy
+            - iam:GetAccountSummary
+            - iam:GetContextKeysForCustomPolicy
+            - iam:GetContextKeysForPrincipalPolicy
+            - iam:GetCredentialReport
+            - iam:GetGroup
+            - iam:GetGroupPolicy
+            - iam:GetInstanceProfile
+            - iam:GetLoginProfile
+            - iam:GetOpenIDConnectProvider
+            - iam:GetPolicy
+            - iam:GetPolicyVersion
+            - iam:GetRole
+            - iam:GetRolePolicy
+            - iam:GetSAMLProvider
+            - iam:GetSSHPublicKey
+            - iam:GetServerCertificate
+            - iam:GetServiceLastAccessedDetailsWithEntities
+            - iam:GetUser
+            - iam:GetUserPolicy
+            - iam:ListAccessKeys
+            - iam:ListAccountAliases
+            - iam:ListAttachedGroupPolicies
+            - iam:ListAttachedRolePolicies
+            - iam:ListAttachedUserPolicies
+            - iam:ListEntitiesForPolicy
+            - iam:ListGroupPolicies
+            - iam:ListGroups
+            - iam:ListGroupsForUser
+            - iam:ListInstanceProfiles
+            - iam:ListInstanceProfilesForRole
+            - iam:ListMFADevices
+            - iam:ListOpenIDConnectProviders
+            - iam:ListPolicies
+            - iam:ListPoliciesGrantingServiceAccess
+            - iam:ListPolicyVersions
+            - iam:ListRolePolicies
+            - iam:ListRoles
+            - iam:ListSAMLProviders
+            - iam:ListSSHPublicKeys
+            - iam:ListServerCertificates
+            - iam:ListSigningCertificates
+            - iam:ListUserPolicies
+            - iam:ListUsers
+            - iam:ListVirtualMFADevices
+            - iam:PutGroupPolicy
+            - iam:PutRolePolicy
+            - iam:PutUserPolicy
+            - iam:RemoveRoleFromInstanceProfile
+            - iam:RemoveUserFromGroup
+            - iam:ResyncMFADevice
+            - iam:SetDefaultPolicyVersion
+            - iam:SimulateCustomPolicy
+            - iam:SimulatePrincipalPolicy
+            - iam:UpdateAccessKey
+            - iam:UpdateAccountPasswordPolicy
+            - iam:UpdateAssumeRolePolicy
+            - iam:UpdateGroup
+            - iam:UpdateLoginProfile
+            - iam:UpdateOpenIDConnectProviderThumbprint
+            - iam:UpdateSAMLProvider
+            - iam:UpdateSSHPublicKey
+            - iam:UpdateServerCertificate
+            - iam:UpdateSigningCertificate
+            - iam:UpdateUser
+            - iam:UploadSSHPublicKey
+            - iam:UploadServerCertificate
+            - iam:UploadSigningCertificate
+            - iam:GenerateServiceLastAccessedDetails
+            - iam:GetServiceLastAccessedDetails
+            - iam:PassRole
+            - iam:CreateServiceLinkedRole
+            - iam:CreateServiceSpecificCredential
+            - iam:DeleteServiceLinkedRole
+            - iam:DeleteServiceSpecificCredential
+            - iam:GetServiceLinkedRoleDeletionStatus
+            - iam:ListServiceSpecificCredentials
+            - iam:ResetServiceSpecificCredential
+            - iam:UpdateRoleDescription
+            - iam:UpdateServiceSpecificCredential
+            Resource: "*" 
+
+Outputs:
+  ServiceRoleName:
+    Description: "cloudformation service Role for IAM and KMS"
+    Value: !Ref SvcRole
+    Export:
+      Name: StackSetExecutionRole
+
+  ServiceRoleNameArn:
+    Description: "cloudformation service Role Arn for IAM and KMS"
+    Value: !GetAtt SvcRole.Arn
+    Export:
+      Name: StackSetExecutionRoleArn

@@ -1,0 +1,57 @@
+description: executes the document to deploy artifacs.
+schemaVersion: '0.3'
+parameters:
+  InstanceId:
+    type: String
+    description: "(Required) The EC2 Instance ID"
+  FolderName:
+    type: String
+    default: lpm-dev
+    description: folder name
+  ArtifactName:
+    type: String
+    description: Provide the Artifact Name that you want to deploy
+mainSteps:
+  - name: InstallAWSCLI
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: 'Abort'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+      - "{{InstanceId}}"
+      Parameters:
+        commands:
+          - yum update -y
+          - yum install bind-utils -y
+          - yum install logrotate -y
+          - cd /home/gecloud/
+          - 'curl -O https://bootstrap.pypa.io/get-pip.py'
+          - python get-pip.py
+          - pip install awscli
+  - name: placeArtifact
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'Abort'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+      - "{{InstanceId}}"
+      Parameters:
+        commands:
+          - set -e
+          - mkdir /lpm/apps/microservices -p
+          - mkdir /lpm/apps/backup/ -p
+          - if [ -f "/lpm/apps/microservices/{{ArtifactName}}" ]
+          - then
+          - cp /lpm/apps/microservices/{{ArtifactName}} /lpm/apps/backup/
+          - fi
+          - cd /lpm/apps/microservices/
+          - rm -rf {{ArtifactName}}
+          - >-
+            aws s3 cp s3://uai3031569-lpm-artifact/{{FolderName}}/{{ArtifactName}}
+            /lpm/apps/microservices/
+          # - pkill -e java
+          # - nohup java -jar {{ArtifactName}} &

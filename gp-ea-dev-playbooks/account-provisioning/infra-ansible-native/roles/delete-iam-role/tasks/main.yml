@@ -1,0 +1,11 @@
+---
+- name: Delete the new IAM role
+  iam_role:
+    name: ansible-account-automation-role
+    state: absent
+
+- name: Removing the creds facts
+  set_fact:
+    acct_auto_aws_access_key: ""
+    acct_auto_aws_secret_key: ""
+    acct_auto_aws_session_token: ""

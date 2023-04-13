@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an ECS task definition for database hardening
+             Last version from 08-Jan-2020
+
+ ## History:
+  # 04-May-2020: Initial release
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Details
+        Parameters:
+          - VPCAlias
+          - UAI
+      - Label:
+          default: Task identification
+        Parameters:
+          #- EcsClusterType
+          - Platform
+          - Env
+          - Business
+      - Label:
+          default: Task-level performance
+        Parameters:
+          - CPU
+          - Memory
+      - Label:
+          default: Miscellaneous
+        Parameters:
+          - TaskRole
+
+Parameters:
+  VPCAlias:
+    Type: String    
+    Description: 'The VPC alias within this account. This is logical label identifying execution environment.'
+    Default: 'gr-db'
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' or 'uai' followed by 7 digits
+    AllowedPattern: '^(UAI|uai)[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'uai3036792'
+  #EcsClusterType:
+  #  Type: String
+  #  Default: 'fargate'
+  #  AllowedValues:
+  #    - 'ec2'
+  #    - 'fargate'
+  #  Description: 'Type of ECS cluster the task will be ran on'    
+  Platform:
+    Type: String
+    AllowedValues:
+      - 'mysql'
+      - 'mssql'
+      - 'oracle'
+      - 'postgres'
+    Description: Type of database
+    Default: postgres
+  Env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - 'dev'
+      - 'qa'
+      - 'lab'
+      - 'stg'
+      - 'prd'
+  Business:
+    Type: String
+    AllowedValues:
+      - 'Aviation'
+      - 'Corporate'
+      - 'Healthcare'
+      - 'Power'
+    Description: Choose relevant Business Unit.
+    Default: Power
+
+  CPU:
+    Type: Number
+    Default: '256'
+    Description: Task CPU Units. See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ecs-taskdefinition.html#cfn-ecs-taskdefinition-cpu for allowed CPU-Memory pair values.
+  
+  Memory:
+    Type: Number
+    Default: '512'
+    Description: Task memory size.
+
+  TaskRole:
+    Type: String
+    Description: (Optional) An IAM role to give the containers if the code within needs to
+                 access other AWS resources like S3 buckets, SM, RDS Instances etc
+    Default: ''
+  
+Conditions:
+  HasCustomRole: !Not [ !Equals [!Ref 'TaskRole', ''] ]
+  #CreateEc2Task: !Equals [ !Ref EcsClusterType , 'ec2' ]
+
+Resources:
+  ECSTaskLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: !Sub '/aws/ecs/${VPCAlias}-db-hardening/${Platform}-${Env}'
+      RetentionInDays: 7
+
+  ECSTaskdefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${VPCAlias}-db-hardening-${Platform}-${Env}'
+      TaskRoleArn: !If [ HasCustomRole, !Ref 'TaskRole', { "Fn::ImportValue" : !Sub "iam:svc:${VPCAlias}-ecsrole:arn" } ]
+      ExecutionRoleArn: !If [ HasCustomRole, !Ref 'TaskRole', { "Fn::ImportValue" : !Sub "iam:svc:${VPCAlias}-ecsrole:arn" } ]
+      RequiresCompatibilities:
+        - EC2
+        - FARGATE
+      NetworkMode: 'awsvpc'
+      Cpu: !Ref 'CPU'           # mandatory for Fargate task, optional for EC2 task
+      Memory: !Ref 'Memory'     # mandatory for Fargate task; for EC2 task must be stated here or on container-level
+      ContainerDefinitions:
+        - Name: db-client
+          Cpu: '128'            # mandatory for EC2 task; optional for Fargate task and must be lower than task-level CPU
+          Memory: '256'         # mandatory for EC2 task here or on task-level; optional for Fargate task and must be lower than task-level CPU
+          # Essential: 'true'
+          Image: !Sub "325381443140.dkr.ecr.us-east-1.amazonaws.com/dbss/db-hardening-${Platform}:latest"
+          Environment:
+            - Name: ACTION
+              Value: 'hardening'
+            - Name: ALLOCATED_STORAGE
+              Value: ''
+            - Name: APP_INSTANCE
+              Value: ''
+            - Name: APP_NAME
+              Value: ''
+            - Name: APPROVER
+              Value: ''
+            - Name: BUSINESS
+              Value: ''
+            - Name: COMPLIANCE_TYPE
+              Value: 'sox'
+            - Name: CRITICALITY
+              Value: 'critical'
+            - Name: DB_DOMAIN
+              Value: ''
+            - Name: HOST_NAME
+              Value: ''
+            - Name: DB_INSTANCE_IDENTIFIER
+              Value: ''
+            - Name: DB_NAME
+              Value: ''
+            - Name: DB_PORT
+              Value: ''
+            - Name: DB_SID
+              Value: ''
+            - Name: DB_PLATFORM
+              Value: ''
+            - Name: DB_VERSION
+              Value: ''
+            - Name: REQUESTOR_EMAIL
+              Value: ''
+            - Name: ENVIRONMENT
+              Value: ''
+            - Name: LOG_LEVEL
+              Value: 'INFO'
+            - Name: MASTER_USER
+              Value: ''
+            - Name: POST_BUILD_SCOPE
+              Value: 'all'
+            - Name: RDS_INSTANCE_CLASS
+              Value: ''
+            - Name: REGION
+              Value: 'us-east-1'
+            - Name: REQUEST_ID
+              Value: ''
+            - Name: S3_CODE_BUCKET
+              Value: ''
+            - Name: S3_LOGS_BUCKET
+              Value: ''
+            - Name: SNS_TOPIC
+              Value: ''
+            - Name: SSL_PORT
+              Value: ''
+            - Name: UAI
+              Value: ''
+            - Name: WAITHANDLE
+              Value: ''
+
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSTaskLogGroup # !Sub '/aws/ecs/${VPCAlias}-db-hardening/${Platform}'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: !Ref 'VPCAlias'
+      Tags:
+        - Key: 'Name'
+          Value: !Sub "${VPCAlias}-db-hardening-${Platform}-${Env}"
+        - Key: 'env'
+          Value: !Sub ${Env}
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: !Sub 'Database hardening task for ${Platform} in ${Env}'
+
+Outputs:
+    OracleHardeningTaskName:
+      Description: "Name of ECS task executing hardening of Oracle database"
+      Value: !Sub "${VPCAlias}-db-hardening-${Platform}-${Env}"
+      Export:
+        Name: !Sub "ecs:${VPCAlias}:${Platform}-hardening-task-${Env}:name"
+
+    OracleHardeningTaskArn:
+      Description: "Name of ECS task executing hardening of Oracle database"
+      Value: !Ref ECSTaskdefinition
+      Export:
+        Name: !Sub "ecs:${VPCAlias}:${Platform}-hardening-task-${Env}:arn"

@@ -1,0 +1,54 @@
+<VirtualHost *: {{ https_port }} >
+    ServerAdmin pw.webadmins@ge.com
+
+    ServerName  {{ fqdn | replace('"','') | replace('"','') | trim }}
+    ErrorLog "|/opt/software/apache/bin/rotatelogs -t logs/https_error.log 5M"
+    CustomLog "|/opt/software/apache/bin/rotatelogs -t  logs/https_access.log 5M" combined
+#LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" \"%{X-Forwarded-For}i\" \"%{sso}e\" \"%{email}e\" \"%{givenname}e %{sn}e\"" ssoextended
+#CustomLog logs/https_error_log ssoextended
+     
+    # our backend is HTTPS
+    SSLProxyEngine on
+    
+    # we use HTTPS only as means of securing at the transport layer, not for authentication
+    SSLProxyVerify  {{ ssl_verify }}
+    SSLProxyCheckPeerCN  {{ proxy_check_peer_cn }}
+    SSLProxyCheckPeerName  {{ proxy_check_peer_name }}
+    
+    # enforce use of TLSv1.2 - older versions of TLS have vulnerabilities
+    SSLProxyProtocol  {{ proxy_protocol }}
+    
+<Location /server-status>
+ SetHandler server-status
+  Require host localhost
+</Location>
+
+# Backend server (Joomla) needs to know if the front end Apache is http or https
+RequestHeader set X-Forwarded-Proto "https"
+
+# this applies only to SAML - disable for OIDC
+# pass the following attributes from SAML downstream to the app layer
+##RequestHeader set sso "%{sso}e"
+##RequestHeader set givenname "%{givenname}e"
+##RequestHeader  set sn "%{sn}e"
+##RequestHeader  set email "%{email}e"
+
+#define reverse proxy configuration
+RewriteEngine On
+ProxyPreserveHost On
+
+RewriteCond %{REQUEST_URI}  !^/shibb.*$ [NC]
+RewriteCond %{REQUEST_URI}  !^/pwtest.html$
+
+  {% if mappings is defined %}
+  {% for mapping in mappings %}
+
+      RewriteRule    ^/$      /{{ mapping.appcontext }}/ [R,L]
+
+      ProxyPass               /{{ mapping.appcontext }}        {{ mapping.appbackend }}/{{ mapping.appcontext }}
+      ProxyPassReverse        /{{ mapping.appcontext }}        {{ mapping.appbackend }}/{{ mapping.appcontext }}
+
+  {% endfor %}
+  {% endif -%}
+
+</VirtualHost>

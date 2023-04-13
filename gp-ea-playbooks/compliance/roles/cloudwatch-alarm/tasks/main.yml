@@ -1,0 +1,14 @@
+---
+# This is the main file from where execution begins
+# This playbook will check for the OS Distribution 
+
+# This task will get executed for Windows OS
+- name: Installation and Configuration for Windows
+  import_tasks: aws_cw_windows.yml
+  when: ansible_os_family == "Windows"  
+
+# This task will get executed for Linux OS
+- name: Installation and Configuration for Linux
+  import_tasks: aws_cw_linux.yml
+  when: ansible_os_family != "Windows"
+ 

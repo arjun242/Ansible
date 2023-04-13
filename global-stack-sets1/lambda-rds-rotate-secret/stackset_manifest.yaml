@@ -1,0 +1,20 @@
+custom_resources:
+  - name: rds-rotate-secret-setup
+    custom_stackset_name: cf-customresource-rds-rotate-secret-setup
+    description: Cloudformation CustomResource rds-rotate-secret-setup
+    template_file: templates/rds-rotate-secret-setup.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-power-us-east
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        regions:
+          - eu-west-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+      - account: gp-aws4-b
+        regions:
+          - us-east-1

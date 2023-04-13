@@ -1,0 +1,107 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create IAM role to be used by the Lambda functions for RDS  provisioning
+
+ ## Note:
+  # If you need to encrypt Lambda's env variables, then please create additional KMS key as in https://github.build.ge.com/Cloud/ManagedEnablement/blob/master/lambda/rds/templates/role.cf.yml
+  # Name the stack: "${VPCAlias}-role"
+
+ ## History:
+  # 02-Apr-2020: Initial release
+
+Parameters:
+  VPCAlias:
+    Type: String
+    Description: "Provide VPCAlias value to designate the instance of this app"
+    Default: 'gr-db'
+  UAI:
+    Type: String
+    Description: The UAI of the application being charged for usage.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' in upper case followed by 7 digits
+    AllowedPattern: '^[U|u][A|a][I|i][0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: 'uai3036792'
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      #RoleName: !Sub "hardening-lambda-role-${VPCAlias}"
+      Path: "/svc/"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+          # added AWS managed Policies by 212390867
+        - !Sub "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+        - !Sub "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+# commented out by 212390867. In ct-web-services account only "arn:aws:iam::<account>:policy/protect_guardrails" exists.
+#        # attaching the 'corp mandated' policy is required
+#        # otherwise they are attached automatically and you cannot delete the stack until you unattach them manually
+#        - !ImportValue 'iam:mc:default-deny-policy:arn'
+#        - !ImportValue 'iam:mc:iam-deny-policy:arn'
+#        - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/mc/Protect_Guardrails'
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'hardening-lambda-role-${VPCAlias}'
+        - Key: 'env'
+          Value: 'prd'
+        - Key: 'uai'
+          Value: !Sub '${UAI}'
+        - Key: 'support-group'
+          Value: 'dig-tech-cts-cloud-db-support-team'
+        - Key: 'Description'
+          Value: 'Lambda used for hardening databases - runs tasks of ECS IGR cluster'
+
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${VPCAlias}-lambda-policy"
+      Roles: [ !Ref LambdaRole ]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AllowLogActions
+          Effect: Allow
+          Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+          Resource: !Sub "arn:${AWS::Partition}:logs:*:*:*"
+        - Sid: CreateAttachENI
+          Action:
+            - ec2:CreateNetworkInterface
+            - ec2:DescribeNetworkInterfaces
+            - ec2:DetachNetworkInterface
+            - ec2:DeleteNetworkInterface
+          Resource: "*"
+          Effect: Allow
+        - Sid: AllowLambdaActions
+          Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource:
+            Fn::Sub: "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${VPCAlias}*"
+        - Sid: CFActions
+          Effect: Allow
+          Action:
+            - cloudformation:SignalResource
+          Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*/*"
+
+Outputs:
+  LambdaRoleARN:
+    Value: !GetAtt LambdaRole.Arn
+    Description: ARN for the Lambda Execution Role
+    Export:
+      Name: !Sub 'iam:dba:${VPCAlias}-lambda-role:arn'
+  LambdaRoleId:
+      Value: !GetAtt LambdaRole.RoleId
+      Export:
+        Name: !Sub 'iam:dba:${VPCAlias}-lambda-role:id'

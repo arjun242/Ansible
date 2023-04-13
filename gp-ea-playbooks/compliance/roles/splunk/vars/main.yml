@@ -1,0 +1,18 @@
+---
+# vars file for ansible-splunk
+# Reg, acc, vpcid vars for Linux, Metadata Variables for Windows are set in the windows.yml to avoid confusion
+reg: "{{ ansible_ec2_instance_identity_document_region }}"
+acc: "{{ ansible_ec2_identity_credentials_ec2_info_accountid }}"
+vpcid: "{{ vpc.stdout }}"
+splunk_working_directory: '/opt/splunkforwarder/'
+version_linux: '7.2.9.1'
+splunk_uf_package_windows: 'splunkforwarder-7.2.9.1-605df3f0dfdd-x64-release.msi'
+splunk_uf_package_rhel: 'splunkforwarder-7.2.9.1-605df3f0dfdd-linux-2.6-x86_64.rpm'
+splunk_uf_package_ubuntu: 'splunkforwarder-7.2.9.1-605df3f0dfdd-linux-2.6-amd64.deb'
+deployment_directory: '/opt/splunkforwarder/etc/apps/deployment_client/default/'
+win_deployment_directory: 'C:\Program Files\SplunkUniversalForwarder\etc\apps\deployment_client\default'
+pass_key: "{{ passkey }}"
+splunk_url_windows: "https://download.splunk.com/products/universalforwarder/releases/7.2.9.1/windows/splunkforwarder-7.2.9.1-605df3f0dfdd-x64-release.msi"
+splunk_url_rhel: "https://download.splunk.com/products/universalforwarder/releases/7.2.9.1/linux/splunkforwarder-7.2.9.1-605df3f0dfdd-linux-2.6-x86_64.rpm"
+splunk_url_ubuntu: "https://download.splunk.com/products/universalforwarder/releases/7.2.9.1/linux/splunkforwarder-7.2.9.1-605df3f0dfdd-linux-2.6-amd64.deb"
+update: 'no'     #update: 'yes' will update the packages, change it to update: 'no' if there are no updates available (USE LOWERCASE VALUES ONLY)

@@ -1,0 +1,9 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: gp-provisioning-remediations-pipeline
+    parameters:
+      UAI: uai3037033
+      ConnectionARN: {{ CodeStarConnectionArn }}

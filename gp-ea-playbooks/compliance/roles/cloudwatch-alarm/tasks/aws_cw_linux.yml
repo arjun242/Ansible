@@ -1,0 +1,220 @@
+---
+# This Playbook consists of tasks which will get executed on Linux Hosts
+# The below tasks will check for CWA service and configuration file status    
+   - name: Check for service 
+     become: yes
+     service:
+       name: amazon-cloudwatch-agent
+     register: check_service
+   
+   - name: Check for amazon-cloudwatch-agent configuration file
+     become: yes
+     stat:
+       path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+     register: conf_check
+   
+   # This block is executed for CWA installation on Ubuntu when CWA is not already installed
+   - block:
+
+     # This task downloads Amazon-Cloudwatch-Agent file from Global s3 bucket on the target host
+     - name: Download Amazon-Cloudwatch-Agent file from Global S3 Bucket
+       get_url:
+         url: "{{ cwa_url_ubuntu }}"
+         dest: "/tmp/"
+       become: yes
+
+     # This task installs Amazon-Cloudwatch-Agent 
+     - name: Installing the Amazon-Cloudwatch-Agent on Ubuntu
+       apt:
+         name: "/tmp/amazon-cloudwatch-agent.deb"
+         state: present
+       become: yes
+
+     # This task deletes the Amazon-Cloudwatch-Agent deb downloaded File after successful installation
+     - name: Deleting the Amazon-Cloudwatch-Agent deb File after successful installation
+       file:
+         path: /tmp/amazon-cloudwatch-agent.deb
+         state: absent
+       become: yes
+
+     when: ansible_os_family == "Ubuntu" and (check_service.status.SubState != 'running' or linux_update == 'yes') 
+    
+   # This block is executed for CWA installation on RedHat when CWA is not already installed
+   - block:
+   
+     # This task downloads Amazon-Cloudwatch-Agent file from Global s3 bucket on the target host
+     - name: Download Amazon-Cloudwatch-Agent file from Global S3 Bucket
+       get_url:
+         url: "{{ cwa_url_rhel }}"
+         dest: "/tmp/"
+       become: yes
+
+     # This task installs Amazon-Cloudwatch-Agent
+     - name: Installing the Amazon-Cloudwatch-Agent on RedHat
+       yum:
+         name: "/tmp/amazon-cloudwatch-agent.rpm"
+         state: present
+       become: yes
+
+     # This task deletes the Amazon-Cloudwatch-Agent deb downloaded File after successful installation
+     - name: Deleting the Amazon-Cloudwatch-Agent rpm File after successful installation
+       file:
+         path: /tmp/amazon-cloudwatch-agent.rpm
+         state: absent
+       become: yes
+     
+     when: ansible_os_family == "RedHat" and (check_service.status.SubState != 'running' or linux_update == 'yes')
+       
+   - block: 
+   
+     # This task will configure the Amazon-CloudWatch-Agent by templating the amazon-cloudwatch-agent.json file on the target host
+     - name: Configure the Amazon-CloudWatch-Agent 
+       become: yes
+       template:
+          src: "amazon-cloudwatch-agent-linux.json.j2"
+          dest: "/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
+          mode: 0644
+       notify: restart cwa
+      
+     # This task will remove the existing 'default' configuration file  
+     - name: Remove the existing 'default' configuration
+       become: yes
+       file:
+         path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
+         state: absent
+       notify: restart cwa
+       
+     when: conf_check.stat.exists == false or linux_update == 'yes'
+        
+   # This service will start the CWA if it is in stopped state     
+   - name: Start the Amazon-Cloudwatch-Agent Service
+     become: yes
+     service:
+       name: amazon-cloudwatch-agent
+       state: started
+     when: check_service.status.SubState != 'running' 
+ 
+   # Gathering EC2 facts from instance level for alarm parameters
+   - name: Gathering EC2 Metadata Facts
+     ec2_metadata_facts:
+
+   # Gathering fact about Root FSTYPE and DEVICE
+   - name: Finding Facts (FSTYPE)
+     shell: DEVICE=`df -khT | awk -F' ' '{ print $1 }' | sed 1,5d | sed -n 1p | cut -d'/' -f 3`; echo $DEVICE; \
+            FSTYPE=`df -khT | awk -F' ' '{ print $2 }' | sed 1,5d | sed -n 1p`; echo $FSTYPE
+     register: command_output
+  
+   # Setting variables for device, fstype, account id and region
+   - set_fact:
+      device: "{{ command_output.stdout_lines[0] | trim }}"
+      fstype: "{{ command_output.stdout_lines[1] | trim }}"
+      accid: "{{ ansible_ec2_instance_identity_document_accountid }}"
+      reg: "{{ ansible_ec2_placement_region }}"
+
+   # Getting the secrets from IAM role to use in Alarm metrics 
+   - name: Get the secrets from iam role
+     no_log: true
+     delegate_to: localhost
+     sts_assume_role:
+       role_arn: "arn:aws:iam::{{ accid }}:role/app/uai3047316/gp-ansible-execution"
+       role_session_name: "AnsibleSession"
+       region: "{{ reg }}"
+     register: assumed_role
+ 
+   # Setting variables to pass in the alarm metrics
+   - name: Setting the variables for secrets fetched from the above task
+     no_log: true
+     set_fact:
+      access_key: "{{ assumed_role.sts_creds['access_key'] }}"
+      secret_key: "{{ assumed_role.sts_creds['secret_key'] }}" 
+      session_token: "{{ assumed_role.sts_creds['session_token'] }}"
+
+   # This task sets up CPU Utilization Alarm metrics
+   - name: CPU Utilization Alarm
+     no_log: true
+     ec2_metric_alarm:
+       aws_access_key: "{{ access_key }}"
+       aws_secret_key: "{{ secret_key }}"
+       security_token: "{{ session_token }}"
+       state: present
+       region: "{{ ansible_ec2_placement_region  }}"
+       name: "{{ ansible_ec2_instance_id }}-CPU-Utilization"
+       description: "Alarm when CPU exceeds 90 %"
+       metric: "CPUUtilization"
+       namespace: "AWS/EC2"
+       statistic: Average
+       comparison: ">"
+       threshold: 90
+       period: 300
+       evaluation_periods: 3
+       unit: "Percent"
+       dimensions: {"InstanceId":"{{ ansible_ec2_instance_id }}"}
+       alarm_actions: ["arn:aws:sns:{{ ansible_ec2_placement_region }}:{{ ansible_ec2_instance_identity_document_accountid }}:OpsCloudWatch"]
+     delegate_to: localhost
+     
+   # This task sets up Status Check Fail Alarm metrics  
+   - name: Status Check Fail Alarm
+     no_log: true
+     ec2_metric_alarm:
+       aws_access_key: "{{ access_key }}"
+       aws_secret_key: "{{ secret_key }}"
+       security_token: "{{ session_token }}"
+       state: present
+       region: "{{ ansible_ec2_placement_region }}"
+       name: "{{ ansible_ec2_instance_id }}-status-checks"
+       description: "Alarm when statusCheck failed"
+       metric: "StatusCheckFailed"
+       namespace: "AWS/EC2"
+       statistic: Maximum
+       comparison: ">="
+       threshold: 1
+       period: 300
+       evaluation_periods: 1
+       unit: "Count"
+       dimensions: {"InstanceId":"{{ ansible_ec2_instance_id }}"}
+       alarm_actions: ["arn:aws:sns:{{ ansible_ec2_placement_region }}:{{ ansible_ec2_instance_identity_document_accountid }}:OpsCloudWatch"]
+     delegate_to: localhost
+
+   # This task sets up High disk usage Alarm metrics for Root disk
+   - name: High root disk usage Alarm
+     no_log: true
+     ec2_metric_alarm:
+       aws_access_key: "{{ access_key }}"
+       aws_secret_key: "{{ secret_key }}"
+       security_token: "{{ session_token }}"
+       state: present
+       region: "{{ ansible_ec2_placement_region }}"
+       name: "{{ ansible_ec2_instance_id }}-disk"
+       description: "Alarm when root disk used is high"
+       metric: "disk_used_percent"
+       namespace: "CWAgent"
+       statistic: Average
+       comparison: ">="
+       threshold: 75
+       period: 300
+       evaluation_periods: 3
+       dimensions: {"InstanceId":"{{ ansible_ec2_instance_id }}","device":"{{ device }}","fstype":"{{ fstype }}","path":"/"}
+       alarm_actions: ["arn:aws:sns:{{ ansible_ec2_placement_region }}:{{ ansible_ec2_instance_identity_document_accountid }}:OpsCloudWatch"]
+     delegate_to: localhost
+
+   # This task sets up High Memory usage Alarm metrics
+   - name: High Memory usage Alarm
+     no_log: true
+     ec2_metric_alarm:
+       aws_access_key: "{{ access_key }}"
+       aws_secret_key: "{{ secret_key }}"
+       security_token: "{{ session_token }}"
+       state: present
+       region: "{{ ansible_ec2_placement_region }}"
+       name: "{{ ansible_ec2_instance_id }}-mem"
+       description: "Alarm when memory used is high"
+       metric: "mem_used_percent"
+       namespace: "CWAgent"
+       statistic: Average
+       comparison: ">="
+       threshold: 80
+       period: 300
+       evaluation_periods: 3
+       dimensions: {"InstanceId":"{{ ansible_ec2_instance_id }}"}
+       alarm_actions: ["arn:aws:sns:{{ ansible_ec2_placement_region }}:{{ ansible_ec2_instance_identity_document_accountid }}:OpsCloudWatch"]
+     delegate_to: localhost

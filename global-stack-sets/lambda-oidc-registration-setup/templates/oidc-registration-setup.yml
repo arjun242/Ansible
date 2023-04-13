@@ -1,0 +1,288 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Oidc Registration setup includes lambda function, Iam svc role and dynamoDb
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Default: "lambda-oidc-registration"
+
+  RolePath:
+    Type: String
+    Default: "/inf/"
+
+  ModuleName:
+    Type: String
+    Default: "index"
+
+  LambdaName:
+    Description: Lambda Name
+    Type: String
+    Default: "cf-customresource-oidc-registration"
+
+  LambdaCodeS3Bucket:
+    Description: S3 bucket Name of lambda function
+    Type: String
+    Default: "gp-us-east-ops-automation-common-artifacts"
+
+  LambdaCodeZipKey:
+    Description: S3 bucket lambda function object zip key
+    Type: String
+    Default: "lambda/oidc-registration.zip"
+
+  OidcPrdClientId:
+    Description: Prd Client Id
+    Type: 'String'
+    Default: 'GECorporate-32EaeOd3AdQ6yJVm6Ki7LRSJ'
+    NoEcho: true
+
+  OidcPrdClientSecret:
+    Description: Prd Client Secrent
+    Type: 'String' 
+    NoEcho: true
+    Default: '3d54b3bce9283f04af5f10fdfb4ccdc11cc45976'
+    NoEcho: true
+
+  OidcStgClientId:
+    Description: Stg Client Id
+    Type: 'String' 
+    Default: 'pw-web-oidc-reg'
+    NoEcho: true
+
+  OidcStgClientSecret:
+    Description: Stg Client Secret
+    Type: 'String' 
+    NoEcho: true
+    Default: '799d60172e04b21c7fa1bb6f48e8e277b00be907'
+
+  BusinessCode:
+    Description: Short form of buiness code 
+    Type: String
+    Default: "GEGP"
+
+  DBTableName:
+    Description: Dynamodb Table Name
+    Type: String
+    Default: OIDC-CONFIG
+
+  HashKeyElementName:
+    Description: HashType PrimaryKey Name
+    Type: String
+    Default: UAI
+    AllowedPattern: '[a-zA-Z0-9]*'
+    MinLength: '1'
+    MaxLength: '2048'
+    ConstraintDescription: must contain only alphanumberic characters
+  HashKeyElementType:
+    Description: HashType PrimaryKey Type
+    Type: String
+    Default: S
+    AllowedPattern: '[S|N]'
+    MinLength: '1'
+    MaxLength: '1'
+    ConstraintDescription: must be either S or N
+  RangeKeyElementName:
+    Description: Range PrimaryKey Name
+    Type: String
+    Default: APPNAME_ENV
+    MinLength: '1'
+    MaxLength: '2048'
+    ConstraintDescription: must contain only alphanumberic characters
+  RangeKeyElementType:
+    Description: Range PrimaryKey Type
+    Type: String
+    Default: S
+    AllowedPattern: '[S|N]'
+    MinLength: '1'
+    MaxLength: '1'
+    ConstraintDescription: must be either S or N
+  ReadCapacityUnits:
+    Description: Provisioned read throughput
+    Type: Number
+    Default: '5'
+    MinValue: '5'
+    MaxValue: '10000'
+    ConstraintDescription: must be between 5 and 10000
+  WriteCapacityUnits:
+    Description: Provisioned write throughput
+    Type: Number
+    Default: '10'
+    MinValue: '5'
+    MaxValue: '10000'
+    ConstraintDescription: must be between 5 and 10000
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Path: !Ref RolePath
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+      - PolicyName: !Ref RoleName
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Sid: CloudWatchPermissions
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogGroups
+              - logs:CreateExportTask
+              - logs:DescribeExportTasks
+            Resource: "*"
+
+          - Sid: Ec2CreateNetworkInterfacePermission
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+            Action:
+              - ec2:CreateNetworkInterfacePermission
+            Condition:
+              StringEquals:
+                ec2:AuthorizedService: lambda.amazonaws.com
+
+          - Sid: AllowToDeployToVPC
+            Effect: Allow
+            Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DetachNetworkInterface
+              - ec2:DeleteNetworkInterface
+            Resource: "*"
+          
+          - Sid: S3CommonBucketsAccess
+            Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::gp-us-east-ops-automation-common*'
+
+          - Sid: AllowAccessToDynamoDBTable
+            Effect: Allow
+            Action:
+                - dynamodb:Query
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:BatchGetItem
+                - dynamodb:Scan
+                - dynamodb:BatchWriteItem
+                - dynamodb:GetRecords
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+            Resource: 
+              Fn::Sub: "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/OIDC-CONFIG"
+
+          - Sid: AllowAccessToDecrpytEnvVariables
+            Action:
+              - kms:Decrypt
+            Effect: Allow
+            Resource: "*"
+
+  LambdaFunction: 
+    DependsOn: 
+      - LambdaSecurityGroup
+      - LambdaLogGroup
+      - LambdaRole
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: !Ref LambdaName
+      Description: "Rotate RDS Secret, Invoked by Secretsmanager"
+      Handler: !Sub "${ModuleName}.handler"
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: "nodejs12.x"
+      Code: 
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeZipKey
+      MemorySize: 128 
+      Timeout: 100
+      Environment:
+        Variables: 
+          oidc_prd_clientId: !Ref OidcPrdClientId
+          oidc_prd_clientSecret: !Ref OidcPrdClientSecret
+          oidc_prd_oidRegUrl: "https://api.ge.com/digital/sso/clients/"
+          oidc_prd_ssoUrl: "https://fssfed.ge.com/fss/.well-known/openid-configuration"  
+          oidc_prd_tokenUrl: "https://fssfed.ge.com/fss/as/token.oauth2?"
+          oidc_stg_clientId: !Ref OidcStgClientId
+          oidc_stg_clientSecret: !Ref OidcStgClientSecret
+          oidc_stg_oidRegUrl: https://stage.api.ge.com/digital/sso/clients/
+          oidc_stg_ssoUrl: https://fssfed.stage.ge.com/fss/.well-known/openid-configuration
+          oidc_stg_tokenUrl: https://fssfed.stage.ge.com/fss/as/token.oauth2?
+          OIDC_Prefix: !Sub '${BusinessCode}'
+      Tags:
+      - Key: Name
+        Value: !Ref LambdaName
+      VpcConfig:
+        SecurityGroupIds:
+        - !GetAtt LambdaSecurityGroup.GroupId
+        SubnetIds:
+        - !ImportValue igr-az1
+        - !ImportValue igr-az2
+
+  LambdaLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${LambdaName}'
+      RetentionInDays: 7
+
+  InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt 'LambdaFunction.Arn'
+      Action: lambda:InvokeFunction
+      Principal: secretsmanager.amazonaws.com
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub 'SG for Lambda Function ${LambdaName}'
+      VpcId: !ImportValue vpcid
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${LambdaName}-lambda-SG"
+
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: !Ref 'HashKeyElementName'
+        AttributeType: !Ref 'HashKeyElementType'
+      - AttributeName: !Ref 'RangeKeyElementName'
+        AttributeType: !Ref 'RangeKeyElementType'  
+      KeySchema:
+      - AttributeName: !Ref 'HashKeyElementName'
+        KeyType: HASH
+      - AttributeName: !Ref 'RangeKeyElementName'
+        KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref 'ReadCapacityUnits'
+        WriteCapacityUnits: !Ref 'WriteCapacityUnits'
+      TableName: !Ref 'DBTableName'
+
+Outputs:
+  LambdaFunctionArn:
+    Description: "Resource Arn of the Lambda function"
+    Value: !GetAtt 'LambdaFunction.Arn'
+    Export:
+      Name: "OidcRegistrationLambdaArn"
+
+  LambdaRoleARN:
+    Value: !GetAtt LambdaRole.Arn
+    Description: "ARN for the lambda svc role"
+    Export:
+      Name: "OidcRegistrationLambdaRoleArn"

@@ -1,0 +1,155 @@
+---
+# - name: Get VPC info
+#   ec2_vpc_net_info:
+#     vpc_ids:
+#       - vpc-02c95a3c40349cbf1
+#     aws_access_key: "{{acc_key}}"
+#     aws_secret_key: "{{sec_key}}"
+#     security_token: "{{security_token}}"
+#     region: "us-east-1"
+#   register: vpc_info  
+
+# - name: Application subnet AZ1 calculation
+#   debug:
+#     msg: "Application subnet: {{vpc_info.vpcs[0].cidr_block | ipsubnet(26,0) }}"
+
+# - name: DB subnet calculation
+#   debug:
+#     msg: "DB subnet: {{vpc_info.vpcs[0].cidr_block | ipsubnet(26,0) | ipaddr('last_usable') | ipmath(2)}}/28"
+
+# - name: Application subnet AZ1 calculation
+#   debug:
+#     msg: "Application subnet AZ1: {{appSubnetCIDR | ipsubnet(mask ,0) }}"
+
+# - name: Application subnet AZ2 calculation
+#   debug:
+#     msg: "Application subnet AZ2: {{appSubnetCIDR | ipsubnet(mask ,1) }}"
+
+# - name: "Last /28 subnet"
+#   debug:
+#     msg: "Last /28 subnet in  given CIDR: {{appSubnetCIDR | ipsubnet(28,-1)}}"
+
+# - name: Print Last Usable IP address
+#   debug:
+#     msg: "Last usable IP address: {{appSubnetCIDR | ipaddr('last_usable')}}"
+
+- name: Setting facts
+  set_fact:
+    mask32: "27"
+    mask64: "26"
+    mask128: "25"
+    mask256: "24"
+
+  # {% if item == '32' %} mask32 {% elif item == '64' %} mask64 {% elif item == '128' %} mask128 {% elif item == '256' %} mask256 {% endif %}
+
+# - name: Finding mask of each subnet
+#   debug:
+#     msg: "{{item.name}} mask is {% if item.varName == '32' %} {{mask32}} {% elif item.varName == '64' %} {{mask64}} {% elif item.varName == '128' %} {{mask128}} {% elif item.varName == '256' %} {{mask256}} {% endif %}"
+#   loop:
+#     - { name: "Application Subnet", varName: "{{appSubnetIPCount}}"}
+#     - { name: "External Subnet", varName: "{{extSubnetIPCount}}"}
+#     - { name: "Reachback Subnet", varName: "{{rbSubnetIPCount}}"}
+#     - { name: "Database Subnet", varName: "{{dbSubnetIPCount}}"}
+#     - { name: "Endpoint Subnet", varName: "{{epSubnetIPCount}}"}
+#     - { name: "Integration Subnet", varName: "{{igrSubnetIPCount}}"}
+
+# - name: Setting mask as facts
+#   set_fact: {"{{item.name}}": "{% if item.varName == '32' %}{{mask32|int +1}}{% elif item.varName == '64' %}{{mask64|int +1 }}{% elif item.varName == '128' %}{{mask128|int +1}}{% elif item.varName == '256' %}{{mask256|int +1}}{% endif %}"}
+#   loop:
+#     - { name: "appSubnetMask", varName: "{{appSubnetIPCount}}"}
+#     - { name: "extSubnetMask", varName: "{{extSubnetIPCount}}"}
+#     - { name: "rbSubnetMask", varName: "{{rbSubnetIPCount}}"}
+#     - { name: "dbSubnetMask", varName: "{{dbSubnetIPCount}}"}
+#     - { name: "epSubnetMask", varName: "{{epSubnetIPCount}}"}
+#     - { name: "igrSubnetMask", varName: "{{igrSubnetIPCount}}"}
+
+- name: Setting mask as facts
+  set_fact: {"{{item.name}}": "{% if item.varName == '32' %}{{mask32}}{% elif item.varName == '64' %}{{mask64}}{% elif item.varName == '128' %}{{mask128}}{% elif item.varName == '256' %}{{mask256}}{% endif %}"}
+  loop:
+    - { name: "appSubnetMask", varName: "{{appSubnetIPCount}}"}
+    - { name: "extSubnetMask", varName: "{{extSubnetIPCount}}"}
+    - { name: "rbSubnetMask", varName: "{{rbSubnetIPCount}}"}
+    - { name: "dbSubnetMask", varName: "{{dbSubnetIPCount}}"}
+    - { name: "epSubnetMask", varName: "{{epSubnetIPCount}}"}
+    - { name: "igrSubnetMask", varName: "{{igrSubnetIPCount}}"}
+
+- name: Use custom filter
+  debug:
+    msg: "{{ defaultSubnetCIDRs | findSubnetsFilter(vpcCIDR,appSubnetMask, dbSubnetMask,epSubnetMask,extSubnetMask, rbSubnetMask, igrSubnetMask) }}"
+
+- name: Print AppSubnet CIDRs
+  set_fact:
+    appAZ1SubnetCIDR: "{{vpcCIDR | ipsubnet(appSubnetMask, 0)}}"
+    appAZ2SubnetCIDR: "{{vpcCIDR | ipsubnet(appSubnetMask, 1)}}"
+
+- name: Print DB1Subnet CIDR
+  set_fact:
+    db1SubnetCIDR: "{{appAZ2SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{dbSubnetMask}}"
+
+- name: Print DB2Subnet CIDR
+  set_fact:
+    db2SubnetCIDR: "{{db1SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{dbSubnetMask}}"
+
+- name: Print EP1Subnet CIDR
+  set_fact:
+    ep1SubnetCIDR: "{{db2SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{epSubnetMask}}"
+
+- name: Print EP2Subnet CIDR
+  set_fact:
+    ep2SubnetCIDR: "{{ep1SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{epSubnetMask}}"
+
+- name: Initial IP address for IGR to start from
+  set_fact:
+    startIGR: "{{ep2SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}"
+
+- name: Find Ext Subnet and Reachback CIDRs if both are required
+  block:
+    - name: Print Ext1Subnet CIDR
+      set_fact:
+        ext1SubnetCIDR: "{{ep2SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{extSubnetMask}}"
+
+    - name: Print Ext2Subnet CIDR
+      set_fact:
+        ext2SubnetCIDR: "{{ext1SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{extSubnetMask}}"
+
+    - name: Print Rb1Subnet CIDR
+      set_fact:
+        rb1SubnetCIDR: "{{ext2SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{rbSubnetMask}}"
+    
+    - name: Print Rb2Subnet CIDR
+      set_fact:
+        rb2SubnetCIDR: "{{rb1SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{rbSubnetMask}}"
+
+    - name: "Re-initalize startIGR"
+      set_fact: 
+        startIGR: "{{rb2SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}"
+
+  when: lookup('vars', 'extSubnetIPCount') != "0" and lookup('vars','rbSubnetIPCount') != "0"
+  
+- name: Find IGR Subnet CIDR if required
+  block:
+    - name: Print igr1Subnet CIDR
+      set_fact:
+        igr1SubnetCIDR: "{{startIGR}}/{{igrSubnetMask}}"
+
+    - name: Print igr2Subnet CIDR
+      set_fact:
+        igr2SubnetCIDR: "{{igr1SubnetCIDR | ipaddr('last_usable') | ipmath(2)}}/{{igrSubnetMask}}"
+  when: igrSubnetIPCount != "0"
+
+# - name: Print VPC CIDR
+#   debug:
+#     msg: "{{vpcCIDR}}"
+
+# - name: Find Prefix
+#   set_fact:
+#     mask: "{{vpcCIDR | ipaddr('prefix')}}"
+
+- name: Print the default subnet CIDRs
+  debug:
+    msg: "{{defaultSubnetCIDRs}}"
+
+# Get the existing subnets - in general comes with 4 subnets(checked on gp-ops and gp-powermax-erp)
+# Create CIDR notation for the 4 subnets in 1 subnet, var name: predefined_sub_cidr
+# Start allocating subnets from the beginning of the VPC CIDR
+# Ensure that last usable IP in each new subnet created does not exist in predefined_sub_cidr

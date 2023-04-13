@@ -1,0 +1,392 @@
+description: 'Updates AMI with Linux distribution packages and Amazon software. For details,see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sysman-ami-walkthrough.html'
+schemaVersion: '0.3'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  InstanceIamRole:
+    type: String
+    default: ec2-ami-instance-profile
+    description: (Required) The name of the role that enables Systems Manager (SSM) to manage the instance.
+  AutomationAssumeRole:
+    type: String
+    default: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/inf/ssm-ami'
+    description: (Required) The ARN of the role that allows Automation to perform the actions on your behalf.
+  TargetAmiName:
+    type: String
+    default: 'GP-GESOS-AWS-JBOSS_CENTOS7_on_{{global:DATE_TIME}}'
+    description: '(Optional) The name of the new AMI that will be created. here just update value as "JBOSS_RHEL7", "APACHE_CENTOS7", "APACHE_RHEL7"'
+  InstanceType:
+    type: String
+    default: t3.medium
+    description: (Optional) Type of instance to launch as the workspace host. Instance types vary by region. Default is t3.medium.
+  SubnetId:
+    type: String
+    default: '{{ssm:/automation/ami/subnet}}'
+    description: Subnet to launch as the workspace host. Subnets vary by VPC.
+  PreUpdateScript:
+    type: String
+    default: none
+    description: (Optional) URL of a script to run before updates are applied. Default ("none") is to not run a script.
+  PostUpdateScript:
+    type: String
+    default: none
+    description: (Optional) URL of a script to run after package updates are applied. Default ("none") is to not run a script.
+  IncludePackages:
+    type: String
+    default: all
+    description: '(Optional) Only update these named packages. By default ("all"), all available updates are applied.'
+  uai:
+    type: String
+    default: uai3026350
+    description: UAI to tag instance and AMI. Default is AUTO.
+  ExcludePackages:
+    type: String
+    default: none
+    description: '(Optional) Names of packages to hold back from updates, under all conditions. By default ("none"), no package is excluded.'
+  KeyName:
+    type: String
+    default: '{{ssm:/automation/ami/base-key}}'
+    description: key pair to use. Default is AUTO.
+  SecurityGroup:
+    type: String
+    default: '{{ssm:/automation/ami/sg}}'
+    description: Base SG Id for Linux Instance
+  BucketName:
+    type: String
+    default: '{{ssm:/automation/ami/bucket}}'
+    description: common bucket
+  QualysActivationId:
+    type: String
+    default: '{{ssm:/automation/qualys/activationid}}'
+    description: qualys activation id
+  QualysCustomerId:
+    type: String
+    default: '{{ssm:/automation/qualys/customerid}}'
+    description: qualys activation id
+  AMISharingRegAccList:
+    type: String
+    default: '{{ssm:/automation/region-account}}'
+    description: region and corresponding accounts where AMI needs to be shared
+  WebHostAMIID:
+    type: String
+    default: GESOS-AWS-JBOSS_CENTOS7
+    description: 'Initial name of the WebHostAMI here just update value as "JBOSS_RHEL7", "APACHE_CENTOS7", "APACHE_RHEL7"'
+mainSteps:
+  - name: invokelambda
+    action: 'aws:invokeLambdaFunction'
+    inputs:
+      InvocationType: RequestResponse
+      FunctionName: 'arn:aws:lambda:us-east-1:{{global:ACCOUNT_ID}}:function:get-latest-gesos-image'
+      Payload: |-
+        {
+          "imagename": "{{WebHostAMIID}}"
+        }
+  - name: launchInstance
+    action: 'aws:runInstances'
+    maxAttempts: 3
+    timeoutSeconds: 1200
+    onFailure: Abort
+    inputs:
+      ImageId: '{{invokelambda.Payload}}'
+      InstanceType: '{{InstanceType}}'
+      SubnetId: '{{SubnetId}}'
+      KeyName: '{{KeyName}}'
+      UserData: IyEvYmluL2Jhc2gKCmZ1bmN0aW9uIGdldF9jb250ZW50cygpIHsKICAgIGlmIFsgLXggIiQod2hpY2ggY3VybCkiIF07IHRoZW4KICAgICAgICBjdXJsIC1zIC1mICIkMSIKICAgIGVsaWYgWyAteCAiJCh3aGljaCB3Z2V0KSIgXTsgdGhlbgogICAgICAgIHdnZXQgIiQxIiAtTyAtCiAgICBlbHNlCiAgICAgICAgZGllICJObyBkb3dubG9hZCB1dGlsaXR5IChjdXJsLCB3Z2V0KSIKICAgIGZpCn0KCnJlYWRvbmx5IElERU5USVRZX1VSTD0iaHR0cDovLzE2OS4yNTQuMTY5LjI1NC8yMDE2LTA2LTMwL2R5bmFtaWMvaW5zdGFuY2UtaWRlbnRpdHkvZG9jdW1lbnQvIgpyZWFkb25seSBUUlVFX1JFR0lPTj0kKGdldF9jb250ZW50cyAiJElERU5USVRZX1VSTCIgfCBhd2sgLUZcIiAnL3JlZ2lvbi8geyBwcmludCAkNCB9JykKcmVhZG9ubHkgREVGQVVMVF9SRUdJT049InVzLWVhc3QtMSIKcmVhZG9ubHkgUkVHSU9OPSIke1RSVUVfUkVHSU9OOi0kREVGQVVMVF9SRUdJT059IgoKcmVhZG9ubHkgU0NSSVBUX05BTUU9ImF3cy1pbnN0YWxsLXNzbS1hZ2VudCIKIFNDUklQVF9VUkw9Imh0dHBzOi8vYXdzLXNzbS1kb3dubG9hZHMtJFJFR0lPTi5zMy5hbWF6b25hd3MuY29tL3NjcmlwdHMvJFNDUklQVF9OQU1FIgoKaWYgWyAiJFJFR0lPTiIgPSAiY24tbm9ydGgtMSIgXTsgdGhlbgogIFNDUklQVF9VUkw9Imh0dHBzOi8vYXdzLXNzbS1kb3dubG9hZHMtJFJFR0lPTi5zMy5jbi1ub3J0aC0xLmFtYXpvbmF3cy5jb20uY24vc2NyaXB0cy8kU0NSSVBUX05BTUUiCmZpCgppZiBbICIkUkVHSU9OIiA9ICJ1cy1nb3Ytd2VzdC0xIiBdOyB0aGVuCiAgU0NSSVBUX1VSTD0iaHR0cHM6Ly9hd3Mtc3NtLWRvd25sb2Fkcy0kUkVHSU9OLnMzLXVzLWdvdi13ZXN0LTEuYW1hem9uYXdzLmNvbS9zY3JpcHRzLyRTQ1JJUFRfTkFNRSIKZmkKCmNkIC90bXAKRklMRV9TSVpFPTAKTUFYX1JFVFJZX0NPVU5UPTMKUkVUUllfQ09VTlQ9MAoKd2hpbGUgWyAkUkVUUllfQ09VTlQgLWx0ICRNQVhfUkVUUllfQ09VTlQgXSA7IGRvCiAgZWNobyBBV1MtVXBkYXRlTGludXhBbWk6IERvd25sb2FkaW5nIHNjcmlwdCBmcm9tICRTQ1JJUFRfVVJMCiAgZ2V0X2NvbnRlbnRzICIkU0NSSVBUX1VSTCIgPiAiJFNDUklQVF9OQU1FIgogIEZJTEVfU0laRT0kKGR1IC1rIC90bXAvJFNDUklQVF9OQU1FIHwgY3V0IC1mMSkKICBlY2hvIEFXUy1VcGRhdGVMaW51eEFtaTogRmluaXNoZWQgZG93bmxvYWRpbmcgc2NyaXB0LCBzaXplOiAkRklMRV9TSVpFCiAgaWYgWyAkRklMRV9TSVpFIC1ndCAwIF07IHRoZW4KICAgIGJyZWFrCiAgZWxzZQogICAgaWYgW1sgJFJFVFJZX0NPVU5UIC1sdCBNQVhfUkVUUllfQ09VTlQgXV07IHRoZW4KICAgICAgUkVUUllfQ09VTlQ9JCgoUkVUUllfQ09VTlQrMSkpOwogICAgICBlY2hvIEFXUy1VcGRhdGVMaW51eEFtaTogRmlsZVNpemUgaXMgMCwgcmV0cnlDb3VudDogJFJFVFJZX0NPVU5UCiAgICBmaQogIGZpIApkb25lCgppZiBbICRGSUxFX1NJWkUgLWd0IDAgXTsgdGhlbgogIGNobW9kICt4ICIkU0NSSVBUX05BTUUiCiAgZWNobyBBV1MtVXBkYXRlTGludXhBbWk6IFJ1bm5pbmcgVXBkYXRlU1NNQWdlbnQgc2NyaXB0IG5vdyAuLi4uCiAgLi8iJFNDUklQVF9OQU1FIiAtLXJlZ2lvbiAiJFJFR0lPTiIKZWxzZQogIGVjaG8gQVdTLVVwZGF0ZUxpbnV4QW1pOiBVbmFibGUgdG8gZG93bmxvYWQgc2NyaXB0LCBxdWl0dGluZyAuLi4uCmZp
+      MinInstanceCount: 1
+      MaxInstanceCount: 1
+      IamInstanceProfileName: '{{InstanceIamRole}}'
+      SecurityGroupIds:
+        - '{{SecurityGroup}}'
+  - name: TagInstance
+    action: 'aws:createTags'
+    maxAttempts: 1
+    onFailure: Continue
+    inputs:
+      ResourceType: EC2
+      ResourceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Tags:
+        - Key: Name
+          Value: 'Image_from_{{automation:EXECUTION_ID}}'
+        - Key: uai
+          Value: '{{uai}}'
+  - name: InstallAWSCLI
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - yum update -y
+          - yum install bind-utils -y
+          - yum install logrotate -y
+          - cd /home/gecloud/
+          - 'curl -O https://bootstrap.pypa.io/get-pip.py'
+          - python get-pip.py
+          - pip install awscli
+  - name: updateOSSoftware
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - set -e
+          - '[ -x "$(which wget)" ] && get_contents=''wget $1 -O -'''
+          - '[ -x "$(which curl)" ] && get_contents=''curl -s -f $1'''
+          - 'eval $get_contents https://aws-ssm-downloads-{{global:REGION}}.s3.amazonaws.com/scripts/aws-update-linux-instance > /tmp/aws-update-linux-instance'
+          - chmod +x /tmp/aws-update-linux-instance
+          - '/tmp/aws-update-linux-instance --pre-update-script ''{{PreUpdateScript}}'' --post-update-script ''{{PostUpdateScript}}'' --include-packages ''{{IncludePackages}}'' --exclude-packages ''{{ExcludePackages}}'' 2>&1 | tee /tmp/aws-update-linux-instance.log'
+          - yum install jq -y
+          - sed -i '/installonly_limit/s/5/2/g' /etc/yum.conf
+          - yum install ansible -y
+  - name: installCrowdstrike
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - set -e
+          - 'if [ ! -z "$(ps -ef | grep ''falcon-sensor'' | grep -v grep)" ]'
+          - then
+          - yum -y remove falcon-sensor
+          - mkdir -p /tmp/agents
+          - cd /tmp/agents
+          - 'aws s3 cp s3://{{BucketName}}/falcon-sensor.el7.x86_64.rpm /tmp/agents/'
+          - yum install falcon-sensor.el7.x86_64.rpm -y
+          - /opt/CrowdStrike/falconctl -s --cid=D96C92BDFB0946B589727FF82FB4601A-9E
+          - service falcon-sensor restart
+          - else
+          - /opt/CrowdStrike/falconctl -s --cid=D96C92BDFB0946B589727FF82FB4601A-9E
+          - service falcon-sensor restart
+          - fi
+  - name: installQualys
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - set -e
+          - 'if [ ! -z "$(ps -ef | grep ''qualys-cloud-agent'' | grep -v grep)" ]'
+          - then
+          - yum -y remove qualys-cloud-agent
+          - rm -rf /etc/qualys/hostid
+          - mkdir -p /tmp/agents
+          - cd /tmp/agents
+          - 'aws s3 cp s3://{{BucketName}}/qualys-cloud-agent.x86_64_1.7.1.37.rpm /tmp/agents'
+          - rpm -ivh qualys-cloud-agent.x86_64_1.7.1.37.rpm
+          - '/usr/local/qualys/cloud-agent/bin/qualys-cloud-agent.sh ActivationId="{{QualysActivationId}}" CustomerId="{{QualysCustomerId}}"'
+          - rm -rf /tmp/agents
+          - else
+          - '/usr/local/qualys/cloud-agent/bin/qualys-cloud-agent.sh ActivationId="{{QualysActivationId}}" CustomerId="{{QualysCustomerId}}"'
+          - service qualys-cloud-agent restart
+          - fi
+  - name: installSplunk
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: app-splunk-reconfig
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+  - name: placeCert
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - set -e
+          - yum install unzip -y
+          - cd /etc/pki/ca-trust/source/anchors/
+          - update-ca-trust enable
+          - 'aws s3 cp s3://{{BucketName}}/rds-ca-2019-root.pem /etc/pki/ca-trust/source/anchors/'
+          - 'aws s3 cp s3://{{BucketName}}/GE_External_Root_CA_2_1.crt /etc/pki/ca-trust/source/anchors/'
+          - update-ca-trust extract
+          - 'aws s3 cp s3://{{BucketName}}/GE_CA_Certs_PEM.zip /etc/pki/ca-trust/source/anchors/'
+          - unzip -d /etc/pki/ca-trust/source/anchors GE_CA_Certs_PEM.zip
+          - cd /etc/pki/ca-trust/source/anchors/GE_CA_Certs_PEM
+          - cp * ../
+          - rm -rf /etc/pki/ca-trust/source/anchors/GE_CA_Certs_PEM
+          - /bin/update-ca-trust
+  - name: CloudWatch
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    onFailure: 'step:terminateInstance'
+    timeoutSeconds: 600
+    inputs:
+      DocumentName: AWS-ConfigureAWSPackage
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        name: AmazonCloudWatchAgent
+        action: Install
+  - name: CfnBootstrap
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    onFailure: 'step:terminateInstance'
+    timeoutSeconds: 600
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - 'curl -o /tmp/aws-cnf-bootstrap-latest.amazn1.noarch.rpm https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm'
+          - yum localinstall /tmp/aws-cnf-bootstrap-latest.amazn1.noarch.rpm -y
+          - rm -f /tmp/aws-cnf-bootstrap-latest.amazn1.noarch.rpm
+          - 'curl -L https://www.chef.io/chef/install.sh | bash'
+          - sleep 30
+  - name: SSHConfig
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - set -e
+          - rm -rf /etc/ssh/ssh_config
+          - 'aws s3 cp s3://{{BucketName}}/ssh_config /etc/ssh/'
+  - name: DisplayCfnInitLog
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - set -e
+          - rm -rf /opt/aws/amazon-cloudwatch-agent/bin/cfn-init.sh
+          - 'echo ''#!/bin/bash'' > /opt/aws/amazon-cloudwatch-agent/bin/cfn-init.sh'
+          - 'echo ''/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:/automation/LinuxCloudWatchConfig'' >> /opt/aws/amazon-cloudwatch-agent/bin/cfn-init.sh'
+          - sleep 5
+          - chmod 755 /opt/aws/amazon-cloudwatch-agent/bin/cfn-init.sh
+          - 'aws s3 cp s3://{{BucketName}}/CloudWatchCfnInit.service /etc/systemd/system/CloudWatchCfnInit.service'
+          - sh /opt/aws/amazon-cloudwatch-agent/bin/cfn-init.sh
+  - name: RunSsmAddAppAdminDoc
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 600
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: gp-add-appadmin
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+  - name: stopInstance
+    action: 'aws:changeInstanceState'
+    maxAttempts: 3
+    timeoutSeconds: 1200
+    onFailure: Continue
+    inputs:
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      DesiredState: stopped
+  - name: createImage
+    action: 'aws:createImage'
+    maxAttempts: 3
+    onFailure: 'step:terminateInstance'
+    inputs:
+      InstanceId: '{{launchInstance.InstanceIds}}'
+      ImageName: '{{TargetAmiName}}'
+      NoReboot: true
+      ImageDescription: 'AMI Generated by EC2 Automation on {{global:DATE_TIME}} from {{WebHostAMIID}}'
+  - name: createTags
+    action: 'aws:createTags'
+    maxAttempts: 1
+    onFailure: Abort
+    inputs:
+      ResourceType: EC2
+      ResourceIds:
+        - '{{createImage.ImageId}}'
+      Tags:
+        - Key: Generated By Automation
+          Value: '{{automation:EXECUTION_ID}}'
+        - Key: From Source AMI
+          Value: '{{WebHostAMIID}}'
+        - Key: uai
+          Value: '{{uai}}'
+        - Key: Encrypted
+          Value: 'true'
+        - Key: Name
+          Value: '{{TargetAmiName}}'
+  - name: startInstance
+    action: 'aws:changeInstanceState'
+    maxAttempts: 3
+    timeoutSeconds: 1200
+    onFailure: Continue
+    inputs:
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      DesiredState: running
+  - name: amiSharing
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 7200
+    onFailure: 'step:terminateInstance'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      Parameters:
+        commands:
+          - set -e
+          - 'AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`'
+          - 'REGION=`echo "$AVAIL_ZONE" | sed ''s/[a-z]$//''`'
+          - 'list=''{{AMISharingRegAccList}}'''
+          - 'regions=`echo "$list" | jq ''keys'' | tr -d ''[],"\n''`'
+          - for reg in $regions
+          - do
+          - 'if [ "$reg" != "$REGION" ]'
+          - then
+          - 'copy_ami_id=`aws ec2 copy-image --source-image-id {{createImage.ImageId}} --source-region "$REGION" --region "$reg" --name "{{TargetAmiName}}" | grep "ImageId" | awk -F" " ''{print $NF}'' | tr -d ''"''`'
+          - sleep 500
+          - fi
+          - 'accounts=`echo "$list" | jq --arg reg "$reg" ''.[$reg]'' | tr -d ''[],"\n''`'
+          - for acc in $accounts
+          - do
+          - 'if [ "$reg" != "$REGION" ]'
+          - then
+          - 'aws ec2 modify-image-attribute --image-id "$copy_ami_id" --region "$reg" --launch-permission "Add=[{UserId=\"$acc\"}]" 2> /dev/null'
+          - else
+          - 'aws ec2 modify-image-attribute --image-id {{createImage.ImageId}} --region "$reg" --launch-permission "Add=[{UserId=\"$acc\"}]" 2> /dev/null'
+          - fi
+          - done
+          - done
+  - name: terminateInstance
+    action: 'aws:changeInstanceState'
+    maxAttempts: 3
+    onFailure: Abort
+    isEnd: true
+    inputs:
+      InstanceIds:
+        - '{{launchInstance.InstanceIds}}'
+      DesiredState: terminated

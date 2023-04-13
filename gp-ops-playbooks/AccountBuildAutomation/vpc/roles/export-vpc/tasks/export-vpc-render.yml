@@ -1,0 +1,31 @@
+---
+- name: Include vars file
+  include_vars: export-vars.yml
+
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Create a new directory for stack_master templates
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Create a new directory for stack_master parameters
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/parameters"
+
+- name: Copy stack-master.yml
+  template:
+    src: "stack_master.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/stack_master.yml"
+
+- name: Copy export-gr-resources.yml to templates
+  template:
+    src: "{{role_path}}/templates/export-gr-resources.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/templates"
+
+- name: Copy export_vpc_default.yml to parmeters
+  template:
+    src: "{{role_path}}/templates/export_vpc_default.yml"
+    dest: "{{source_directory}}/{{resource_folder}}/parameters/{{prefix | replace('-','_')}}export_vpc_default.yml"

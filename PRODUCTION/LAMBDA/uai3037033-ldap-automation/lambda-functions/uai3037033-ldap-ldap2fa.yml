@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda function for Connection Check.
+
+Parameters:
+  UAI:
+    Type: String
+    Description: "Universal Application Identifier(lowercase). Found at https://applications.ge.com"
+    AllowedPattern: "uai[0-9]*"
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3037033
+  AppName:
+    Description: "Appname"
+    Type: String  
+    Default: ldap
+  Env:
+    Description: "Environment"
+    Type: String  
+    Default: prd
+
+Resources:
+  uai3037033ldap2fa:
+    Type: AWS::Lambda::Function
+    Properties:
+      Environment:
+        Variables:
+          tower_url: https://ansible.power.ge.com/api/v2/job_templates
+          secret_name: uai3037033-ldap-ansible-tower-api-token
+          region_name: us-east-1      
+          ldap_jt_name: com-ldap-prod-linux-naapi 
+      Tags:
+        - Key: appname
+          Value: !Ref AppName
+        - Key: env
+          Value: !Ref Env
+        - Key: uai
+          Value: !Ref UAI
+      Runtime: python3.7
+      FunctionName: !Sub ${UAI}-${AppName}-ldap2fa
+      VpcConfig:
+        SecurityGroupIds: 
+          - !ImportValue ldapLambdaSg
+        SubnetIds:
+          - !ImportValue app-az1   
+          - !ImportValue app-az2
+      Role: !Sub "arn:aws:iam::325381443140:role/app/${UAI}-${AppName}-lambda-execution-role"
+      Handler: lambda-code/uai3037033-ldap-ldap2fa.lambda_handler
+      Timeout: 900
+  # LambdaFunctionLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     LogGroupName: !Sub ${UAI}-${AppName}-ldap2fa
+  #     RetentionInDays: 90
+
+  TriggerSQSLambdaSourceMapping:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    DependsOn:
+      - uai3037033ldap2fa
+    Properties:
+      BatchSize: 1 # maximum number of items to retrieve in a single batch
+      Enabled: true
+      EventSourceArn: !ImportValue naapisqs2
+      FunctionName: !GetAtt uai3037033ldap2fa.Arn

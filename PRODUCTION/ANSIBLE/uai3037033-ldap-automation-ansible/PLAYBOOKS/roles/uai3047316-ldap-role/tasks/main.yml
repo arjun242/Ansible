@@ -1,0 +1,410 @@
+---
+# tasks file for ldap_radius_2fa
+- include_vars: secrets.yml
+  no_log: true
+- include_vars: static_vars.yml
+  no_log: true
+#To check LDAP installation status, checking sssd service status
+- name: Gathering Metadata Facts
+  ec2_metadata_facts:
+
+# This task is setting the variable IP Address, Account ID and OS Version of the particular target host. 
+- name: Setting the variables for IP Address, Account ID and OS Version 
+  set_fact:
+    ip: "{{ ansible_default_ipv4['address'] }}"
+    account_id: "{{ ansible_ec2_identity_credentials_ec2_info_accountid }}" 
+    os_version: "{{ hostvars[inventory_hostname].ansible_distribution_major_version }}"
+- name: Get Service Status
+  systemd:
+    name: "sssd"
+  register: sssd_service_status
+  ignore_errors: true
+#if LDAP not installed previously and in anycase some Netgroups were existing in Remote instance, those will fetched and appended in access.conf.j2 jinja template.
+- name: Getting the pre-existing netgroups 
+  become: yes
+  shell: |
+    prefix="+ : "
+    suffix=" : ALL"
+    grep -r '+ : @' /etc/security/access.conf |grep -v '#' | sed -e "s/^$prefix//" -e "s/$suffix$//"
+  when: 
+   - sssd_service_status.status.LoadError is defined
+  register: pre_ex_netgrp
+  ignore_errors: true
+#Registering variable with fetched netgroups if any
+- name: defining pre-existing netgroupss
+  set_fact:
+    exist_netgroups: "{{ pre_ex_netgrp.stdout_lines }}"
+  when: 
+   - sssd_service_status.status.LoadError is defined
+  ignore_errors: true
+#if LDAP already installed previously and Existing Netgroups other than Default netgroups in Remote instance will be fetched and appended in access.conf.j2 jinja template.
+- name: Getting the pre-existing netgroups in second RUN
+  become: yes
+  shell: |
+    prefix="+ : "
+    suffix=" : ALL"
+    sed -n '/#PRE-EXISTING_NETGROUPS/,/#Default_netgroups/p' /etc/security/access.conf | grep -v '#'|sed -e "s/^$prefix//" -e "s/$suffix$//"
+  register: pre_ex_netgrp    
+  when: 
+   - sssd_service_status.status.LoadError is not defined
+  ignore_errors: true
+#Registering variable with fetched netgroups
+- name: defining pre-existing netgroupss
+  set_fact:
+    exist_netgroups: "{{ pre_ex_netgrp.stdout_lines }}"
+  when: 
+   - sssd_service_status.status.LoadError is not defined
+  ignore_errors: true
+#backup of sssd.conf,sshd_config file and /etc/sudoers file before editing and with Timestamp
+- name: Backup of sssd.conf,sudoers and sshd_config file
+  become: yes
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    remote_src: yes
+    backup: yes
+  with_items:
+  - { src: '/etc/ssh/sshd_config', dest: '/etc/ssh/backup_sshd_config' }
+  - { src: '/etc/sudoers', dest: '/etc/backup_sudoers' }
+  - { src: '/etc/security/access.conf', dest: '/etc/security/backup_access.conf ' }
+  - { src: '/etc/sssd/sssd.conf', dest: '/etc/sssd/backup_sssd.conf' }
+  - { src: '/etc/raddb/server', dest: '/etc/raddb/backup_server' }
+  - { src: '/etc/openldap/ldap.conf', dest: '/etc/openldap/backup_ldap.conf' }
+  - { src: '/etc/nsswitch.conf', dest: '/etc/backup_nsswitch.conf' }
+  - { src: '/etc/sysconfig/authconfig', dest: '/etc/sysconfig/backup_authconfig' }
+  - { src: '/etc/pam.d/password-auth-ac', dest: '/etc/pam.d/backup_password-auth-ac' }
+  - { src: '/etc/pam.d/system-auth-ac', dest: '/etc/pam.d/backup_system-auth-ac' }
+  ignore_errors: true
+######################
+#Begin Of Backup of Config files to S3 bucket 
+######################
+#fetching remote files to control node /home/ansible/ directory
+- name: fetch remote files for backup to s3
+  become: yes
+  fetch:
+    src: "{{ item }}"
+    dest: "/home/ansible/{{instance_id}}/"
+    flat: yes
+  with_items:
+  - /etc/ssh/sshd_config
+  - /etc/raddb/server
+  - /etc/sssd/sssd.conf
+  - /etc/openldap/ldap.conf
+  - /etc/nsswitch.conf
+  - /etc/security/access.conf
+  - /etc/sysconfig/authconfig
+  - /etc/pam.d/password-auth-ac
+  - /etc/pam.d/system-auth-ac
+  ignore_errors: true
+#uploading config files from /home/ansible/ to S3 bucket      
+- name: backup of config files to s3
+  aws_s3:
+    bucket: "{{ s3_bucket }}"
+    mode: put
+    object: "{{ owner_id }}/{{instance_id}}/{{ item }}"         #/{{ item|basename }}"
+    src: "/home/ansible/{{instance_id}}/{{ item }}"
+  delegate_to: localhost 
+  with_items: 
+    - sssd.conf
+    - sshd_config
+    - access.conf
+    - server
+    - ldap.conf
+    - nsswitch.conf
+    - authconfig
+    - password-auth-ac
+    - system-auth-ac
+  ignore_errors: true
+ #Remove Temperory files created in /home/ansible/  
+- name: remove temperory files
+  file:
+    path: /home/ansible/{{instance_id}}/
+    state: absent
+  delegate_to: localhost
+  ignore_errors: true
+######################
+#End Of Backup of Config files to S3 bucket 
+######################
+- block:
+  #variables used in this task are fetched from vars file of ldap role
+  #install all the required packages in the target host which are required for LDAP.
+  - name: Install the required packages of LDAP
+    become: yes
+    package:
+      name: "{{ item }}" 
+      state: present 
+    with_items:  "{{ dependencies }}"
+  # By using with_items, create all required directories and change permissions on target host
+  - name: Creating Required Directories
+    become: yes
+    file:
+      path: "{{ item }}" 
+      state: directory
+    with_items: "{{ config_dirs }}"
+   
+
+  # This task will template all the .conf and .cert files on the target host. Required data for these templates will be fetched from either main.yml or secrets.yml in the vars folder 
+  - name: Templating the conf/cert files
+    become: yes
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    with_items:
+      - { src: 'sshd_config.j2', dest: '/etc/ssh/sshd_config' }
+      - { src: 'raddb_password.j2', dest: '/etc/raddb/server' }
+      - { src: 'sssd.conf.j2', dest: '/etc/sssd/sssd.conf' }    
+      - { src: '2020_trusted_auth.cert.j2', dest: '/etc/openldap/cacerts/2020_trusted_auth.cert' }
+      - { src: '2020_trusted_root.cert.j2', dest: '/etc/openldap/cacerts/2020_trusted_root.cert' }
+      - { src: 'GE_trusted_root.cert.j2', dest: '/etc/openldap/cacerts/GE_trusted_root.cert' }
+      - { src: 'GE_trusted_root_issuing_cert.cert.j2', dest: '/etc/openldap/cacerts/GE_trusted_root_issuing_cert.cert' }
+      - { src: 'ldap.conf.j2', dest: '/etc/openldap/ldap.conf' } 
+      - { src: 'nsswitch.conf.j2', dest: '/etc/nsswitch.conf' }
+      - { src: 'access.conf.j2', dest: '/etc/security/access.conf' }
+      - { src: 'authconfig.j2', dest: '/etc/sysconfig/authconfig' }
+      - { src: 'netgroup.j2', dest: '/etc/sudoers.d/netgroups' }
+  # Using copy module
+  - name: Copying the binary files
+    become: yes
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    with_items:
+    - { src: 'cert8.db', dest: '/etc/openldap/certs/cert8.db' }
+    - { src: 'key3.db', dest: '/etc/openldap/certs/key3.db' }
+    - { src: 'pam_radius_auth.so', dest: '/lib64/security/pam_radius_auth.so' }
+  # This task will template the files only for the target hosts  
+  - name: Templating the conf/cert files according to OS version
+    become: yes
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    with_items:
+      - { src: 'pam_d_password-auth-ac_el7.j2', dest: '/etc/pam.d/password-auth-ac' }
+      - { src: 'pam_d_system-auth-ac_el7.j2', dest: '/etc/pam.d/system-auth-ac' }
+    notify: restart oddjobd 
+    when: os_version >= '7'
+
+  #####################################
+  #Fetching pre-existing Netgroups
+  - name: Getting the pre-existing netgroups 
+    become: yes
+    shell: |
+      prefix="+ : "
+      suffix=" : ALL"
+      grep -r '+ : @' /etc/security/access.conf |grep -v '#' | sed -e "s/^$prefix//" -e "s/$suffix$//"
+    register: pre_ex_netgrp_ddb
+    ignore_errors: true
+  #saving pre-exidting netgroups into a variable
+  - name: defining pre-existing netgroupss
+    set_fact:
+      exist_netgroups_ddb: "{{ pre_ex_netgrp_ddb.stdout_lines }}"
+    ignore_errors: true
+  #Update all pre-existig netgroups to dynamodb
+  - name: updating netgroups to dynamodb table
+    shell: |
+      aws dynamodb update-item --table-name {{ ddb_table_name }} --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"ExistingNetGroups": {"Value": {"S": "{{ exist_netgroups_ddb|join(', ') }}"}}}' --region {{ region }}
+    delegate_to: localhost
+
+  ########################################
+  #changing permisions to directory 0700
+  - name: changing permissions of cert files to 0700
+    become: yes
+    file:
+      path: "{{ item }}"
+      mode: 0700
+    with_items:
+      - '/etc/openldap/certs'
+      - '/etc/openldap/cacerts'
+
+  # changing permissions to cert files to 0644
+  - name: changing permissions and owner of cert files to 0644
+    become: yes
+    file:
+      path: "{{ item }}"
+      mode: 0644
+      owner: root
+      group: root
+    with_items:  "{{ change_permissions }}"
+  # changing permissions to cert files to 0600
+  - name: Changing permission of .conf  files
+    become: yes
+    file:
+      path: "{{ item }}"
+      mode: 0600
+    with_items:
+      - '/etc/security/access.conf'
+      - '/etc/sssd/sssd.conf'
+      - '/etc/raddb/server'
+      - '/etc/ssh/sshd_config'
+  #Changing permissions of sudoers file
+  - name: changing permissions of sudoers file
+    become: yes
+    file:
+      path: /etc/sudoers
+      mode: 0440
+      owner: root
+      group: root
+  #Updating Cert files
+  - name: Updating the certs
+    become: yes
+    shell: /usr/sbin/cacertdir_rehash /etc/openldap/cacerts; /usr/sbin/cacertdir_rehash /etc/openldap/certs
+  #Restarting services 
+  - name: Enable boot start for services
+    become: yes
+    service:
+      name: "{{ item }}"
+      state: restarted
+      enabled: yes
+    with_items: 
+      - sshd
+  #check selinux permissions
+  - name: selinux update
+    become: yes
+    shell: |
+      semanage permissive --list | grep sssd_t
+    register: permissive_sssd
+    ignore_errors: true
+  - name: print permissive sssd
+    become: yes
+    shell: |
+      semanage permissive -a sssd_t
+      restorecon /usr/sbin/sssd
+      restorecon /usr/libexec/sssd/sssd*
+      restorecon /etc/sssd/sssd.conf
+    register: selinux_status     
+    when: permissive_sssd.stdout | length == 0
+  #checking selinux policies updated or not
+  - name: checking selinux permissions updated or not
+    debug:
+      msg: "Successfully modified selinux permissions for sssd"
+    failed_when: selinux_status.stderr | length > 0
+    when: permissive_sssd.stdout | length == 0
+  #To check LDAP installation status,by  checking sssd service status
+  - name: Changing permission of .conf  files(temperory)
+    become: yes
+    file:
+      path: /etc/sssd/sssd.conf
+      mode: 0644
+  - name: Checking for the sssd.conf file
+    stat: 
+      path: /etc/sssd/sssd.conf
+    register: file_check
+  - block:  
+    - name: "Retrieve remote ini file"
+      fetch:
+        src: /etc/sssd/sssd.conf
+        dest: /tmp/{{instance_id}}/
+        flat: yes
+    - name: "Read and store my value"
+      no_log: true
+      set_fact:
+        uri: "{{ lookup( 'ini', 'ldap_uri section=domain/LDAP file=/tmp/{{instance_id}}/sssd.conf' ) }}"
+        ldap_default_bind_dn: "{{ lookup( 'ini', 'ldap_default_bind_dn section=domain/LDAP file=/tmp/{{instance_id}}/sssd.conf' ) }}"
+        ldap_default_authtok: "{{ lookup( 'ini', 'ldap_default_authtok section=domain/LDAP file=/tmp/{{instance_id}}/sssd.conf' ) }}"
+        ldap_search_base: "{{ lookup( 'ini', 'ldap_search_base section=domain/LDAP file=/tmp/{{instance_id}}/sssd.conf' ) }}"
+    - name: Changing permission of .conf  files
+      become: yes
+      file:
+        path: /etc/sssd/sssd.conf
+        mode: 0600
+    - name: remove temperory sssd.conf file
+      file:
+        path: /tmp/{{instance_id}}/sssd.conf
+        state: absent
+      delegate_to: localhost
+    when: file_check.stat.exists == true
+  - block:
+    - name: ldap_search query
+      become: yes
+      no_log: true
+      shell: |
+        ldapsearch -x -D "{{ ldap_default_bind_dn }}" -w {{ ldap_default_authtok }}  -H {{ uri.split(',')[1] }} -b "ou=netgroup,{{ ldap_search_base }}" "genisnetgroupname=CA_NRG_AWS_GPOPS_BASTION"|grep "genisnetgroupname: CA_NRG_AWS_GPOPS_BASTION"
+      register: ldapsearch         
+
+    - name: Get Service Status
+      systemd:
+        name: "sssd"
+      register: sssd_service_rollback  
+  #Rescue starts here,when any task in above block fails
+ #######################
+  #ROLLBACK STARTED
+  ####################
+  rescue:
+  - name: Rollback of LDAP configuration ,if LDAP not installed properly
+    become: yes
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      remote_src: yes
+      backup: yes
+    with_items:
+    - { dest: '/etc/ssh/sshd_config', src: '/etc/ssh/backup_sshd_config' }
+    - { dest: '/etc/sudoers', src: '/etc/backup_sudoers' }
+    - { dest: '/etc/security/access.conf', src: '/etc/security/backup_access.conf ' }
+    - { dest: '/etc/sssd/sssd.conf', src: '/etc/sssd/backup_sssd.conf' }
+    - { dest: '/etc/raddb/server', src: '/etc/raddb/backup_server' }
+    - { dest: '/etc/openldap/ldap.conf', src: '/etc/openldap/backup_ldap.conf' }
+    - { dest: '/etc/nsswitch.conf', src: '/etc/backup_nsswitch.conf' }
+    - { dest: '/etc/sysconfig/authconfig', src: '/etc/sysconfig/backup_authconfig' }
+    - { dest: '/etc/pam.d/password-auth-ac', src: '/etc/pam.d/backup_password-auth-ac' }
+    - { dest: '/etc/pam.d/system-auth-ac', src: '/etc/pam.d/backup_system-auth-ac' }
+    ignore_errors: true
+  - name: Un-install the SSSD-CLIENT package
+    become: yes
+    package:
+      name: "{{ item }}" 
+      state: absent
+    with_items:
+    - sssd-client
+    ignore_errors: true
+  #Update dynamodb table, Rollback Completed
+  - name: updating Rollback Completed in LDAP status
+    shell: |
+      aws dynamodb update-item --table-name {{ ddb_table_name }} --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"LdapStatus": {"Value": {"S": "Rollback Completed"}}}' --region {{ region }}
+    delegate_to: localhost
+    ignore_errors: true
+  - name: Send Rollback notification message via SNS
+    sns:
+      msg: "Rollback Completed, since LDAP Installation Failed on:{{ instance_id }} in AWSaccountID: {{ account_id }}."
+      subject: "Rollback Completed, since LDAP Installation Failed!"
+      topic: "{{ topic_arn_rollback }}"
+      region: "{{ region }}"
+    delegate_to: localhost
+    ignore_errors: true
+#Fail playbook execution,to stop running on remaining hosts..
+- block:
+    - name: Checking playbook execution status on phase-1,if playbooks fails stop executing on remaining instances
+      shell: /bin/false
+      run_once: yes
+    - meta: end_play
+  any_errors_fatal: true
+  when: (sssd_service_rollback.status.LoadError is defined) or (ldapsearch.rc != 0)
+
+############################
+#End Rollback
+###########################
+############################
+
+#Update dynamodb,LDAP installation status
+- name: updating LDAP status
+  shell: |
+    aws dynamodb update-item --table-name {{ ddb_table_name }} --key '{"uai": {"S": "{{ tags.uai }}"},"instanceID":{"S": "{{ instance_id }}"}}' --attribute-updates '{"LdapStatus": {"Value": {"S": "Now installed"}}}' --region {{ region }}
+  delegate_to: localhost
+  when: ldapsearch.rc == 0
+#Restart sssd service 
+- name: restart sssd
+  become: yes
+  service: 
+    name: sssd
+    state: restarted 
+    enabled: yes
+#Send SNS Notification if installattion successfull
+- name: Send default notification message via SNS
+  sns:
+    msg: "LDAP Successfully installed on InstanceID:{{ instance_id }} in AWSaccountID: {{ account_id }}."
+    subject: "LDAP Installation completed!"
+    topic: "{{ topic_arn_install }}"
+    region: "{{ region }}"
+  delegate_to: localhost
+  when: ldapsearch.rc == 0
+  ignore_errors: true

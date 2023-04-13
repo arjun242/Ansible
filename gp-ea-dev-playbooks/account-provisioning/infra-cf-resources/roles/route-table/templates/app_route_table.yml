@@ -1,0 +1,4 @@
+NatGatewayId:
+  stack_output: {{prefix}}EIP-NAT-Gateway/NATID
+VgwID:
+  stack_output: {{prefix}}export-vpc-default/ExportVPCGatewayId

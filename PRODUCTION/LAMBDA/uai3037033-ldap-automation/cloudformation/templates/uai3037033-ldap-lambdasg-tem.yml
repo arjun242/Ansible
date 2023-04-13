@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating Lambda SG
+Parameters:
+  AppName:
+    Type: String
+    Default: ldap
+  UAI:
+    Type: String
+    Default: uai3037033
+  Env:
+    Type: String
+    Default: prd
+
+Resources:
+
+  LambdaSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub 'SG for Lambda Function ${UAI}-${AppName}-${Env}-Lambda'
+      GroupName: !Sub "${UAI}-${AppName}-${Env}-Lambda"
+      VpcId: !ImportValue vpcid
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: 'tcp'
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: 'tcp'
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: 'tcp'
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 3.0.0.0/8
+        - IpProtocol: 'tcp'
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 3.0.0.0/8
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${Env}-Lambda"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: Env
+          Value: !Ref Env
+
+Outputs:
+  LambdaSG:
+    Description: "SG of the LambdaSG"
+    Value: !Ref LambdaSG
+    Export:
+      Name: ldapLambdaSg

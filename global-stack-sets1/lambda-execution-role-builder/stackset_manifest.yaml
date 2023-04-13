@@ -1,0 +1,49 @@
+custom_resources:
+  - name: execution-role-builder-setup
+    custom_stackset_name: cf-macro-execution-role-builder-setup
+    description: Cloudformation Macro execution-role-builder setup
+    template_file: templates/execution-role-builder-setup.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: gp-power-us-east
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        override_parameter_file: parameters/eu-west.yml
+        regions:
+          - eu-west-1     
+      - account: ent-emea-pnw-preprod
+        override_parameter_file: parameters/eu-west.yml
+        regions:
+          - eu-west-1
+      - account: pwr-power-services
+        regions:
+          - us-east-1
+      - account: pwr-itsecops
+        regions:
+          - us-east-1
+      - account: pwr-primavera
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        regions:
+          - us-east-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+      - account: gp-aws4-b
+        regions:
+          - us-east-1
+      - account: pwr-sharedhr
+        regions:
+          - us-east-1
+      - account: gp-aws5-d
+        regions:
+          - us-east-1

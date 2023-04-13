@@ -1,0 +1,3 @@
+UAI: "{{UAI}}"
+APPSubnetCIDR: "{{appSubnetCIDR}}"
+DBSubnetCIDR: "{{dbSubnetCIDR}}"

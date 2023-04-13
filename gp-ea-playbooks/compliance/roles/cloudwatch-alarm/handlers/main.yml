@@ -1,0 +1,11 @@
+---
+- name: restart cwa
+  become: yes
+  service: 
+     name: amazon-cloudwatch-agent
+     state: restarted
+     
+- name: restart cwa win
+  win_service:
+     name: AmazonCloudWatchAgent
+     state: restarted

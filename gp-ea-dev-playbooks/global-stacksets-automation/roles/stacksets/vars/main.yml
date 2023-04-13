@@ -1,0 +1,7 @@
+source_directory: "/tmp/account-automation-folder/directory_to_be_synced"
+# git_org: "gp-ops-non-prod"
+# git_repo: ""
+aws_account_name: "test-ansible"
+aws_account_id: "123456789"
+aws_region: "us-east-1"
+vpc_alias: "test-aws"

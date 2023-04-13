@@ -1,0 +1,56 @@
+#This playbook checks if crowdstrike is running; if not, downloads and installs it 
+---
+      
+    #Checks if CSFalconService is running or not
+    - name: Check if CrowdStrike is Installed
+      win_service:
+        name: CSFalconService
+      register: result
+      
+    - name: Message
+      debug: msg='CrowdStrike is already installed'
+      when: result.exists == true
+
+    #This block is executed when CrowdStrike is not installed
+    - block:
+ 
+      # This task creates a directory for the downloaded CrowdStrike package
+      - name: Create directory for Crowdstrike package on master node
+        file:
+           path: "{{ crowdstrike_downloaded_dir }}"
+           state: directory
+        delegate_to: localhost
+            
+      # This task downloads Crowdstrike installer from s3 bucket on Master Node
+      - name: Downloading CrowdStrike package on Master Node
+        aws_s3:
+            bucket: "{{ BucketName }}"
+            object: "{{ crowdstrike_package_windows }}"
+            dest: "{{ crowdstrike_downloaded_dir }}/{{ crowdstrike_package_windows }}"
+            mode: get
+            region: "{{ reg }}"
+            overwrite: different
+        delegate_to: localhost
+        
+      # This task copies the files from master node to target host
+      - name: Copy downloaded files from Master Node to Windows Server
+        win_copy:
+          src: "{{ crowdstrike_downloaded_dir }}/{{ crowdstrike_package_windows }}"
+          dest: "{{ installer_dir_windows }}{{ crowdstrike_package_windows }}"
+             
+      # This task installs CrowdStrike on target host       
+      - name: Install CrowdStrike Falcon
+        win_package:
+          path: "{{ installer_dir_windows }}{{ crowdstrike_package_windows }}"
+          state: present
+          creates_service: csfalconservice
+          arguments: '/install /quiet /norestart CID={{ cid }}' #Fetches the CID from secret.yml (encrypted using ansible vault)
+
+      # This task starts the CrowdStrike service on target host
+      - name: Starting Falcon Sensor Service (Windows)
+        win_service:
+          name: csfalconservice
+          state: started
+          start_mode: auto
+
+      when: result.exists == false or update == 'yes'

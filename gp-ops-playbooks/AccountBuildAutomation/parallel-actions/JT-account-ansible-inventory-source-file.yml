@@ -1,0 +1,3 @@
+- hosts: localhost
+  roles:
+    - account-ansible-inventory-source-file

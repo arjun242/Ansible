@@ -1,0 +1,14 @@
+plugin: aws_ec2
+regions:
+ - us-east-1
+iam_role_arn: arn:aws:iam::821735935111:role/app/uai3047316/gp-ansible-execution
+filters:
+ tag:ansiblehost: 
+   - Windows
+   - Linux/UNIX
+ instance-state-name : running  
+keyed_groups:
+ - key: tags.ansiblehost.split("/")[0]
+   prefix: instance
+compose:
+  ansible_host: private_ip_address

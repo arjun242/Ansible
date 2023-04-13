@@ -1,0 +1,131 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creating the lamabda function for creating CloudWatch alarm.
+
+Mappings: 
+  RegionMap: 
+    us-east-1: 
+      "LambdaCodeBucket": "gp-us-east-ops-automation-common-artifacts"
+    eu-west-1: 
+      "LambdaCodeBucket": "gp-eu-west-ops-automation-common-artifacts"
+    us-west-1: 
+      "LambdaCodeBucket": "gp-us-west-ops-automation-common-artifacts"
+    ap-southeast-1: 
+      "LambdaCodeBucket": "gp-ap-southeast-ops-automation-common-artifacts"
+Parameters:
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed. UAI starting sequence MUST be in uppercase.
+    ConstraintDescription: The UAI must be valid, but specified as 'UAI' in upper case followed by 7 digits
+    AllowedPattern: '^uai[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: "uai3026350"
+  LambdaName:
+    Description: Lambda Name
+    Type: String
+    Default: "gp-alert-Lambda"
+  LambdaCodeZipKey:
+    Description: S3 bucket zip key
+    Type: String
+    Default: "lambda/cloudwatch-metric-alert.zip"
+  SnsTopicName:
+    Description: SNS Topic Name
+    Type: String
+    Default: "OpsCloudWatch"
+Resources:
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cloudwatch-alerts-lambda-role
+      Path: "/inf/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+  LambdaExecutionPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: cloudwatch-alerts-lambda
+      Roles:
+        - Ref: LambdaExecutionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CreatePutLogs
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: "arn:aws:logs:*:*:*"
+          - Sid: AllCloudwatchPermissions
+            Effect: Allow
+            Action:
+              - cloudwatch:PutMetricData
+              - cloudwatch:PutMetricAlarm
+              - cloudwatch:SetAlarmState
+              - cloudwatch:EnableAlarmActions
+              - cloudwatch:DescribeAlarmsForMetric
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:ListMetrics
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
+              - ec2:CreateTags
+              - ec2:DescribeTags
+            Resource: "*"
+
+  LambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: !Ref LambdaName
+      Description: "lamabda function for creating CloudWatch alarm"
+      Handler: "index.handler"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: "python3.7"
+      Code:
+        S3Bucket: !FindInMap [RegionMap, !Ref "AWS::Region", LambdaCodeBucket]
+        S3Key: !Ref LambdaCodeZipKey
+      MemorySize: 128
+      Timeout: 300
+      Environment:
+        Variables:
+          SNS_TOPIC_NAME: !Ref SnsTopicName
+          SNS_TOPIC: !ImportValue ops-notify-sns-topic
+      Tags:
+      - Key: uai
+        Value: !Ref UAI
+      - Key: env
+        Value: prd
+
+  Ec2EventScheduledRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: ec2-event-notification-rule
+      Description: Run every time ec2 task is stopped
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Instance State-change Notification
+        detail:
+          state:
+            - running
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt 'LambdaFunction.Arn'
+          Id: gp-alerts-notification-lambda
+
+  InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt 'LambdaFunction.Arn'
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt "Ec2EventScheduledRule.Arn"

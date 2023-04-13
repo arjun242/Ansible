@@ -1,0 +1,80 @@
+ # History:
+  # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name..
+  
+schemaVersion: '2.2'
+description: executes the document on linux server to configure the Splunk agent.
+parameters: 
+  SplunkPassKey:
+    type: String
+    description: splunk pass key
+    default: "{{ssm:/automation/ami/splunkpasskey}}"
+mainSteps:
+- name: SplunkConfig
+  action: aws:runShellScript
+  maxAttempts: 3
+  timeoutSeconds: 3600
+  onFailure: Abort
+  inputs:
+    runCommand:
+    - #check to see if the needed proceses exist
+    - command -v jq >/dev/null && continue || { echo "jq not installed, attempting install"; yum install jq -y; }
+    - command -v /opt/splunkforwarder/bin/splunk >/dev/null && continue || { echo "splunk is not installed"; exit 1; }
+    - export hostname=`curl http://169.254.169.254/latest/meta-data/hostname`
+    - export instncid=`curl http://169.254.169.254/latest/meta-data/instance-id`
+    - export ip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
+    - export mac=`curl http://169.254.169.254/latest/meta-data/mac`
+    - export vpc=`curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/$mac/vpc-id`
+    #- export region=`curl http://169.254.169.254/latest/user-data |grep awsregion
+    #  |head -1 |cut -d '=' -f 2`
+    - export region=`curl http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region`
+    - export account=`curl http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId`
+    - rm -rf /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - if [ -z "$(grep deployment-client /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf)" ]
+    - then
+    - echo [deployment-client] > /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - fi
+    - export instancetype=`curl http://169.254.169.254/latest/meta-data/instance-type`
+    - if [ -z "$(grep $region:$vpc:$account /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf)" ]
+    - then
+    - echo clientName = $region:$vpc:$account:$instancetype >> /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - echo "disabled=false" >> /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - fi
+    - if [ -z "$(grep target-broker:deploymentServer /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf)" ]
+    - then
+    - echo [target-broker:deploymentServer] >> /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - echo targetUri=ds-useast.gelogging.com:443 >> /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - chown root:root /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - chmod 600 /opt/splunkforwarder/etc/apps/deployment_client/default/deploymentclient.conf
+    - fi
+    - if [ -z "$(grep deployment /opt/splunkforwarder/etc/apps/deployment_client/default/server.conf)" ]
+    - then
+    -   echo [deployment] > /opt/splunkforwarder/etc/apps/deployment_client/default/server.conf
+    -   if [ -z "$(grep {{SplunkPassKey}} /opt/splunkforwarder/etc/apps/deployment_client/default/server.conf)" ]
+    -   then
+    -        echo "{{SplunkPassKey}}" >> /opt/splunkforwarder/etc/apps/deployment_client/default/server.conf       
+    -   fi            
+    - fi
+    - rm -rf /opt/splunkforwarder/etc/system/local/inputs.conf
+    - echo [default] > /opt/splunkforwarder/etc/system/local/inputs.conf
+    - echo host = $hostname:$instncid:$ip:$region:$vpc:$account >> /opt/splunkforwarder/etc/system/local/inputs.conf               
+    - chown root:root /opt/splunkforwarder/etc/system/local/inputs.conf
+    - chmod 600 /opt/splunkforwarder/etc/system/local/inputs.conf
+    # - sed -i -re 's/^(serverName) = (.*)/\1 = '$hostname'/' /opt/splunkforwarder/etc/system/local/server.conf
+    - sleep 10
+    - if [ -z "$(ps -ef | grep splunkd | grep -v grep)" ]
+    - then 
+    -    "/opt/splunkforwarder/bin/splunk start --answer-yes --no-prompt --accept-license"    
+    - fi    
+    - if [ "$(/opt/splunkforwarder/bin/splunk status | grep 'not running' | wc -l)" -eq 1 ]
+    - then
+    -     echo "splunk is not running"
+    -     "/opt/splunkforwarder/bin/splunk start --answer-yes --no-prompt --accept-license"
+    - else 
+    -     echo "splunk has already ran restart to adopt config"
+    -     "/opt/splunkforwarder/bin/splunk restart"
+    - fi
+    - if [ "$(/opt/splunkforwarder/bin/splunk display boot-start | grep not | wc -l)" -ne 0 ]
+    - then
+    -     "/opt/splunkforwarder/bin/splunk enable boot-start"
+    - fi           
+    - sleep 10

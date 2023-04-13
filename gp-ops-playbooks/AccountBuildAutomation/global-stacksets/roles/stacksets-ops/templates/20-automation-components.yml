@@ -1,0 +1,15 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: cf-macro-execution-role-builder-setup
+    parameters:
+      LambdaCodeS3Bucket: gp-{{ region_prefix }}-ops-automation-common-artifacts
+  - name: lambda-ami-ssm-parameters-update
+    parameters:
+      LambdaCodeS3Bucket: gp-{{ region_prefix }}-ops-automation-common-artifacts
+  - name: iam-user-cleanup-assumed-role
+  - name: ebs-volume-cleanup-assumed-role
+  - name: common-access-logging-s3-bucket
+  - name: iam-role-cleanup-assumed-role

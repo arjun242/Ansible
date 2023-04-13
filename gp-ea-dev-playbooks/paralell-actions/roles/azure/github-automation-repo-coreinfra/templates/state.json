@@ -1,0 +1,49 @@
+{
+    "params": {
+        "files": {
+            "CODEOWNERS":{{ codeowners['azure'] | tojson }},
+            "README.md": "{{ deployment_application_name }}",
+            "backend.tf": {
+                "resourceGroup":"rg-{{sub_code}}-uai3047228-terraform",
+                "hubSubscriptionID":"{{ hub_subscription_id }}",
+                "storageAccount":"satfstatefilestorage",
+                "containerName": "statefilestorage"
+            },
+            "main.tf": {
+                "hubSubscriptionID":"{{ hub_subscription_id }}",
+                "versions": {
+                    "app_infra": "N/A",
+                    "core_infra": "{{ versions['azure'].core_infra }}",
+                    "vm_provisioning": "N/A"
+                }
+            },
+            "main.auto.tfvars": {
+                "deploymentSubscriptionID": "{{ deployment_subscription_id }}",
+                "uai": "uai3047228",
+                "vnetRG": "{{ vnet_resource_group }}",
+                "appSnCIDR": "{{ deployment_subscription_appSN_CIDR }}",
+                "dbSnCIDR": "{{ deployment_subscription_dbSN_CIDR }}",
+                "intSnCIDR": "{{ deployment_subscription_intSN_CIDR }}",
+                "hubVnetCIDR": "{{ hub_subscription_CIDR }}",
+                "includeSubnets": "{{ include_subnets }}"
+            }
+        },
+        "configs": {
+            "coreInfra": true,
+            "vmss": false,
+            "hookURL": "{{ deployment_hook_url }}"
+        }
+    },
+    "args": {
+        "token": "{{ pat }}",
+        "sso": "{{ sso }}",
+        "provider": "azure",
+        "mode": "repo",
+        "org": "{{ deployment_subscription_name }}",
+        "region": "{{ deployment_subscription_region }}",
+        "env": "{{ deployment_subscription_env }}",
+        "appUAI": "uai3047228",
+        "appName": "{{ deployment_application_name }}",
+        "aws_acct_number": "NONE"
+    }
+}

@@ -1,0 +1,5 @@
+---
+# Calling windows domain join role
+- hosts: all
+  roles:
+    - windows-domain-join

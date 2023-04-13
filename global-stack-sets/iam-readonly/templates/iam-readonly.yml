@@ -1,0 +1,242 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: GP Managed Read Only Policy and Fed role
+
+Resources:
+  ReadOnlyFedRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "readonly-fed"
+      Path: '/gp/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action: 'sts:AssumeRoleWithSAML'
+            Condition:
+              StringEquals:
+                'SAML:aud': 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+      - !Ref ReadOnlyFedPolicy
+
+  ReadOnlyFedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Basic managed policy modeled after the AmazonSSMManagedInstanceCore'
+      ManagedPolicyName: 'GP-Read-Only-Policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AccessToCommonKMS
+            Effect: Allow
+            Action:
+            - "kms:GenerateDataKey"
+            - "kms:Decrypt"
+            - "kms:Encrypt"
+            - "kms:ReEncrypt"
+            - "kms:CreateGrant"
+            - "kms:DescribeKey"
+            Resource: !Sub arn:${AWS::Partition}:kms::${AWS::AccountId}:alias/common-kms-key
+
+          - Sid: ReadOnlyAccess
+            Effect: Allow
+            Action:
+            - acm:Describe*
+            - acm:List*
+            - application-autoscaling:Describe*              
+            - athena:List*
+            - autoscaling:Describe*
+            - batch:DescribeComputeEnvironments
+            - batch:DescribeJobDefinitions
+            - cloudformation:DescribeStack*
+            - cloudformation:Get*
+            - cloudformation:List*
+            - cloudformation:GetStackPolicy
+            - cloudformation:EstimateTemplateCost
+            - cloudformation:ValidateTemplate
+            - cloudfront:Get*
+            - cloudfront:List*              
+            - cloudtrail:DescribeTrails
+            - cloudtrail:GetEventSelectors
+            - cloudtrail:GetTrailStatus
+            - cloudtrail:ListTags
+            - cloudtrail:LookupEvents
+            - cloudwatch:Describe*
+            - cloudwatch:Get*
+            - cloudwatch:List*
+            - codebuild:BatchGet*
+            - codebuild:Get*
+            - codebuild:List*             
+            - codedeploy:Batch*
+            - codedeploy:Get*
+            - codedeploy:List*
+            - codepipeline:Get*
+            - codepipeline:List*
+            - codestar:Describe*
+            - codestar:List*
+            - cognito-identity:ListIdentityPools
+            - cognito-idp:ListUserPools
+            - cognito-sync:Describe*
+            - cognito-sync:List*
+            - comprehend:Describe*
+            - comprehend:List*
+            - compute-optimizer:Describe*
+            - compute-optimizer:Get*
+            - config:BatchGetAggregateResourceConfig
+            - config:BatchGetResourceConfig
+            - config:Deliver*
+            - config:Describe*
+            - config:Get*
+            - config:List*
+            - datapipeline:DescribeObjects
+            - datapipeline:DescribePipelines
+            - datapipeline:EvaluateExpression
+            - datapipeline:GetPipelineDefinition
+            - datapipeline:ListPipelines
+            - datapipeline:QueryObjects
+            - datapipeline:ValidatePipelineDefinition
+            - datasync:Describe*
+            - datasync:List*
+            - dax:Describe*
+            - dax:ListTags
+            - directconnect:Describe*
+            - dlm:GetLifecyclePolicies
+            - dlm:GetLifecyclePolicy
+            - dms:Describe*
+            - dms:ListTagsForResource              
+            - dynamodb:Describe*
+            - dynamodb:List*
+            - ec2:Describe*
+            - ec2:Get*
+            - ecr:Describe*
+            - ecr:List*
+            - ecr:Get*
+            - ecs:Describe*
+            - ecs:List*
+            - ecs:ListClusters
+            - appmesh:List*
+            - appmesh:Describe*
+            - elasticache:Describe*
+            - elasticbeanstalk:Describe*
+            - elasticfilesystem:Describe*
+            - elasticfilesystem:List*
+            - elasticloadbalancing:Describe*
+            - elasticmapreduce:Describe*
+            - elasticmapreduce:ListClusters
+            - elasticmapreduce:ListInstances
+            - es:Describe*
+            - es:ListDomainNames
+            - events:Describe*
+            - events:List*
+            - firehose:Describe*
+            - firehose:List*
+            - fms:ListComplianceStatus
+            - fms:ListPolicies             
+            - glacier:DescribeVault
+            - glacier:GetVaultAccessPolicy
+            - glacier:ListVaults
+            - globalaccelerator:Describe*
+            - globalaccelerator:List*              
+            - guardduty:Get*
+            - guardduty:List*
+            - greengrass:List*
+            - iam:GenerateCredentialReport
+            - iam:GenerateServiceLastAccessedDetails
+            - iam:Get*
+            - iam:List*
+            - iam:SimulateCustomPolicy
+            - iam:SimulatePrincipalPolicy
+            - inspector:Describe*
+            - inspector:Get*
+            - inspector:List*
+            - inspector:Preview*              
+            - kinesis:DescribeStream
+            - kinesis:ListStreams
+            - kinesis:ListTagsForStream
+            - kinesisanalytics:ListApplications
+            - kms:Describe*
+            - kms:Get*
+            - kms:List*
+            - lambda:GetAccountSettings
+            - lambda:GetFunctionConfiguration
+            - lambda:GetLayerVersionPolicy
+            - lambda:GetPolicy
+            - lambda:List*
+            - license-manager:List*
+            - logs:Describe*
+            - logs:ListTagsLogGroup
+            - machinelearning:DescribeMLModels            
+            - rds:Describe*
+            - rds:DownloadDBLogFilePortion
+            - rds:ListTagsForResource
+            - redshift:Describe*
+            - rekognition:Describe*
+            - rekognition:List*
+            - route53:Get*
+            - route53:List*
+            - route53domains:GetDomainDetail
+            - route53domains:GetOperationDetail
+            - route53domains:ListDomains
+            - route53domains:ListOperations
+            - route53domains:ListTagsForDomain
+            - route53resolver:List*
+            - route53resolver:Get*
+            - s3:GetAccelerateConfiguration
+            - s3:GetAccountPublicAccessBlock
+            - s3:GetAnalyticsConfiguration
+            - s3:GetBucket*
+            - s3:GetEncryptionConfiguration
+            - s3:GetInventoryConfiguration
+            - s3:GetLifecycleConfiguration
+            - s3:GetMetricsConfiguration
+            - s3:GetObjectAcl
+            - s3:GetObjectVersionAcl
+            - s3:GetReplicationConfiguration
+            - s3:ListAllMyBuckets
+            - sagemaker:Describe*
+            - sagemaker:List*
+            - sdb:DomainMetadata
+            - sdb:ListDomains
+            - secretsmanager:GetResourcePolicy
+            - secretsmanager:ListSecrets
+            - secretsmanager:ListSecretVersionIds
+            - servicediscovery:List* #servicediscovery
+            - servicediscovery:Get*
+            - servicediscovery:DiscoverInstances
+            - securityhub:Describe*
+            - securityhub:Get*
+            - securityhub:List*
+            - serverlessrepo:GetApplicationPolicy
+            - serverlessrepo:List*              
+            - sns:GetTopicAttributes
+            - sns:ListSubscriptionsByTopic
+            - sns:ListTopics
+            - sqs:GetQueueAttributes
+            - sqs:GetQueueUrl
+            - sqs:List*
+            - ssm:Describe*
+            - ssm:List*          
+            - tag:GetResources
+            - tag:GetTagKeys
+            - transfer:Describe*
+            - transfer:List*
+            - translate:List*
+            - trustedadvisor:Describe*
+            - waf:ListWebACLs
+            - waf-regional:ListWebACLs
+            - states:Desc*
+            - states:Get*
+            - states:List*
+            - backup:Describe*
+            - backup:Get*
+            - backup:List*
+            Resource: "*"
+
+Outputs:
+  
+  FederatedRoleName:
+    Value: !Ref ReadOnlyFedRole
+  FederatedRoleArn:
+    Value: !GetAtt ReadOnlyFedRole.Arn

@@ -1,0 +1,48 @@
+Description:  OPS Lambda, Cloudwatc automations, Cloudwatch metrics
+DeployTo: https://github.build.ge.com/gp-ops/gr-accounts-setup
+custom_resources:
+  - custom_stackset_name: dlm-policy-state-check-lambda
+    template_file: templates/dlm-policy-statecheck-lambda.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: ec2-upgrade-lambda
+    template_file: templates/ec2-upgrade-lambda.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: dlm-lambda-trigger
+    template_file: templates/dlm-lambda-cloudwatch-trigger.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+    
+  - custom_stackset_name: Ssm-Defect-Servers-Lambda
+    template_file: templates/Ssm-Defect-Servers-lambda.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: Ssm-Defect-Server-Lambda-Trigger
+    template_file: templates/Ssm-Defect-Servers-Lambda-trigger.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution    
+    
+  - custom_stackset_name: Tag-Patch-Lambda
+    template_file: templates/Tag-Patch-Lambda.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: Tag-Patch-Lambda-Trigger
+    template_file: templates/Tag-Patch-Lambda-Trigger.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: Windows-R2-Standard-Lambda
+    template_file: templates/Windows-R2-Standard-Lambda.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    
+  - custom_stackset_name: Windows-R2-Standard-Lambda-Trigger
+    template_file: templates/Windows-R2-Standard-Lambda-Trigger.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

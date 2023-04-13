@@ -1,0 +1,4 @@
+---
+- hosts: localhost
+  roles:
+    - SSM_doc_sharing

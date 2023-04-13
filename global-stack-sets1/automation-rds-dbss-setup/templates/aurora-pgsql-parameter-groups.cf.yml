@@ -1,0 +1,325 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates the Aurora Postgresql parameters groups that are neccessary for Aurora Postgresql RDS instance builds.
+              It must be created prior to any RDS Instances
+              Last version 30-Apr-2020
+
+ # History:
+  # 14-Apr-2020: Initial version
+  #Stack Name: dbss-aurora-pgsql-parameter-groups
+  # 30-May-2020: Added VPC alias parameter
+
+
+Parameters:
+  VPCAlias:
+    Description: "The VPC alias within this account. This is logical label identifying execution environment."
+    Type: String
+    Default: 'dbss'
+
+Resources:
+
+  rdsaurorapsqldefaultparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.6 DEFAULT parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlisoparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.6 ISO parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlsoxparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.6 SOX parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqldodparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.6 DOD parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlgxpparamgroup106:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.6 GXP parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqldefaultparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.10 DEFAULT parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlisoparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.10 ISO parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlsoxparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.10 SOX parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqldodparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.10 DOD parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlgxpparamgroup1010:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 10.10 GXP parameter group with audit enabled
+      Family: 'aurora-postgresql10'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+
+
+  rdsaurorapsqldefaultparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 11.4 DEFAULT parameter group with audit enabled
+      Family: 'aurora-postgresql11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlisoparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 11.4 ISO parameter group with audit enabled
+      Family: 'aurora-postgresql11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlsoxparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 11.4 SOX parameter group with audit enabled
+      Family: 'aurora-postgresql11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqldodparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 11.4 DOD parameter group with audit enabled
+      Family: 'aurora-postgresql11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  rdsaurorapsqlgxpparamgroup114:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Aurora postgresql 11.4 GXP parameter group with audit enabled
+      Family: 'aurora-postgresql11'
+      Parameters:
+        rds.log_retention_period: "4320"
+        pgaudit.role: "rds_pgaudit"
+        shared_preload_libraries: "pgaudit"
+        pgaudit.log: "ddl"
+        log_rotation_size: "1000000"
+        log_connections: "1"
+        log_disconnections: "1"
+
+Outputs:
+
+  rdsaurorapsqldefaultparamgroup106:
+    Description: "RDS Parameter Group that stores default parameters with audit enabled for Aurora PostgreSQL 10.6"
+    Value: !Ref rdsaurorapsqldefaultparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:default:106'
+      
+  rdsaurorapsqlisoparamgroup106:
+    Description: "RDS Parameter Group that stores ISO parameters with audit enabled for Aurora aurora-postgreSQL 10.6"
+    Value: !Ref rdsaurorapsqlisoparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:iso:106'
+      
+  rdsaurorapsqldodparamgroup106:
+    Description: "RDS Parameter Group that stores DoD parameters with audit enabled for Aurora PostgreSQL 10.6"
+    Value: !Ref rdsaurorapsqldodparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:dod:106'
+      
+  rdsaurorapsqlgxpparamgroup106:
+    Description: "RDS Parameter Group that stores GxP parameters with audit enabled for Aurora PostgreSQL 10.6"
+    Value: !Ref rdsaurorapsqlgxpparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:gxp:106'
+     
+  rdsaurorapsqlsoxparamgroup106:
+    Description: "RDS Parameter Group that stores SOx parameters with audit enabled for Aurora PostgreSQL 10.6"
+    Value: !Ref rdsaurorapsqlsoxparamgroup106
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:sox:106'
+
+
+  rdsaurorapsqldefaultparamgroup1010:
+    Description: "RDS Parameter Group that stores default parameters with audit enabled for Aurora PostgreSQL 10.10"
+    Value: !Ref rdsaurorapsqldefaultparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:default:1010'
+      
+  rdsaurorapsqlisoparamgroup1010:
+    Description: "RDS Parameter Group that stores ISO parameters with audit enabled for Aurora PostgreSQL 10.10"
+    Value: !Ref rdsaurorapsqlisoparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:iso:1010'
+      
+  rdsaurorapsqldodparamgroup1010:
+    Description: "RDS Parameter Group that stores DoD parameters with audit enabled for Aurora PostgreSQL 10.10"
+    Value: !Ref rdsaurorapsqldodparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:dod:1010'
+      
+  rdsaurorapsqlgxpparamgroup1010:
+    Description: "RDS Parameter Group that stores GxP parameters with audit enabled for Aurora PostgreSQL 10.10"
+    Value: !Ref rdsaurorapsqlgxpparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:gxp:1010'
+     
+  rdsaurorapsqlsoxparamgroup1010:
+    Description: "RDS Parameter Group that stores SOx parameters with audit enabled for Aurora PostgreSQL 10.10"
+    Value: !Ref rdsaurorapsqlsoxparamgroup1010
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:sox:1010'
+
+  
+  rdsaurorapsqldefaultparamgroup114:
+    Description: "RDS Parameter Group that stores default parameters with audit enabled for Aurora PostgreSQL 11.4"
+    Value: !Ref rdsaurorapsqldefaultparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:default:114'
+      
+  rdsaurorapsqlisoparamgroup114:
+    Description: "RDS Parameter Group that stores ISO parameters with audit enabled for Aurora PostgreSQL 11.4"
+    Value: !Ref rdsaurorapsqlisoparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:iso:114'
+      
+  rdsaurorapsqldodparamgroup114:
+    Description: "RDS Parameter Group that stores DoD parameters with audit enabled for Aurora PostgreSQL 11.4"
+    Value: !Ref rdsaurorapsqldodparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:dod:114'
+      
+  rdsaurorapsqlgxpparamgroup114:
+    Description: "RDS Parameter Group that stores GxP parameters with audit enabled for Aurora PostgreSQL 11.4"
+    Value: !Ref rdsaurorapsqlgxpparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:gxp:114'
+     
+  rdsaurorapsqlsoxparamgroup114:
+    Description: "RDS Parameter Group that stores SOx parameters with audit enabled for Aurora PostgreSQL 11.4"
+    Value: !Ref rdsaurorapsqlsoxparamgroup114
+    Export:
+      Name: !Sub 'rds:${VPCAlias}:parametergroups:aurora-postgresql:sox:114'

@@ -1,0 +1,86 @@
+---
+# Include all required parameters files
+- name: Include vars file
+  include_vars: templates-directory.yml
+
+- name: Include secret vars
+  include_vars: secret.yml
+  no_log: true
+
+- name: Include secret vars
+  include_vars: state.yml
+  no_log: true
+
+# Create project folder to execute within
+- name: Create a new directory for parameter file
+  file:
+    state: directory
+    path: "{{source_directory}}/{{resource_folder}}/"
+
+
+# Pull GitHub Org/Repo codebase into local
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/gp-ops/gp-jenkins-selfservice"
+    dest: "{{source_directory}}/{{resource_folder}}/"
+    clone: yes
+    recursive: yes
+    version: master
+
+# Write statefile from parameters into local filesystem
+- name: Generate python state file
+  template:
+    src: "state.json"
+    dest: "{{source_directory}}/{{resource_folder}}/state.json"
+    
+
+# Invoke GitHub Scripts & Show output to the screen
+- name: Invoke GitHub Org Script
+  command: "python3 {{source_directory}}/{{resource_folder}}/git-org-scripts/src/main.py --host 'ansible' --cloud 'azure'"
+  register: github
+
+- name: Display GitHub Script Output to Screen
+  debug: "{{ github.stdout }}"
+
+# Clone newly created repository into local directory
+- name: Clone the repository to new directory
+  git:
+    repo: "https://{{sso}}:{{pat}}@github.build.ge.com/{{deployment_subscription_name}}/uai3047228-vmss"
+    dest: "{{source_directory}}/{{resource_folder}}/uai3047228-vmss"
+    clone: yes
+    recursive: yes
+    version: master
+
+# Authenticate into managed identity for application builds
+# - name: Authenticate via mi-ea-appbuilds managed identity, stage environment variables.
+#   command: "{{ item }}"
+#   with_items:
+#   - az login --identity --username ec4d7eec-bf83-465d-a693-8c5e98bd84bd
+#   - az account set --subscription 9c1ab385-2554-43ca-bdf8-f8d937bf4a28
+
+# Handle terraform deployment activities
+# COMMENTING OUT STEP DUE TO PENDING BUG WITH RUNNING TF ON ANSIBLE VM
+# BUG: https://dev.azure.com/328-gp-azr-ops/Azure%20Product/_workitems/edit/436
+# - name: Terraform init, plan, apply
+#   command: "{{ item }}"
+#   with_items:
+#     - terraform init -reconfigure
+#     - terraform plan
+#     - terraform apply -auto-approve
+#   environment:
+#     ARM_CLIENT_ID: 'ec4d7eec-bf83-465d-a693-8c5e98bd84bd'
+#     ARM_TENANT_ID: '15ccb6d1-d335-4996-b6f9-7b6925f08121'
+#     ARM_USE_MSI: 'true'
+#   args:
+#     chdir: "{{source_directory}}/{{resource_folder}}/uai3047228-vmss"
+#   register: terraform
+
+# # Display terraform output to the screen 
+# - name: Display Terraform Script Output to Screen
+#   debug: "{{ terraform.stdout }}"
+
+# Delete project repository
+- name: Delete directory for parameter file
+  file:
+    state: absent
+    path: "{{source_directory}}/{{resource_folder}}/"

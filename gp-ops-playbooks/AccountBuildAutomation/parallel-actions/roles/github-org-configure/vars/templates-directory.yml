@@ -1,0 +1,4 @@
+source_directory: "/tmp/account-automation-folder/directory_to_be_synced"
+FileLocation_orgslist: "git-org-scripts/base_config/aws/orgs" # location contains the orgs.json file
+resource_folder: github-org-configure
+src_directory: "/tmp/azure_ansible/github_automations/"

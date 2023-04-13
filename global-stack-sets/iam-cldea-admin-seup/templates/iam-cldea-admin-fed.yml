@@ -1,0 +1,177 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "cldEAAdmin Fed role and policy for the EA Team"
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Description: Name of the  Role... e.g.
+    Default: 'cldEAAdmin'
+
+  RolePath:
+    Type: String
+    Description: Path for the role
+    Default: 'hq'
+
+Resources:
+  cldEAAdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub bu-pw-${RoleName}-fed
+      Path: !Sub /${RolePath}/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow # Allow this role to be assumed by a federated entity
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:saml-provider/ge-saml-for-aws-mfa
+            Action:
+              - sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: 'https://signin.aws.amazon.com/saml'
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/GP-Read-Only-Policy"
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/common-fed-role"  
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ssm-session-deny"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"  # IamFullAceess Managed Policy
+        - "arn:aws:iam::aws:policy/AWSOrganizationsReadOnlyAccess"  # AWS OrganizationReadonly Access
+
+  SAAdminPolicies:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${RoleName}-policy"
+      Roles:
+        - !Ref cldEAAdminRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Sid: PassRole
+            Action:
+              - iam:PassRole
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/app/*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/lam/*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*/bu-pw-*-app"
+            Effect: Allow
+
+          - Sid: IAMControlsLimited
+            Effect: Allow
+            Action:
+              - iam:List*
+              - iam:Get*
+              - iam:UpdateServerCertificate
+              - iam:UpdateSigningCertificate
+              - iam:UploadServerCertificate
+              - iam:UploadSigningCertificates
+              - iam:CreateServiceLinkedRole
+            Resource:
+              - "*"
+
+          - Sid: CognitoFullAccess
+            Effect: Allow
+            Action:
+              - cognito-identity:*
+              - cognito-idp:*
+              - cognito-sync:*
+            Resource:
+              - "*"
+              
+          - Sid: EnableAllControls
+            Action:
+              - a4b:*
+              - acm:*
+              - apigateway:*
+              - application-autoscaling:*
+              - appstream:*
+              - kinesisvideo:*
+              - athena:*
+              - autoscaling:*
+              - aws-marketplace:*
+              - cloud9:*
+              - codedeploy:*
+              - codepipeline:*
+              - codestar:*
+              - codestar-connections:*
+              - compute-optimizer:*
+              - codebuild:*
+              - codecommit:*
+              - cloudshell:*
+              - config:*
+              - cloudformation:*
+              - cloudtrail:*
+              - cloudfront:*
+              - cloudsearch:*
+              - cloudwatch:*
+              - datapipeline:*
+              - dlm:*
+              - dms:*
+              - dynamodb:*
+              - ec2:*
+              - ec2-reports:*
+              - ecs:*
+              - ecr:*
+              - elasticfilesystem:*
+              - elasticache:*
+              - elasticbeanstalk:*
+              - elasticloadbalancing:*
+              - elasticmapreduce:*
+              - es:*
+              - events:*
+              - execute-api:*
+              - glacier:*
+              - glue:*
+              - greengrass:*
+              - inspector:*
+              - kms:*
+              - lambda:*
+              - logs:*
+              - machinelearning:*
+              - opsworks:*
+              - opsworks-cm:*
+              - quicksight:*
+              - rds:*
+              - redshift:*
+              - resource-groups:*
+              - sdb:*
+              - s3:*
+              - ses:*
+              - snowball:*
+              - sns:*
+              - sqs:*
+              - ssm:*
+              - sts:DecodeAuthorizationMessage
+              - support:*
+              - swf:*
+              - tag:*
+              - trustedadvisor:*
+              - waf:*
+              - wafv2:*
+              - waf-regional:*
+              - xray:*
+              - health:*
+              - route53:*
+              - route53domains:*
+              - route53resolver:*
+              - states:*
+              - servicecatalog:*
+              - sagemaker:*
+              - serverlessrepo:*
+              - secretsmanager:*
+              - access-analyzer:*
+              - servicequotas:*
+              - appconfig:*
+              - license-manager:*
+            Resource: "*"
+            Effect: Allow
+
+
+Outputs:
+  
+  FederatedRoleName:
+    Value: !Ref cldEAAdminRole
+  FederatedRoleArn:
+    Value: !GetAtt cldEAAdminRole.Arn

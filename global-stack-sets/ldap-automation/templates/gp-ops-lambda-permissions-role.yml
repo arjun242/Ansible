@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: LDAP Lambda Function EC2 permission in target accounts
+Resources:
+  LDAPLambdaAssumeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "uai3037033-ldap-lambda-assume-role" 
+      Path: '/app/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::325381443140:role/app/uai3037033-ldap-lambda-execution-role'
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: 'ec2DescribePolicy'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - ec2:DescribeTags
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DetachNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeInstances
+                  = ec2:DescribeInstanceStatus
+                Resource: "*"

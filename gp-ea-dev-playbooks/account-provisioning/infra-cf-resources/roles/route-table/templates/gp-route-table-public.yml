@@ -1,0 +1,167 @@
+---
+# History
+# 11/18 : Fixing the NAt Gate Way Id.
+# Aligned Splunk to public IPS posted in https://devcloud.swcoe.ge.com/devspace/display/GKFDB/a.+Splunk+UF+Prerequisites 
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Route Table Cloud CloudFormation template 
+Parameters:
+  NatGatewayId:
+    Type: String
+    Description: The Nat Gate Way Id.    
+  VgwID:
+    Type: String
+    Description: VPC Gate Way Id.    
+Resources:
+  AppRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !ImportValue '{{prefix}}vpcid'
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackName'
+        - Key: Network
+          Value: Customer
+        - Key: Name
+          Value: {{prefix}}rt-App
+        - Key: uai
+          Value: uai3047030
+          
+  AppRouteToNATEniID:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 0.0.0.0/0
+      NetworkInterfaceId: !ImportValue '{{prefix}}NATEniId'
+      
+  AppRouteTo3x:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 3.0.0.0/8
+      GatewayId: !Ref 'VgwID'
+
+  AppRouteTo10x:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 10.0.0.0/8
+      GatewayId: !Ref 'VgwID'
+      
+  AppRouteOut1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.38.0/26
+      GatewayId: !Ref 'VgwID'
+  
+  AppRouteOut2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.38.64/26
+      GatewayId: !Ref 'VgwID'
+      
+  AppRouteOut3:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.38.128/26
+      GatewayId: !Ref 'VgwID'
+  
+  AppRouteOut4:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.38.192/26
+      GatewayId: !Ref 'VgwID'    
+    
+  AppRouteOut5:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.39.0/26
+      GatewayId: !Ref 'VgwID'
+  
+  AppRouteOut6:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.39.64/26
+      GatewayId: !Ref 'VgwID'
+      
+  AppRouteOut7:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.39.128/25
+      GatewayId: !Ref 'VgwID'
+  
+  AppRouteOut8:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 192.35.40.0/24
+      GatewayId: !Ref 'VgwID'    
+  
+  AppRouteOut9:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 8.23.90.173/32
+      NatGatewayId: !Ref NatGatewayId
+  
+  AppRouteOut10:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 12.155.41.141/32
+      NatGatewayId: !Ref NatGatewayId
+      
+  AppRouteOut11:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 8.22.209.141/32
+      NatGatewayId: !Ref NatGatewayId
+  
+  AppRouteOut12:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 12.229.99.173/32
+      NatGatewayId: !Ref NatGatewayId    
+      
+  AppRouteOut15:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 34.199.101.28/32
+      NatGatewayId: !Ref NatGatewayId
+  
+  AppRouteOut20:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 34.200.8.46/32
+      NatGatewayId: !Ref NatGatewayId    
+
+  AppRouteOut22:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 34.200.8.136/32
+      NatGatewayId: !Ref NatGatewayId
+      
+  AppRouteOut23:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 'AppRouteTable'
+      DestinationCidrBlock: 34.200.8.139/32
+      NatGatewayId: !Ref NatGatewayId    
+    
+Outputs:
+  RouteTable:
+    Description: 'The id of the route table.'
+    Value: !Ref AppRouteTable
+    Export:
+      Name: '{{prefix}}rt-AppId'

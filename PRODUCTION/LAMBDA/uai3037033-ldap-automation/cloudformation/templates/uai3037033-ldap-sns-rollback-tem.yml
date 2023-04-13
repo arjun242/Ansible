@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creating cloudwatch Alarm for stuck queue messages
+Parameters:
+  UAI:
+    Type: String
+    Description: Name of the application
+    Default: uai3036913
+    MaxLength: 10
+  SNSDisplayName:
+    Type: String
+    Description: display name
+  ApiEndpoint:
+    Type: String
+    Description: subscription email-id
+    Default: 200 
+  Env:
+    Type: String
+    Default: prd
+    AllowedValues:
+      - 'nonprd'
+      - 'prd'
+    Description: Choose relevant Environment.    
+Resources:
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Ref SNSDisplayName
+      Subscription:
+        - Endpoint: !Ref ApiEndpoint
+          Protocol: "email"
+      TopicName: "uai3037033-ldap-installation-rollback-complete"
+      Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: env
+          Value: !Ref Env

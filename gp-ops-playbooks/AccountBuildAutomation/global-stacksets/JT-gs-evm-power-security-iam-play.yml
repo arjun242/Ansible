@@ -1,0 +1,6 @@
+# Description: rendering global stacksets files 28-evm-patching-iam.yml
+# Requirements: Stackset Execution role CFT
+---
+- hosts: localhost
+  roles:
+    - evm-power-security-iam

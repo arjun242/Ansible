@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Export the values of AWS Resources for database provisioning templates used in Guardrail Accounts.
+
+Parameters:
+  VPCAlias:
+    Description: "Specify the VPC name or VPC alias within this account. It is used as logical label to identify execution environment."
+    Type: String
+    Default: gr-db
+
+Conditions:
+  HasNot: !Equals [ 'true', 'false' ]
+
+# Dummy Null Resource
+Resources:
+  NullResource:
+    Type: 'Custom::NullResource'
+    Condition: HasNot
+
+Outputs:
+  DBVpc:
+    Value: !ImportValue vpcid
+    Description: Database VPC
+    Export:
+      Name: !Sub "vpc:${VPCAlias}:id"
+
+  DBSubnet:
+    Value: !ImportValue db-subnetgroup
+    Description: Database Subnet group for RDS Instances
+    Export:
+      Name: !Sub "rds:${VPCAlias}:db-subnetgroup:name"
+
+  DBSG:
+    Value: !ImportValue GP-Base-RDS-SG
+    Description: standard database security group for RDS Instances
+    Export:
+      Name: !Sub "rds:${VPCAlias}:base-rds-sg:id"
+
+  # DefaultRDSKms:
+  #   Value: !ImportValue rds-default-kmskey-id
+  #   Description: Default master key that protects my RDS database volumes when no other key is defined
+  #   Export:
+  #     Name: !Sub "kms:base:${VPCAlias}-default-rds:arn"
+
+
+
+      
+
+   

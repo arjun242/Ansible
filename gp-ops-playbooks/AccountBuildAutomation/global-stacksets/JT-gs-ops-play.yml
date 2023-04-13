@@ -1,0 +1,7 @@
+# Description: rendering global stacksets files related to ops and account setup
+# Requirements: Stackset Execution role CFT
+---
+- hosts: localhost
+  roles:
+    - stacksets-ops
+    

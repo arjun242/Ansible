@@ -1,0 +1,134 @@
+---
+# This playbook will install the Amazon-Cloudwatch-Agent on Windows hosts and after installation it will setup Logical Disk and High Memory Alarm on those target hosts.
+
+   - name: Check if Amazon-Cloudwatch-Agent is already installed
+     win_service:
+       name: AmazonCloudWatchAgent
+     register: cwa_path
+
+   - name: Check for the configuration file
+     win_stat: 
+        path: C:/ProgramData/Amazon/AmazonCloudWatchAgent/amazon-cloudwatch-agent.json
+     register: conf_check
+
+   # This block is executed for CWA installation on Windows only when CWA is not already installed or the service is not in running state
+   - block:
+       
+       # This task downloads Amazon-Cloudwatch-Agent file from Global s3 bucket 
+       - name: Download Amazon-Cloudwatch-Agent Package from Global S3 Bucket
+         win_get_url:
+           url: "{{ cwa_url_windows }}"
+           dest: C:\
+ 
+       # This task installs Amazon-Cloudwatch-Agent
+       - name: Installing Amazon-Cloudwatch-Agent on Windows
+         win_package:
+           path: C:\amazon-cloudwatch-agent.msi
+           state: present
+       
+       # This task deletes the Amazon-Cloudwatch-Agent msi downloaded File after successful installation
+       - name: Deleting the Amazon-Cloudwatch-Agent msi File after successful installation
+         win_file:
+           path: C:\amazon-cloudwatch-agent.msi
+           state: absent
+         
+     when: not cwa_path.exists or cwa_path.state != 'running' or win_update == 'yes'
+     
+   - block:
+       # This task will configure the Amazon-Cloudwatch-Agent by templating the amazon-cloudwatch-agent.json on the target host     
+       - name: Configure the Amazon-Cloudwatch-Agent
+         template:
+           src: "amazon-cloudwatch-agent-win.json.j2"
+           dest: "C:/ProgramData/Amazon/AmazonCloudWatchAgent/amazon-cloudwatch-agent.json"
+         notify: restart cwa win
+    
+       # This task will delete the existing 'default' configuration from the target node 
+       - name: Deleting the existing 'default' configuration file
+         win_file: 
+           path: C:\ProgramData\Amazon\AmazonCloudWatchAgent\Configs\default
+           state: absent
+         notify: restart cwa win
+    
+     when: conf_check.stat.exists == false or win_update == 'yes'
+         
+   # This task will start the Amazon-Cloudwatch-Agent Service if it is in stopped state
+   - name: Start the Amazon-Cloudwatch-Agent Service
+     win_service:
+       name: AmazonCloudWatchAgent
+       state: started
+     when: cwa_path.state != 'running'
+
+   # This task will fetch the metadata facts of the EC2 instance. Here we are using only one win_shell to run multiple commands and storing the result in register 'all_facts'
+   - name: Executing Multiple commands together in a single shell
+     win_shell: $inid = invoke-restmethod -uri http://169.254.169.254/latest/meta-data/instance-id; echo $inid; \
+                $reg = (Invoke-RestMethod http://169.254.169.254/latest/dynamic/instance-identity/document).region; echo $reg; \
+                $accid = (Invoke-RestMethod http://169.254.169.254/latest/dynamic/instance-identity/document).accountId; echo $accid;
+     register: all_facts
+
+   # This task stores Instance ID, Region and Account ID in variables
+   - set_fact:
+       instance_id: "{{ all_facts.stdout_lines[0] | trim }}"
+       region_placement: "{{ all_facts.stdout_lines[1] | trim }}"
+       account_id: "{{ all_facts.stdout_lines[2] | trim }}"
+
+   # This task will fetch the aws_secret_key, aws_access_key and session_token from the passed iam role
+   - name: Get the secrets from role
+     no_log: true
+     delegate_to: localhost
+     sts_assume_role:
+       role_arn: "arn:aws:iam::{{ account_id }}:role/app/uai3047316/gp-ansible-execution"
+       role_session_name: "AnsibleSession"
+       region: "{{ region_placement }}"
+     register: assumed_role
+
+   # This task is setting the gathered secret keys from previous task in separate variables
+   - name: Setting the secrets in varaibles
+     no_log: true
+     set_fact:
+       access_key: "{{ assumed_role.sts_creds['access_key'] }}"
+       secret_key: "{{ assumed_role.sts_creds['secret_key'] }}" 
+       session_token: "{{ assumed_role.sts_creds['session_token'] }}"
+
+   # This task sets up Logical Disk Alarm Metrics
+   - name: Check Logical Disk
+     no_log: true
+     ec2_metric_alarm:
+       aws_access_key: "{{ access_key }}"
+       aws_secret_key: "{{ secret_key }}"
+       security_token: "{{ session_token }}"
+       state: present
+       region: "{{ region_placement }}"
+       name: "{{ instance_id }}-disk"
+       description: "Alarm check LogicalDisk"
+       metric: "LogicalDisk % Free Space"
+       namespace: "CWAgent"
+       statistic: Average
+       comparison: "<"
+       threshold: 20
+       period: 300
+       evaluation_periods: 2
+       dimensions: {"InstanceId":"{{ instance_id }}", "instance":"C:", "objectname":"LogicalDisk"}
+       alarm_actions: ["arn:aws:sns:{{ region_placement }}:{{ account_id }}:OpsCloudWatch"]
+     delegate_to: localhost
+       
+   # This task sets up Memory Alarm Metrics     
+   - name: High Memory Alarm
+     no_log: true
+     ec2_metric_alarm:
+       aws_access_key: "{{ access_key }}"
+       aws_secret_key: "{{ secret_key }}"
+       security_token: "{{ session_token }}"
+       state: present
+       region: "{{ region_placement }}"
+       name: "{{ instance_id }}-mem"
+       description: "Alarm when memory used is high"
+       metric: "Memory % Committed Bytes In Use"
+       namespace: "CWAgent"
+       statistic: Average
+       comparison: ">"
+       threshold: 80
+       period: 300
+       evaluation_periods: 2
+       dimensions: {"InstanceId":"{{ instance_id }}","objectname":"Memory"}
+       alarm_actions: ["arn:aws:sns:{{ region_placement }}:{{ account_id }}:OpsCloudWatch"]   
+     delegate_to: localhost   

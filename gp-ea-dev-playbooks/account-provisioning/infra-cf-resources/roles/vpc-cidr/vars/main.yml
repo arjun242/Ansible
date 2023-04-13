@@ -1,0 +1,2 @@
+app_subnet_hosts: 64
+db_subnet_hosts: 16

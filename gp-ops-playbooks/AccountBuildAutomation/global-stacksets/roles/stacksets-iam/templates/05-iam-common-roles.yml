@@ -1,0 +1,8 @@
+---
+account: '{{ aws_account_id }}'
+region: "{{ aws_region }}"
+terminate: {{ terminate }}
+stacksets:
+  - name: iam-common-ssm-instanceprofile
+  - name: iam-common-ecsautoscalingsvcrole
+  - name: iam-ssm-custom-service-role

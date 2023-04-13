@@ -1,0 +1,6 @@
+UAI: uai3037033
+AppName: ldap
+Env: prd
+TargetGroupProtocol: HTTP
+TargetGroupPort: 8005
+HealthCheckPath: /netgroup

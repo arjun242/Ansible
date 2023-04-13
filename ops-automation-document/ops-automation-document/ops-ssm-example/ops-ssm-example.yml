@@ -1,0 +1,10 @@
+---
+schemaVersion: '2.2'
+description: Hello world Example - private doc
+parameters: {}
+mainSteps:
+- action: aws:runShellScript
+  name: echohello
+  inputs:
+    runCommand:
+    - echo "Hello World  !!!!"

@@ -1,0 +1,8 @@
+UAI: uai3037033
+Env: prd
+AppName: ldap
+TaskName: frontend
+ContainerCpu: 1024
+ContainerMemory: 2048
+ImageURI: 325381443140.dkr.ecr.us-east-1.amazonaws.com/uai3037033-ldap-prd:frontend
+ContainerPort: 5001

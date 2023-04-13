@@ -1,0 +1,79 @@
+ # History:
+ # # 07-Oct-2019 - Initial Version : Creating just document only.  So we can control document Name.
+  
+schemaVersion: '2.2'
+description: executes the document to check crowdstrike EC2 instances....
+parameters:
+  BucketName:
+    type: String
+    default: 'gp-us-east-ops-automation-common-tools'
+    description: common bucket
+mainSteps:
+
+- name: WindowsSetup
+  action: aws:runPowerShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Windows 
+  inputs:
+    runCommand:
+    - "$app = Get-WmiObject -Class Win32_Product | Where-Object {"
+    - '$_.Name -match "CrowdStrike Sensor Platform"'
+    - "}"
+    - if ( "CrowdStrike Sensor Platform" -eq $app.Name ) {
+    - '   echo "CrowdStrike is already installed. Quitting..."'
+    - "} else {"
+    #- "$wc = New-Object system.Net.WebClient"    
+    - $EXECUTABLE = "C:\Windows\Temp\WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe"
+    #- $URL = "https://{{BucketName}}.s3.us-east-1.amazonaws.com/cloud-strike/WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe"
+    - aws s3 cp s3://{{BucketName}}/cloud-strike/WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe C:/Windows/Temp/WindowsSensor_D96C92BDFB0946B589727FF82FB4601A-9E.exe
+    #- cd C:\Windows\Temp\
+    #- "$wc.DownloadFile( $URL, $EXECUTABLE )"
+    - Start-Process -Wait -FilePath $EXECUTABLE -ArgumentList "/install /quiet /norestart
+      CID=D96C92BDFB0946B589727FF82FB4601A-9E "
+    - ' echo "CrowdStrike has been installed"'
+    - "}"
+
+
+- name: LinuxOSType
+  action: aws:runShellScript
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - if [ -z "$(ps -ef | grep 'falcon-sensor' | grep -v grep)" ]
+    - then 
+    -   yum list package falcon-sensor && yum remove falcon-sensor -y
+    -   mkdir -p /tmp/agents
+    -   cd /tmp/agents
+    -   ostype=`cat /etc/os-release | grep ID= | grep -v VERSION | cut -d '=' -f 2 | sed 's/"//g'`    
+    -   exeOs='el7'    
+    -     if [ $ostype == "amzn" ]; then
+    -       '[ -z "$(cat /etc/os-release | grep VERSION=\"2\")" ] && exeOs="amzn1" || exeOs="amzn2"'
+    -     else
+    -       exeOs='el7'
+    -     fi     
+    -   aws s3 cp s3://{{BucketName}}/cloud-strike/falcon-sensor.$exeOs.x86_64.rpm /tmp/agents/
+    -   yum install falcon-sensor.$exeOs.x86_64.rpm -y
+    -   /opt/CrowdStrike/falconctl -s --cid=D96C92BDFB0946B589727FF82FB4601A-9E
+    -  else
+    -   echo "falcon-sensor running"
+    - fi
+    - sleep 10
+    - service falcon-sensor restart
+    #- ServiceSts=`systemctl status falcon-sensor.service | grep 'Stopped CrowdStrike'`    
+    #- if [ "exists" == '$(command -v systemctl >/dev/null && echo "exists" || echo "notexists")' ]
+    #- then
+    #-   ServiceSts=`systemctl status falcon-sensor.service | grep 'Stopped CrowdStrike'`
+    #-   svcCommand="systemctl start falcon-sensor.service"
+    #- else 
+    #-   ServiceSts=`service falcon-sensor status | grep 'stop'`
+    #-   svcCommand="service falcon-sensor start"
+    #- fi    
+    #- if [[ ! -z "$ServiceSts" ]]; then
+    #-    $svcCommand
+    #- systemctl start falcon-sensor.service
+    #- fi

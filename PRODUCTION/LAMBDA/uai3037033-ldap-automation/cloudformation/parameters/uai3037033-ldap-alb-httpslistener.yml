@@ -1,0 +1,6 @@
+PortToUse: 443
+CertificateName: arn:aws:acm:us-east-1:325381443140:certificate/250fb0bc-d2a1-4c15-a4ee-f671133c7cb8
+SchemeToUse:  internal
+ClientIdToUse: uai3037033ldap
+SecretToUse: uai3037033ldapauto
+PathPatternToUse: /

@@ -1,0 +1,15 @@
+custom_resources:
+
+  - name: gp-patching-dev-window
+    custom_stackset_name: gp-patching-dev-maintenance-window
+    description: maintenance window for dev instances
+    template_file: templates/gp-patching-instance-cf.yml 
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    deploy_to:
+      - account: gp-ops
+        override_parameter_file: parameters/gp-patching-dev-instance.yml
+        regions:
+          - us-east-1
+          
+

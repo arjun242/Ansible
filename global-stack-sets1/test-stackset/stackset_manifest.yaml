@@ -1,0 +1,7 @@
+custom_resources:
+  - name: read-only-fed
+    custom_stackset_name: test-stackset
+    description: Stack Setup for Read only Fed role and policy
+    template_file: templates/iam-readonly.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

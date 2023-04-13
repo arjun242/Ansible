@@ -1,0 +1,35 @@
+custom_resources:
+  - name: compliance-framework
+    description: Framework for deploying config rules
+    template_file: templates/application-account-initial-setup.yaml
+    deploy_to:
+      - account: gp-power-us-east
+        regions:
+          - us-east-1
+      - account: pp-steam-eu-west
+        regions:
+          - eu-west-1
+      - account: gp-aws3-b
+        regions:
+          - us-east-1
+      - account: pnw-preprod
+        regions:
+          - us-east-1
+      - account: pnw-prod
+        regions:
+          - us-east-1
+      - account: gp-aws4-b
+        regions:
+          - us-east-1
+      - account: gp-aws5-d
+        regions:
+          - us-east-1
+      - account: gp-ops
+        regions:
+          - us-east-1
+      - account: pnw-emerg-tech
+        regions:
+          - us-east-1
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+    custom_stackset_name: compliance-framework

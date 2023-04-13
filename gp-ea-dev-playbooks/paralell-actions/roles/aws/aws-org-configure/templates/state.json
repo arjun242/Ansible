@@ -1,0 +1,12 @@
+{
+    "params": {
+        "files": {
+            "CODEOWNERS":{{ codeowners | tojson }}
+        }
+    },
+    "args": {
+        "token": "{{ pat }}",
+        "sso": "{{ sso }}",
+        "mode": "org"
+    }
+}

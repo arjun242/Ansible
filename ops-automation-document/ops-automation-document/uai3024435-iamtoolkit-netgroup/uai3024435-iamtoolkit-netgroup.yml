@@ -1,0 +1,474 @@
+---
+schemaVersion: "2.2"
+description: "os-hpa-audit-nix"
+mainSteps:
+- action: "aws:runShellScript"
+  name: "OSHpaAudit"
+  precondition:
+    StringEquals:
+      - platformType
+      - Linux
+  inputs:
+    runCommand:
+    - echo "Validating dependancies..."
+    - CMDS="curl openssl date uname grep awk sed base64 read printf"
+    -  for i in $CMDS
+    -  do
+    -    # command -v will return >0 when the $i is not found
+    -    command -v $i >/dev/null && continue || { echo "$i command not found."; exit 1; }
+    -  done
+    
+    -  if ! command -v jq &> /dev/null
+    -  then
+    -    echo "jq not found, downloading..."
+    -    mkdir -p /tmp/jqproc/
+    -    wget -q -O /tmp/jqproc/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+    -    chmod +x /tmp/jqproc/jq
+    -    export PATH="$PATH:/tmp/jqproc/"
+    -  fi
+    - # Make sure metadata is available
+
+    - "command curl -m 5 -sS http://169.254.169.254/latest/user-data >/dev/null || { echo \"Error: user-data not available\"; exit 1; }"
+
+    - "command curl -m 5 -sS http://169.254.169.254/latest/iam/info >/dev/null || { echo \"Error: iam info not available\"; exit 1; }"
+
+    - "command curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam >/dev/null || { echo \"Error: security creds not available\"; exit 1; }"
+
+    - echo "Dependancy check complete...."
+    - awsVersion=$(aws --version)
+    - echo $awsVersion
+    - # date values
+    - y=$(date +%y)
+    - m=$(date +%m)
+    - date_tmp=$(date +%d-%m-%Y | xargs -0)
+    - ip_tmp_old=$(/sbin/ifconfig | grep -A 1 'eth0' | tail -1 | cut -d ' ' -f 10 | xargs -0)
+    # - ip_tmp=$(/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1)
+    - ip_tmp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+    - instance_id="`curl -s http://169.254.169.254/latest/meta-data/instance-id`"
+    - region="`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed -e 's:\([0-9][0-9]*\)[a-z]*\$:\\1:'`"
+
+    - #Sqs parameters
+    - SQSURL="https://sqs.us-east-1.amazonaws.com/930136447543/uai3024435-iamtoolkit-sqs-qa-fifoqueue.fifo"
+    - SQSURLPRD="https://sqs.us-east-1.amazonaws.com/988201728534/uai3024435-iamtoolkit-sqs-prd-fifoqueue.fifo"
+
+    - name_tmp=$(uname -n | xargs -0)
+    
+    # - acc=$(aws sts get-caller-identity | grep "Account")
+    # - account=$(echo $acc | cut -d ":" -f 2)
+    # - account=${account//[!0-9]/}
+    - account=`curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId`
+    - account_old=$(aws sts get-caller-identity | jq ".Account" | tr -d '"')
+    - if [[ -z $account ]]
+    - then
+    -   account="NA"
+    - fi
+    - echo "Getting UAI Code..."
+    - instUai_tmp="`aws ec2 describe-tags --filters "Name=resource-id,Values=$instance_id" "Name=key,Values=uai" --region $region --output=text | cut -f5`"
+    - instUai_tmp_old=$(curl -m 5 -sS http://169.254.169.254/latest/user-data | grep -i uai | awk -F "=" '{print tolower($2)}')
+    - if [[ -z $instUai_tmp ]]
+    - then
+    -   echo "Resource does NOT have a UAI variable in Tags, Trying Userdata";
+    -   instUai_tmp=$instUai_tmp_old
+    -   var=$instUai_tmp
+    -   var="${var#"${var%%[![:space:]]*}"}"
+    -   var="${var%"${var##*[![:space:]]}"}"
+    -   instUai_tmp=$(echo $var | xargs -0)
+    -   if [[ ! $instUai_tmp =~ ^(uai|UAI)[0-9]{7}$ ]]
+    -   then
+    -     echo "Resource does NOT have a UAI variable in Userdata"
+    -     instUai_tmp="uai0000000"
+    -   fi
+    - fi
+    - var=$instUai_tmp
+    - var="${var#"${var%%[![:space:]]*}"}"
+    - var="${var%"${var##*[![:space:]]}"}"
+    - instUai_tmp=$(echo $var | xargs -0)
+    
+    - instEnv_tmp="`aws ec2 describe-tags --filters "Name=resource-id,Values=$instance_id" "Name=key,Values=env" --region $region --output=text | cut -f5`"
+    - instEnv_tmp_old=$(curl -m 5 -sS http://169.254.169.254/latest/user-data | grep -i env | awk -F "=" '{print tolower($2)}')
+    - if [[ -z $instEnv_tmp ]]
+    - then
+    -   echo "Resource does NOT have an env variable in Tags, Trying Userdata";
+    -   instEnv_tmp=$instEnv_tmp_old
+    -   var=$instEnv_tmp
+    -   var="${var#"${var%%[![:space:]]*}"}"
+    -   var="${var%"${var##*[![:space:]]}"}"
+    -   instEnv_tmp=$(echo $var | xargs -0)
+    -   if [[ ! $instEnv_tmp =~ ^[a-zA-Z]{1,5}$ ]]
+    -   then
+    -     echo "Resource does NOT have a env variable in Userdata, using noenv"
+    -     instEnv_tmp="noenv"
+    -   fi
+    - fi
+    - var=$instEnv_tmp
+    - var="${var#"${var%%[![:space:]]*}"}"
+    - var="${var%"${var##*[![:space:]]}"}"
+    - instEnv_tmp=$(echo $var | xargs -0)
+    - if [[ $instUai_tmp =~ ^uai[0-9]{7}$ ]] || [[ $instUai_tmp =~ ^UAI[0-9]{7}$ ]]
+    - then
+    -   output_file="/tmp/${instUai_tmp}/access_report_${instEnv_tmp}_${instUai_tmp}_${name_tmp}.csv"
+    -   output_filename="access_report_${instEnv_tmp}_${instUai_tmp}_${name_tmp}.csv"
+    -   mkdir -p /tmp/$instUai_tmp
+    -   #echo "Output file: $output_file"
+    -   if [[ -f "$output_file" ]]; then
+    -     rm "$output_file"
+    -   fi
+    -   touch $output_file
+    -   printf 'UAI,Env,InstanceId,IP,AWSAcc,UserType,Source,Username,User,HPA,Root,Date\n' >> $output_file;
+    - else
+    -   "echo \"Error: Resource does NOT have a valid UAI Code\";"
+    -   output_file="/tmp/access_report_${name_tmp}_${date_tmp}.txt"
+    -   touch $output_file
+    - fi
+
+    - echo "Getting Role Arn..."
+    - #roleArn=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/info/ |grep InstanceProfileArn | awk -F "InstanceProfileArn" '{print $2}'|awk -F "," '{print $1}'|sed 's/\"//g'|sed 's/://g'|sed 's/\s//g');
+    - roleArn=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/security-credentials/);
+
+    - if [ -z "$roleArn" ]
+    - then
+    -   "echo \"Error: Could not get role ARN!\";"
+    -   exit 1;
+    - fi
+    - #strip off the arn and just get the roleName
+
+    - roleNam=$(echo $roleArn | awk '{n=split($1,A,"/"); print A[n]}')
+    - "echo \"Role Name: $roleNam\""
+    - echo "Getting access keys..."
+    - accessKey=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/security-credentials/$roleNam | grep "AccessKeyId"|awk -F ":" '{print $2}'|awk -F "," '{print $1}'|sed 's/\"//g' | sed 's/\n//g' | sed 's/\s//g');
+    - if [ -z "$accessKey" ]
+    - then
+    -   "echo \"Error: Could not get access key!\";"
+    -   exit 1;
+    - fi
+    - secretKey=$(curl -m 5 -sS http://169.254.169.254/latest/meta-data/iam/security-credentials/$roleNam | grep "SecretAccessKey"|awk -F ":" '{print $2}'|awk -F "," '{print $1}'|sed 's/\"//g' | sed 's/\s//g');
+    - if [ -z "$secretKey" ]
+    - then
+    -   "echo \"Error: Could not get secret key!!\";"
+    -   exit 1;
+    - fi
+    - function sha256_hash
+    - "{"
+    -   a="$@"
+    -   printf "$a" | openssl dgst -binary -sha256
+    - "}"
+    
+    - function sha256_hash_in_hex
+    - "{"
+    -   a="$@"
+    -   printf "$a" | openssl dgst -binary -sha256 | od -An -vtx1 | sed 's/[ \n]//g' | sed 'N;s/\n//'
+    - "}"
+
+    - function hex_of_sha256_hmac_with_string_key_and_value 
+    - "{"
+    -   KEY=$1
+    -   DATA="$2"
+    -   shift 2
+    -   printf "$DATA" | openssl dgst -binary -sha256 -hmac "$KEY" | od -An -vtx1 | sed 's/[ \n]//g' | sed 'N;s/\n//'
+    - "}"
+
+    - function hex_of_sha256_hmac_with_hex_key_and_value 
+    - "{"
+    -   KEY="$1"
+    -   DATA="$2"
+    -   shift 2
+    -   printf "$DATA" | openssl dgst -binary -sha256 -mac HMAC -macopt "hexkey:$KEY" | od -An -vtx1 | sed 's/[ \n]//g' | sed 'N;s/\n//'
+    - "}"
+
+    - function sign 
+    - "{"
+    -   STRING_TO_SIGN="$1"
+    -   SECRET_ACCESS_KEY="$2"
+    -   REQUEST_DATE="$3"
+    -   REGION="$4"
+    -   REQUEST_SERVICE="$5"
+    -   shift 5
+    -   DATE_HMAC=$(hex_of_sha256_hmac_with_string_key_and_value "AWS4${SECRET_ACCESS_KEY}" ${REQUEST_DATE})
+    -   REGION_HMAC=$(hex_of_sha256_hmac_with_hex_key_and_value "${DATE_HMAC}" ${REQUEST_REGION})
+    -   SERVICE_HMAC=$(hex_of_sha256_hmac_with_hex_key_and_value "${REGION_HMAC}" ${REQUEST_SERVICE})
+    -   SIGNING_HMAC=$(hex_of_sha256_hmac_with_hex_key_and_value "${SERVICE_HMAC}" "aws4_request")
+    -   SIGNATURE=$(hex_of_sha256_hmac_with_hex_key_and_value "${SIGNING_HMAC}" "${STRING_TO_SIGN}")
+    -   printf "${SIGNATURE}"
+    - "}"
+
+    - function create_canonical_request
+    - "{"
+    -   HTTP_REQUEST_METHOD="$1" 
+    -   CANONICAL_URI="$2"
+    -   CANONICAL_QUERY_STRING="$3"
+    -   CANONICAL_HEADERS="$4"
+    -   SIGNED_HEADERS="$5"
+    -   REQUEST_PAYLOAD="$6"
+    -   shift 6
+    -   REQUEST_PAYLOAD_HASH_HEX=$(sha256_hash_in_hex "${REQUEST_PAYLOAD}")
+    -   CANONICAL_REQUEST_CONTENT="${HTTP_REQUEST_METHOD}\n${CANONICAL_URI}\n${CANONICAL_QUERY_STRING}\n${CANONICAL_HEADERS}\n\n${SIGNED_HEADERS}\n${REQUEST_PAYLOAD_HASH_HEX}"
+    -   CANONICAL_REQUEST=$(sha256_hash_in_hex "${CANONICAL_REQUEST_CONTENT}")
+    -   printf "$CANONICAL_REQUEST"
+    - "}"
+
+    - function sign_canonical_request 
+    - "{"
+    -   CANONICAL_REQUEST="$1"
+    -   SECRET_ACCESS_KEY="$2"
+    -   REQUEST_TIME="$3"
+    -   REGION="$4"
+    -   REQUEST_SERVICE="$5"
+    -   shift 5
+    -   REQUEST_DATE=$(printf "${REQUEST_TIME}" | cut -c 1-8)
+    -   ALGORITHM=AWS4-HMAC-SHA256
+    -   CREDENTIAL_SCOPE="${REQUEST_DATE}/${REQUEST_REGION}/${REQUEST_SERVICE}/aws4_request"
+    -   STRING_TO_SIGN="${ALGORITHM}\n${REQUEST_TIME}\n${CREDENTIAL_SCOPE}\n${CANONICAL_REQUEST}"
+    -   printf $(sign $STRING_TO_SIGN $SECRET_ACCESS_KEY $REQUEST_DATE $REGION $REQUEST_SERVICE)
+    - "}"
+
+    - function create_authorization_header 
+    - "{"
+    -   ACCESS_KEY_ID=$1
+    -   SIGNATURE=$2
+    -   REQUEST_TIME=$3
+    -   REQUEST_REGION=$4
+    -   REQUEST_SERVICE=$5
+    -   SIGNED_HEADERS=$6
+    -   shift 6
+    -   REQUEST_DATE=$(printf "${REQUEST_TIME}" | cut -c 1-8)
+    -   ALGORITHM=AWS4-HMAC-SHA256
+    -   CREDENTIAL_SCOPE="${REQUEST_DATE}/${REQUEST_REGION}/${REQUEST_SERVICE}/aws4_request"
+    -   printf "$ALGORITHM \
+    - Credential=$ACCESS_KEY_ID/$REQUEST_DATE/$REQUEST_REGION/$REQUEST_SERVICE/aws4_request, \
+    - SignedHeaders=$SIGNED_HEADERS \
+    - Signature=$SIGNATURE"
+    - "}"
+
+    - function putSqs
+    - "{"
+    -   filename=$2
+    -   filepathname=$1
+
+    -   content_type="application/octet-stream"
+    -   date=$(date +"%a, %d %b %Y %T %z")
+    -   aws sqs send-message --queue-url $SQSURL --message-group-id "IAMTK" --message-body file://$1 --region "us-east-1"
+    # signature=$(echo -en "${string}" | openssl sha1 -hmac "${secretKey}" -binary | base64)
+    # curl -X PUT -T "$output_file" \
+    #   -H "Host: s3.amazonaws.com" \
+    #   -H "Date: $date" \
+    #   -H "Content-Type: application/x-www-form-urlencoded" \
+    #   -H "$S3ACL" \
+    #   -H "Authorization: AWS $accessKey:$signature" \
+    #   "https://s3.amazonaws.com/$S3BUCKET$S3BUCKETPATH$filename"
+
+    - "}"
+    - function curlSqs
+    - "{"
+    -   filename=$2
+    -   filepathname=$1
+
+    -   content_type="application/octet-stream"
+    -   date=$(date +"%a, %d %b %Y %T %z")
+
+    -   TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
+    -   DATESTAMP=$(date -u +"%Y%m%d")
+    -   HOST="sqs.us-east-1.amazonaws.com"
+    -   REQUEST_TIME=$TIMESTAMP
+    -   ROLE_NAME=`curl -s "http://169.254.169.254/latest/meta-data/iam/security-credentials/"`
+    -   API_TOKEN=`curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds:21600"` 
+    -   CREDENTIALS_JSON=`curl -s -H "X-aws-ec2-metadata-token:$API_TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME`
+    -   ACCESS_KEY_ID=`echo $CREDENTIALS_JSON | jq -r '.AccessKeyId'`
+    -   SECRET_ACCESS_KEY=`echo $CREDENTIALS_JSON | jq -r '.SecretAccessKey'`
+    -   TOKEN=`echo $CREDENTIALS_JSON | jq -r '.Token'`
+    -   HTTP_REQUEST_METHOD="POST"
+    -   CANONICAL_URL="/930136447543/uai3024435-iamtoolkit-sqs-qa-fifoqueue.fifo"
+    -   CANONICAL_QUERY_STRING=""
+    -   CANONICAL_HEADERS="content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:${HOST}\nx-amz-date:${REQUEST_TIME}\nx-amz-security-token:${TOKEN}"
+    -   SIGNED_HEADERS="content-type;host;x-amz-date;x-amz-security-token"
+    -   file1=`cat $1`
+    -   REQUEST_PAYLOAD="Action=SendMessage&MessageBody=$file1&MessageGroupId=IAMTK&Version=2012-11-05"
+    -   ENDPOINT="https://sqs.us-east-1.amazonaws.com/930136447543/uai3024435-iamtoolkit-sqs-qa-fifoqueue.fifo"
+    -   REQUEST_REGION="us-east-1"
+    -   REQUEST_SERVICE="sqs"
+    -   CANONICAL_REQUEST=$(create_canonical_request "$HTTP_REQUEST_METHOD" "$CANONICAL_URL" "$CANONICAL_QUERY_STRING" "$CANONICAL_HEADERS" "$SIGNED_HEADERS" "$REQUEST_PAYLOAD")
+    -   SIGNATURE=$(sign_canonical_request "$CANONICAL_REQUEST" "$SECRET_ACCESS_KEY" "$REQUEST_TIME" "$REQUEST_REGION" "$REQUEST_SERVICE")
+    -   AUTHORIZATION_HEADER=$(create_authorization_header $ACCESS_KEY_ID $SIGNATURE $REQUEST_TIME $REQUEST_REGION $REQUEST_SERVICE $SIGNED_HEADERS)
+    -   output=`curl -m 10 -s "$ENDPOINT" -H "content-type:application/x-www-form-urlencoded; charset=utf-8" -H "host:$HOST" -H "x-amz-date:$REQUEST_TIME" -H "x-amz-security-token:$TOKEN" -H "authorization:$AUTHORIZATION_HEADER" -d "$REQUEST_PAYLOAD"`
+    -   exit_status=$?
+    -   echo $exit_status
+    -   if [ $exit_status != 0 ]
+    -   then
+    -   HOST="sqs.eu-west-1.amazonaws.com"
+    -   CANONICAL_URL="/951854665038/uai3024435-iamtoolkit-sqs-qa-fifoqueue.fifo"
+    -   CANONICAL_HEADERS="content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:${HOST}\nx-amz-date:${REQUEST_TIME}\nx-amz-security-token:${TOKEN}"
+    -   ENDPOINT="https://sqs.eu-west-1.amazonaws.com/951854665038/uai3024435-iamtoolkit-sqs-qa-fifoqueue.fifo"
+    -   REQUEST_REGION="eu-west-1"
+    -   CANONICAL_REQUEST=$(create_canonical_request "$HTTP_REQUEST_METHOD" "$CANONICAL_URL" "$CANONICAL_QUERY_STRING" "$CANONICAL_HEADERS" "$SIGNED_HEADERS" "$REQUEST_PAYLOAD")
+    -   SIGNATURE=$(sign_canonical_request "$CANONICAL_REQUEST" "$SECRET_ACCESS_KEY" "$REQUEST_TIME" "$REQUEST_REGION" "$REQUEST_SERVICE")
+    -   AUTHORIZATION_HEADER=$(create_authorization_header $ACCESS_KEY_ID $SIGNATURE $REQUEST_TIME $REQUEST_REGION $REQUEST_SERVICE $SIGNED_HEADERS)
+    -   output=`curl -m 10 -s "$ENDPOINT" -H "content-type:application/x-www-form-urlencoded; charset=utf-8" -H "host:$HOST" -H "x-amz-date:$REQUEST_TIME" -H "x-amz-security-token:$TOKEN" -H "authorization:$AUTHORIZATION_HEADER" -d "$REQUEST_PAYLOAD"`
+    -   exit_status=$?
+    -   echo $exit_status
+    -   fi
+    -   if echo $output | grep -q "MessageId"
+    -   then echo "Pushed to Queue"
+    -   echo $output
+    -   else
+    -   echo "Error when Pushing"
+    -   echo $output
+    -   exit 1
+    -   fi
+    - "}"
+
+    - function curlSqsPrd
+    - "{"
+    -   filename=$2
+    -   filepathname=$1
+
+    -   content_type="application/octet-stream"
+    -   date=$(date +"%a, %d %b %Y %T %z")
+
+    -   TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
+    -   DATESTAMP=$(date -u +"%Y%m%d")
+    -   HOST="sqs.us-east-1.amazonaws.com"
+    -   REQUEST_TIME=$TIMESTAMP
+    -   ROLE_NAME=`curl -s "http://169.254.169.254/latest/meta-data/iam/security-credentials/"`
+    -   API_TOKEN=`curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds:21600"` 
+    -   CREDENTIALS_JSON=`curl -s -H "X-aws-ec2-metadata-token:$API_TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME`
+    -   ACCESS_KEY_ID=`echo $CREDENTIALS_JSON | jq -r '.AccessKeyId'`
+    -   SECRET_ACCESS_KEY=`echo $CREDENTIALS_JSON | jq -r '.SecretAccessKey'`
+    -   TOKEN=`echo $CREDENTIALS_JSON | jq -r '.Token'`
+    -   HTTP_REQUEST_METHOD="POST"
+    -   CANONICAL_URL="/988201728534/uai3024435-iamtoolkit-sqs-prd-fifoqueue.fifo"
+    -   CANONICAL_QUERY_STRING=""
+    -   CANONICAL_HEADERS="content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:${HOST}\nx-amz-date:${REQUEST_TIME}\nx-amz-security-token:${TOKEN}"
+    -   SIGNED_HEADERS="content-type;host;x-amz-date;x-amz-security-token"
+    -   file1=`cat $1`
+    -   REQUEST_PAYLOAD="Action=SendMessage&MessageBody=$file1&MessageGroupId=IAMTK&Version=2012-11-05"
+    -   ENDPOINT="https://sqs.us-east-1.amazonaws.com/988201728534/uai3024435-iamtoolkit-sqs-prd-fifoqueue.fifo"
+    -   REQUEST_REGION="us-east-1"
+    -   REQUEST_SERVICE="sqs"
+    -   CANONICAL_REQUEST=$(create_canonical_request "$HTTP_REQUEST_METHOD" "$CANONICAL_URL" "$CANONICAL_QUERY_STRING" "$CANONICAL_HEADERS" "$SIGNED_HEADERS" "$REQUEST_PAYLOAD")
+    -   SIGNATURE=$(sign_canonical_request "$CANONICAL_REQUEST" "$SECRET_ACCESS_KEY" "$REQUEST_TIME" "$REQUEST_REGION" "$REQUEST_SERVICE")
+    -   AUTHORIZATION_HEADER=$(create_authorization_header $ACCESS_KEY_ID $SIGNATURE $REQUEST_TIME $REQUEST_REGION $REQUEST_SERVICE $SIGNED_HEADERS)
+    -   output=`curl -m 10 -s "$ENDPOINT" -H "content-type:application/x-www-form-urlencoded; charset=utf-8" -H "host:$HOST" -H "x-amz-date:$REQUEST_TIME" -H "x-amz-security-token:$TOKEN" -H "authorization:$AUTHORIZATION_HEADER" -d "$REQUEST_PAYLOAD"`
+    -   exit_status=$?
+    -   echo $exit_status
+    -   if [ $exit_status != 0 ]
+    -   then
+    -   HOST="sqs.eu-west-1.amazonaws.com"
+    -   CANONICAL_URL="/951854665038/uai3024435-iamtoolkit-sqs-qa-failover-fifoqueue.fifo"
+    -   CANONICAL_HEADERS="content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:${HOST}\nx-amz-date:${REQUEST_TIME}\nx-amz-security-token:${TOKEN}"
+    -   ENDPOINT="https://sqs.eu-west-1.amazonaws.com/951854665038/uai3024435-iamtoolkit-sqs-qa-failover-fifoqueue.fifo"
+    -   REQUEST_REGION="eu-west-1"
+    -   CANONICAL_REQUEST=$(create_canonical_request "$HTTP_REQUEST_METHOD" "$CANONICAL_URL" "$CANONICAL_QUERY_STRING" "$CANONICAL_HEADERS" "$SIGNED_HEADERS" "$REQUEST_PAYLOAD")
+    -   SIGNATURE=$(sign_canonical_request "$CANONICAL_REQUEST" "$SECRET_ACCESS_KEY" "$REQUEST_TIME" "$REQUEST_REGION" "$REQUEST_SERVICE")
+    -   AUTHORIZATION_HEADER=$(create_authorization_header $ACCESS_KEY_ID $SIGNATURE $REQUEST_TIME $REQUEST_REGION $REQUEST_SERVICE $SIGNED_HEADERS)
+    -   output=`curl -m 10 -s "$ENDPOINT" -H "content-type:application/x-www-form-urlencoded; charset=utf-8" -H "host:$HOST" -H "x-amz-date:$REQUEST_TIME" -H "x-amz-security-token:$TOKEN" -H "authorization:$AUTHORIZATION_HEADER" -d "$REQUEST_PAYLOAD"`
+    -   exit_status=$?
+    -   echo $exit_status
+    -   fi
+    -   if echo $output | grep -q "MessageId"
+    -   then echo "Pushed to Queue"
+    -   echo $output
+    -   else
+    -   echo "Error when Pushing"
+    -   echo $output
+    -   exit 1
+    -   fi
+    - "}"
+
+
+
+    - echo "Starting data pull..."
+
+    - FILE="/etc/passwd"
+    - if [[ -f "$FILE" ]]; then
+    -     echo "$FILE exist"
+    -    'while IFS=: read -r f1 f2 f3 f4 f5 f6 f7;'
+    -     do
+    -     username=$(echo $f1 | xargs -0)
+    -     shell=$(echo $f7 | xargs -0)
+    -     root="No"
+    -     hpa="No"
+    -    'if grep -q "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers";'
+    -     then
+    -       root="Yes";
+    -     'elif grep -rq "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers.d/";'
+    -       then root="Yes";
+    -     fi
+    -     if [[ ${shell::6} != "/sbin/" ]]; then
+    -       printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$instance_id" "$ip_tmp" "$account" "User" "$(echo $FILE | xargs -0)" "$username" "" "$hpa" "$root" "$date_tmp" >> $output_file;
+    -     fi
+    -     done < "$FILE"
+    - else
+    -   echo "$FILE does NOT exist"
+    - fi
+
+    - FILE="/etc/security/access.conf"
+    - if [[ -f "$FILE" ]]; then
+    -     'echo "$FILE exist"'
+    -     "while IFS=: read -r f1 f2 f3;"
+    -     do
+    -       if [[ ${f1::1} == "+" ]]
+    -       then
+    -         action='Allow';
+    -         origin=$(echo $f3 | xargs -0)
+    -         hpa="No"
+    -         root="No"
+    -         un=$(echo $f2 | xargs -0)
+    -         'if [[ ${un::1} == "@" ]]; then username=${un:1}; else username=$un; fi'
+    -         if [[ $origin == "ALL" ]]; then
+    -           hpa="Yes"
+    -         fi
+    -         'if grep -q "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers";'
+    -         then
+    -           root="Yes";
+    -         'elif grep -rq "^\(\%\|\+\)\?$username[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers.d/";'
+    -           then root="Yes";
+    -         fi
+    -         printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$instance_id" "$ip_tmp" "$account" "Group" "$(echo $FILE | xargs -0)" "$(echo $f2 | xargs -0)" "" "$hpa" "$root" "$date_tmp" >> $output_file;
+    -       elif [[ ${f1::1} == "-" ]]; then
+    -           action='Deny';
+    -           #"printf '{Source: %s, Users: %s, Permissions: %s, Origin: %s}\n' \"$FILE\", \"$f2\" \"$action\" \"$f3\" >> $output_file;"
+    -           printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$instance_id" "$ip_tmp" "$account" "Group" "$(echo $FILE | xargs -0)" "$(echo $f2 | xargs -0)" "" "No" "$root" "$date_tmp" >> $output_file;
+    -       # else echo "not found";
+    -       fi
+    -     done < "$FILE"
+    - else
+    -   echo "$FILE does NOT exist"
+    - fi
+
+    - FILE="/etc/security/access.conf"
+    - if [[ -f "$FILE" ]]; then
+    -     'echo "$FILE exist"'
+    -     "while IFS=: read -r f1 f2 f3;"
+    -     do
+    -       if [[ ${f1::1} == "+" ]]
+    -       then
+    -         action='Allow';
+    -         origin=$(echo $f3 | xargs -0)
+    -         un=$(echo $f2 | xargs -0)
+    -         'if [[ ${un::1} == "@" ]]; then'
+    -           groupname=${un:1}
+    -           hpa="No"
+    -           'if [[ $origin == "ALL" ]]; then'
+    -             hpa="Yes"
+    -           fi
+    -           root="No"
+    -         'if grep -q "^\(\%\|\+\)\?$groupname[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers";'
+    -         then
+    -           root="Yes";
+    -         'elif grep -rq "^\(\%\|\+\)\?$groupname[[:blank:]]*ALL=(ALL)[[:blank:]]*\(NOPASSWD: ALL\|ALL\|NOPASSWD:ALL\)$" "/etc/sudoers.d/";'
+    -           then root="Yes";
+    -         fi
+    -         users=$(getent netgroup $groupname | grep -o '[a-z][a-z0-9][0-9][0-9]\{5\}')
+    -         for user in $users; do
+    -         nixId=$user;
+    -         sso=$(getent passwd $user | cut -d':' -f5 | cut -d' ' -f1);
+    -         name=$(getent passwd $user | cut -d':' -f5 | cut -d' ' -f2-);
+    -         printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$instUai_tmp" "$instEnv_tmp" "$instance_id" "$ip_tmp" "$account" "NixGroup" "$un" "$nixId" "$sso-$name" "$hpa" "$root" "$date_tmp" >> $output_file;
+    -         done
+    -       fi
+    -     fi
+    -     done < "$FILE"
+    - else
+    -   echo "$FILE does NOT exist"
+    - fi
+    - curlSqs $output_file $output_filename
+    - curlSqsPrd $output_file $output_filename

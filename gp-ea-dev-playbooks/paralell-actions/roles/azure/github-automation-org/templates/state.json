@@ -1,0 +1,12 @@
+{
+    "params": {
+        "files": {},
+        "config": {}
+    },
+    "args": {
+        "token": "{{ pat }}",
+        "sso": "{{ sso }}",
+        "provider": "{{ deployment_cloud }}",
+        "mode": "org"
+    }
+}

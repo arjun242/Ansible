@@ -1,0 +1,53 @@
+---
+#####
+# The Exe role for CF stack-set with basic access.
+# Additional access are granted by a attached managed policy created and maintained as a stacksetInstance (iam-stackset-execution-policy).
+#####
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "AWS IAM role for Ansible Account Automation"
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the execution Role... e.g. 'gp-stackset-execution'
+    Default: ''
+
+Resources:
+  IamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${RoleName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - arn:aws:iam::665129569626:role/inf/dev-infra-master-jenkins
+                - arn:aws:iam::665129569626:role/app/uai3047316/gp-ansible-app-qa-ec2
+            Action: sts:AssumeRole
+  Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub '${RoleName}'
+      Roles:
+         - !Ref 'IamRole'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: "StackSetReq"
+            Effect: "Allow"
+            Action: 
+            - ec2:*
+            - vpc:*
+            - cloudformation:*
+            Resource:
+            - "*"
+
+Outputs:
+  RoleName:
+    Description: "Ansible Assume Role Name for Account Automation"
+    Value: !Ref IamRole
+
+  RoleNameArn:
+    Description: "Ansible Assume Role ARN for Account Automation"
+    Value: !GetAtt IamRole.Arn

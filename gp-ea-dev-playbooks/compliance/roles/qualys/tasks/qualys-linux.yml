@@ -1,0 +1,77 @@
+---
+# This playbook tasks will be executed for linux hosts
+
+- name: Check Qualys Service Facts
+  service: 
+    name: 'qualys-cloud-agent'
+  register: qualys_check
+  
+- name: Get all ansible service facts
+  become: yes
+  service_facts:
+  
+- name: Gather Installed Packages Facts
+  become: yes
+  package_facts:
+    manager: "auto"  
+
+- name: Setting the variable for existing version of installed package
+  set_fact:
+    existing_version: "{{ ansible_facts.packages['qualys-cloud-agent'][0].version }}"
+    fact: 'qualys-cloud-agent.service.state'
+  when: "'qualys-cloud-agent' in ansible_facts.packages"
+  
+# - set_fact:
+#     existing_version: '0'
+#   when: not 'qualys-cloud-agent' in ansible_facts.packages
+  
+# This block will be executed only if Qualys is not installed or the service is stopped or paused
+- block:
+
+# This task creates a directory for Qualys installer
+  - name: Create Qualys Installer directory in host machine
+    become: yes
+    file:
+      path: "{{ installer_dir_linux }}"
+      state: directory
+
+# This task creates a directory for the downloaded Qualys package
+  - name: Creating a directory to download Qualys Installer package in master node
+    file:
+      path: "{{ qualys_download_dir }}"
+      state: directory
+    delegate_to: localhost
+
+# This task downloads Qualys installer from s3 bucket on Master Node 
+  - name: Download Qualys Installer rpm package
+    aws_s3:
+      bucket: "{{ BucketName }}"
+      object: "{{ qualys_package_linux }}"
+      dest: "{{ qualys_download_dir }}/{{ qualys_package_linux }}"
+      mode: get
+      region: "{{ reg }}"
+      overwrite: different
+    delegate_to: localhost
+
+# This task copies the files from master node to target host
+  - name: Copy downloaded Qualys Installer package from Master node to Host machine
+    become: yes
+    copy:
+      src: "{{ qualys_download_dir }}/{{ qualys_package_linux }}"
+      dest: "{{ installer_dir_linux }}/{{ qualys_package_linux }}"
+
+# This task installs Qualys on target host
+  - name: Install Qualys Service
+    become: yes
+    yum:
+     name: "{{ installer_dir_linux }}/{{ qualys_package_linux }}"
+     state: present
+    register: install_pkg
+
+  when: not 'qualys-cloud-agent' in ansible_facts.packages or qualys_check.status.SubState != 'running' or ("'qualys-cloud-agent' in ansible_facts.packages" and existing_version != version_linux)  #or not 'qualys-cloud-agent' in ansible_facts.packages or not ansible_facts.services['qualys-cloud-agent.service'] is defined or ansible_facts.services['qualys-cloud-agent.service'].state == "stopped" or ansible_facts.services['qualys-cloud-agent.service'].state == "paused" 
+
+# This task configures Qualys on target host
+- name: Configure Qualys with CID number and activation ID
+  become: yes
+  command: "/usr/local/qualys/cloud-agent/bin/qualys-cloud-agent.sh ActivationId={{ QualysActivationId }} CustomerId={{ QualysCustomerId }}"
+  notify: restart qualys

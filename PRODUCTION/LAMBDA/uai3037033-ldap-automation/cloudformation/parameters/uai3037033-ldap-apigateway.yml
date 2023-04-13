@@ -1,0 +1,6 @@
+UAI: uai3037033
+AppName: ldap
+Env: prd
+VpcEndpointIds: vpce-0d6dcb5b267116f14
+#CognitoARN: arn:aws:cognito-idp:us-east-1:935909890532:userpool/us-east-1_TV8chlOnQ
+Policy: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"execute-api:*","Resource":"arn:aws:execute-api:us-east-1:325381443140:*/*"}]}'

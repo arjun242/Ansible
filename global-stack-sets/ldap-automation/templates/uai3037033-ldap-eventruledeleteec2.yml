@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create EventRule in Spoke Account"
+Parameters:
+  UAI:
+    Type: String
+    Default: uai3037033
+
+  AppName:
+    Type: String
+    Default: ldap
+
+  Env:
+    Type: String
+    Default: prd
+
+  EventbusArn:
+    Type: String
+    Default: arn:aws:events:us-east-1:325381443140:event-bus/uai3037033-ldap-prd
+
+Resources:
+  EventRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: !Sub "${UAI}-${AppName}-${Env}-ec2delete"
+      Description: "A CloudWatch Event Rule that detects changes to EC2 Instances and publishes change events to an SQS Queue."
+      State: "DISABLED"
+      Targets:
+        - Arn: !Ref EventbusArn
+          Id: "target-id1"
+          RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/app/uai3037033/uai3037033-ldap-eventrule-prd"
+      EventPattern:
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "ec2.amazonaws.com"
+          eventName:
+            - "TerminateInstances"
+            - "TerminateInstanceInAutoScalingGroup"

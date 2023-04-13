@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Template to create s3 bucket to store logs for maintenance window in gp-ops
+  and send notifications through SNS
+Parameters:
+  PatchLogsBucket:
+    Type: String
+    Description: Name of s3 bucket to store logs related to patching
+    Default: gp-us-east-ops-mw-patch-logs
+  ServiceRole:
+    Type: String
+    Description: >-
+      ARN for service role used for executions and notifcations associated with
+      this Maintenance Window tasks
+    Default: 'arn:aws:iam::325381443140:role/inf/ssm-maintenance-window-role'
+  SnsTopic:
+    Type: String
+    Description: SNS topic where all alerts regarding this maintenance window will be sent
+    Default: GPCloudOpsNotifications
+  UAI:
+    Type: String
+    Description: >-
+      The UAI of the application being managed. UAI starting sequence. MUST be
+      in lowercase.
+    ConstraintDescription: >-
+      The UAI must be valid, but specified as uai in lower case followed by 7
+      digits
+    AllowedPattern: '^uai[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+    Default: uai3026350
+  AppName:
+    Type: String
+    Description: >-
+      Which instance of the application. Example: app1. Must be lowercase. Max
+      30 chars.
+    AllowedPattern: '^[a-z][a-z0-9\._\-]*[a-z0-9]$'
+    ConstraintDescription: >-
+      Must contain only lower case letters, digits or -. Min 3 chars. Max 30.
+      Must start with a letter and end with a letter or digit
+    MinLength: 3
+    MaxLength: 15
+    Default: gp-ops-patching
+  AWSAccountName:
+    Type: String
+    Description: The Aws Account Name
+    Default: gp-ops
+  AppInstance:
+    Type: String
+    Description: 'App Instance for ex: jenkins, app, web '
+    Default: app
+Resources:
+  S3EncryptedBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref PatchLogsBucket
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !Sub >-
+                arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/automation-common-gp-ops
+      Tags:
+        - Key: uai
+          Value: !Ref UAI
+        - Key: Name
+          Value: !Sub '${UAI}-${AppName}-${AWSAccountName}'
+        - Key: appname
+          Value: !Ref AppName
+  BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref S3EncryptedBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: PutObjectPolicy
+        Statement:
+          - Sid: DenyIncorrectEncryptionHeader
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource:
+              - !Sub 'arn:aws:s3:::${PatchLogsBucket}/*'
+            Condition:
+              StringNotEquals:
+                's3:x-amz-server-side-encryption': 'aws:kms'
+          - Sid: RequireKMSEncryption
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource:
+              - !Sub 'arn:aws:s3:::${PatchLogsBucket}/*'
+            Condition:
+              StringNotLikeIfExists:
+                's3:x-amz-server-side-encryption-aws-kms-key-id': !Sub >-
+                  arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/automation-common-gp-ops
+          - Sid: RequireEncryptionInTransit
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${PatchLogsBucket}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+  GpOpsSNSTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: !Ref SnsTopic
+  GPOpsSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: GP.Cloud.Ops@ge.com
+      Protocol: email
+      TopicArn: !Ref GpOpsSNSTopic
+Outputs:
+  S3EncryptedBucketName:
+    Value: !Ref S3EncryptedBucket
+    Description: Name for the S3 Patch bucket
+    Export:
+      Name: SSMPatchLogBucket
+  S3EncryptedBucketARN:
+    Value: !GetAtt 
+      - S3EncryptedBucket
+      - Arn
+    Description: ARN for the S3 Patch bucket
+    Export:
+      Name: SSMPatchLogBucketARN

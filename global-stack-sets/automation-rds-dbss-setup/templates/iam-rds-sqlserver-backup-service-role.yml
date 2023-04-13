@@ -1,0 +1,62 @@
+---
+                   
+AWSTemplateFormatVersion: "2010-09-09"
+Description: RDS SQlServer service role.
+
+Parameters:
+
+  RoleName:
+    Type: String
+    Default: "dbss-sqlbackup"
+
+  RolePath:
+    Type: String
+    Default: "/service-role/"
+
+  VPCAlias:
+    Type: String
+    Description: "Provide VPCAlias value to designate the instance of this app"
+    Default: gr-db
+
+Resources:
+      
+  SqlServerServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Path: !Ref RolePath
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - rds.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+      - PolicyName: DbssMigrationBucketAccess
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Sid: BucketListAccess
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetBucketLocation
+            Resource: !Sub "arn:aws:s3:::dbss-migrations-${VPCAlias}-${AWS::Region}/"
+          
+          - Sid: BucketAccess
+            Effect: Allow
+            Action:
+              - s3:GetObjectMetaData
+              - s3:GetObject
+              - s3:PutObject
+              - s3:ListMultipartUploadParts
+              - s3:AbortMultipartUpload
+            Resource: !Sub "arn:aws:s3:::dbss-migrations-${VPCAlias}-${AWS::Region}/*"
+
+Outputs:
+  RdsServiceRole:
+    Description: "Arn of RDS Sqlserver service role"
+    Value: !GetAtt 'SqlServerServiceRole.Arn'

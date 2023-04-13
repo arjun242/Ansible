@@ -1,0 +1,12 @@
+custom_resources:
+  - name: backup-events-rule-spoke-account
+    custom_stackset_name: aws-backup-events-rule-spoke-account
+    template_file: templates/backup-events-rule-spoke-account.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution
+
+  - name: common-backup-kms-key
+    custom_stackset_name: common-backup-kms-key
+    template_file: templates/common-backup-kms-key.yml
+    adminstration_role_name: inf/gp-ops-cft-stackset-admin-role
+    execution_role_name: gp-stackset-execution

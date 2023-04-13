@@ -1,0 +1,122 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A stack for provisioning ALB, SG for ALB, ECS Cluster.
+
+Parameters:
+  AppName:
+    Type: String
+    MaxLength: 25
+    MinLength: 3
+    Description: Name of the application, keep to 15 characters or less
+  UAI:
+    Type: String
+    Description: The UAI of the application being managed.
+    ConstraintDescription: The UAI must be valid, but specified as 'uai' followed by 7 digits.
+    AllowedPattern: '^uai[0-9]*$'
+    MinLength: 10
+    MaxLength: 10
+  Env:
+    Type: String
+    Description: Env instance of the resource.
+    Default: prd
+    AllowedValues:
+    - nonprd
+    - prd
+  ALBTimeout:
+      Type: Number
+      Default: 600
+      Description: Idle timeout_seconds for ALB
+
+Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${UAI}-${AppName}-${Env}"
+      GroupName: !Sub "${UAI}-${AppName}-${Env}-ECSALB-SG"
+      VpcId: !ImportValue vpcid
+      Tags:
+      - Key: name
+        Value: !Sub "${UAI}-${AppName}-${Env}-ALB-SG"
+      - Key: uai
+        Value: !Ref UAI
+      - Key: app
+        Value: !Ref AppName
+      - Key: env
+        Value: !Ref Env
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5001
+        ToPort: 5001
+        SourceSecurityGroupId: !ImportValue ldapecsServiceSg
+      - IpProtocol: tcp
+        FromPort: 8005
+        ToPort: 8005
+        SourceSecurityGroupId: !ImportValue ldapecsServiceSg
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 3.0.0.0/8       
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 3.0.0.0/8     
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${UAI}-${AppName}-${Env}-ECS
+      Scheme: 'internal'
+      IpAddressType: 'ipv4'
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: !Ref ALBTimeout
+      Subnets: [!ImportValue app-az1, !ImportValue app-az2]
+      SecurityGroups:
+      - !Ref ALBSecurityGroup
+      Tags:
+      - Key: "uai"
+        Value: !Ref UAI
+      - Key: "app"
+        Value: !Ref AppName
+      - Key: "env"
+        Value: !Ref Env
+
+  HttpListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+      - Type: redirect
+        RedirectConfig:
+          Host: '#{host}'
+          Path: '/#{path}'
+          Port: '443'
+          Protocol: 'HTTPS'
+          Query: '#{query}'
+          StatusCode: 'HTTP_301'
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+
+Outputs:
+  LoadBalancerDNS:
+      Description: Domain name for the loadbalancer
+      Value: !GetAtt LoadBalancer.DNSName
+  LoadBalancerArn:
+      Description: Domain name for the loadbalancer.
+      Value: !Ref LoadBalancer
+      Export:
+        Name: ldapLoadBalancerArn
+  LoadBalancerSecurityGroup:
+      Description: Load Balancer security group ID.
+      Value: !Ref ALBSecurityGroup
+      Export:
+        Name: ldapLoadBalancerSg

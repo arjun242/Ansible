@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create EventBridge, EventRule and SQS for the central Eventhub"
+Parameters:
+  UAI:
+    Type: String
+  AppName:
+    Type: String
+  Env:
+    Type: String
+  DelaySeconds:
+    Type: String
+  QueueName1:
+    Type: String
+  QueueName2:
+    Type: String
+
+Resources:
+  DemoQueue: 
+    Type: AWS::SQS::Queue
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${QueueName1}-${Env}"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: ! Ref Env   
+      QueueName: !Sub ${UAI}-${AppName}-${QueueName1}-${Env}
+      DelaySeconds: !Ref DelaySeconds
+      KmsMasterKeyId: !ImportValue ldapcommonkmskeyname     
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 1209600
+      VisibilityTimeout: 5400      
+  DemoQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+      - Ref: DemoQueue
+      PolicyDocument:
+        Id: !GetAtt DemoQueue.Arn
+        Version: '2012-10-17'
+        Statement:
+          - Sid: __owner_statement
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - "sqs:SendMessage"
+            Resource: !GetAtt DemoQueue.Arn
+
+  EventruleEC2CreateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: 'uai3037033-ldap-ec2-create-rule'
+      RetentionInDays: 90
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${Env}"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: ! Ref Env 
+    
+  EventruleEC2DeleteLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: 'uai3037033-ldap-ec2-delete-rule'
+      RetentionInDays: 90
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${Env}"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: ! Ref Env 
+
+  EventBridge:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub ${UAI}-${AppName}-${Env}
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${Env}"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: ! Ref Env 
+  EventBusPolicy: 
+    Type: AWS::Events::EventBusPolicy
+    Properties: 
+      EventBusName: !Ref EventBridge  
+      StatementId: "CentralEventHub"
+      Statement: 
+        Effect: "Allow"
+        Principal:
+          AWS: "*"
+        Condition:
+          ArnLike:
+            aws:PrincipalArn: "arn:aws:iam::*:role/app/uai3037033/uai3037033-ldap-eventrule-prd"
+        Action: 
+          - events:PutEvents
+#        Resource: !Sub "arn:aws:events:us-east-1:${AWS::AccountId}:event-bus/${EventBridge.Name}"
+        Resource: !GetAtt EventBridge.Arn
+        
+  EventRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: "detect-ec2-create-instance"
+      Description: "A CloudWatch Event Rule that detects creation of EC2 Instances and publishes change events to an SQS Queue."
+      State: "DISABLED"
+      EventBusName: !Ref EventBridge
+      Targets:
+        - Arn: !GetAtt DemoQueue.Arn
+          Id: "target-id1"
+        - Arn: !GetAtt EventruleEC2CreateLogGroup.Arn
+          Id: "target-id11"
+      EventPattern:
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "ec2.amazonaws.com"
+          eventName:
+            - "RunInstances"
+
+  DemoQueue1: 
+    Type: AWS::SQS::Queue
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: !Sub "${UAI}-${AppName}-${QueueName2}-${Env}"
+        - Key: uai
+          Value: !Ref UAI
+        - Key: app
+          Value: !Ref AppName
+        - Key: env
+          Value: ! Ref Env   
+      QueueName: !Sub ${UAI}-${AppName}-${QueueName2}-${Env}
+      DelaySeconds: !Ref DelaySeconds 
+      KmsMasterKeyId: !ImportValue ldapcommonkmskeyname
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 1209600    
+      VisibilityTimeout: 5400      
+  DemoQueuePolicy1:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+      - Ref: DemoQueue1
+      PolicyDocument:
+        Id: !GetAtt DemoQueue1.Arn
+        Version: '2012-10-17'
+        Statement:
+          - Sid: __owner_statement
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - "sqs:sendmessage"
+            Resource: !GetAtt DemoQueue1.Arn
+
+  EventRule1:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: "detect-ec2-delete-instance"
+      Description: "A CloudWatch Event Rule that detects deletion of EC2 Instances and publishes change events to an SQS Queue."
+      State: "DISABLED"
+      EventBusName: !Ref EventBridge
+      Targets:
+        - Arn: !GetAtt DemoQueue1.Arn
+          Id: "target-id2"
+        - Arn: !GetAtt EventruleEC2DeleteLogGroup.Arn
+          Id: "target-id11"
+      EventPattern:
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "ec2.amazonaws.com"
+          eventName:
+            - "TerminateInstances"
+            - "TerminateInstanceInAutoScalingGroup"
+Outputs:
+  DemoQueue:
+    Description: A reference to the created SQSarn
+    Value:
+      Fn::GetAtt:
+        - DemoQueue
+        - Arn
+    Export:
+      Name: eventec2createsqs1
+  DemoQueue1:
+    Description: A reference to the created SQSarn
+    Value:
+      Fn::GetAtt:
+        - DemoQueue1
+        - Arn
+    Export:
+      Name: eventec2deletesqs1

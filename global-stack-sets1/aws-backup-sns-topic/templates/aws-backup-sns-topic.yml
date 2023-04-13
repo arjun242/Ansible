@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create SNS topic for backup failure notifications
+Resources:
+  AWSBackupFailureNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Properties: 
+      Endpoint: aws.backup.notifications@ge.com
+      Protocol: email
+      FilterPolicy:
+        State:
+          - "FAILED"
+          - "EXPIRED"
+      TopicArn: !Ref AWSBackupFailureNotificationTopic
+
+  AWSBackupFailureNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: 'GP-OPS-AWS-Backup-Failure-Notifications'
+Outputs:
+  BackupFailureSNSTopic:
+    Description: SNS topic to inform Cloud Ops about Backup failure notifications
+    Value: !Ref AWSBackupFailureNotificationTopic
+    Export:
+      Name: GP-Backup-Failure-SNS-Topic

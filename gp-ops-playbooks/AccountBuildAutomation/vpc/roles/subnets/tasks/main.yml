@@ -1,0 +1,39 @@
+- set_stats:
+    data:
+      to_be_deleted:
+        - folder_name: subnets
+          repo: cft-infra-templates
+          message: "Ansible is deleting subnets"
+          stackNames:
+            - "{{prefix}}gp-us-ApplicationSubnet1"
+            - "{{prefix}}gp-us-ApplicationSubnet2"
+            - "{{prefix}}gp-us-DatabaseSubnet1"
+            - "{{prefix}}gp-us-DatabaseSubnet2"
+            - "{{prefix}}gp-us-ExtSubnet1"
+            - "{{prefix}}gp-us-ExtSubnet2"
+            - "{{prefix}}gp-us-RBSubnet1"
+            - "{{prefix}}gp-us-RBSubnet2"
+            - "{{prefix}}gp-us-IntegrationSubnet1"
+            - "{{prefix}}gp-us-IntegrationSubnet2"
+            - "{{prefix}}gp-us-EndpointSubnet1"
+            - "{{prefix}}gp-us-EndpointSubnet2"
+
+- name: Include app-ext-db-vars file
+  include_vars: subnet-vars.yml
+
+- name: Include directory vars file
+  include_vars: templates-directory.yml
+
+- name: execute Create Subnet CFT
+  include_tasks: cft-subnet-create.yml    
+
+- name: Rendering Application Subnet CFT Templates
+  include_tasks: cft-subnet-template-render.yml
+
+- name: Call Git role
+  include_role:
+    name: git-push
+  vars:
+    github_enterprise_org: "{{org}}"
+    github_enterprise_repo: cft-infra-templates
+    message: "Ansible is creating subnets"

@@ -1,0 +1,61 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an IAM policy that can be used as a permission boundary.
+Resources:
+  PermissionBoundaryPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: permission-boundary-all-roles
+      Description: Policy acts as permission boundary.
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EC2RunInstancesSubnet  # Blocking the default VPC
+            Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringEquals: 
+                ec2:vpc: arn:aws:ec2:*:*:vpc/vpc-59eea523   
+          - Sid: SSMBlockSessions   # Blocking startsessions if not from specified Ips
+            Effect: Deny
+            Action: "ssm:StartSession"
+            Resource: "*"
+            Condition:
+              NotIpAddress:
+                aws:SourceIp:
+                - 165.225.34.0/23   #Dallas
+                - 104.129.204.0/23  #Atlanta
+                - 104.129.200.0/24  #Denver
+                - 104.129.198.0/23  #LA
+                - 165.225.32.0/23   #Mami
+                - 165.225.38.0/23   #New york
+                - 104.129.192.0/23  #San Fran
+                - 165.225.50.0/23   #Seattle
+                - 165.225.36.0/23   #Toronto
+                - 104.129.194.0/23  #DC
+                #- 185.46.212.0/23  #Future use removing
+                - 165.225.88.0/23   #Brussels
+                - 165.225.72.0/22   #Frankfurt
+                - 165.225.92.0/23   #Madrid
+                - 165.225.196.0/23  #Manchester
+                - 165.225.86.0/23   #Milan
+                #- 165.225.66.0/24  #Moscow Removing
+                #- 213.52.102.0/24   #Oslo Removing
+                - 165.225.76.0/23   #Paris
+                - 165.225.192.0/23  #Stockholm
+                - 165.225.84.0/23   #Warsaw
+                - 185.46.214.0/23   #Zurich
+                - 165.225.104.0/24  #Chennai
+                - 165.225.116.0/23  #Hong Kong
+                - 165.225.106.0/23  #Mumbai
+                - 165.225.112.0/23  #Singapore
+                - 165.225.110.0/23  #Tokyo
+                - 165.156.39.0/26	  #3PR – Cincinnati
+                - 165.156.40.0/26   #3PR – Alpharetta
+                - 165.156.34.0/24	  #Ashburn
+                - 165.156.37.0/24	  #Ashburn
+                - 165.156.29.64/26  #3PR – Bangalore
+                - 165.156.28.64/26	#3PR – Singapore
+                - 165.156.31.64/26	#3PR – Tokyo

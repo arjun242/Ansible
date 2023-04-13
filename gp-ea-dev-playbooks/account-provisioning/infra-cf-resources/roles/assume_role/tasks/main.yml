@@ -1,0 +1,15 @@
+---
+- name: AssumeRole
+  sts_assume_role:
+    role_arn: "{{ assume_role_arn }}"
+    role_session_name: "RoleSession"
+    region: "{{ aws_region }}"
+  register: assumed_role
+
+
+- name: Setting assumed_role as fact
+  set_stats:
+    data:
+      access_key: "{{ assumed_role.sts_creds.access_key }}"
+      secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+      session_token: "{{ assumed_role.sts_creds.session_token }}"

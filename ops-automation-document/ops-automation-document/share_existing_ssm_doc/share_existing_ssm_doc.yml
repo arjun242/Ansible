@@ -1,0 +1,75 @@
+description: >-
+  Share existing ssm doc acorss the accounts.
+schemaVersion: '0.3'
+parameters:
+  InstanceId:
+    type: String
+    description: "(Required) The EC2 Instance ID"
+  InstanceIamRole:
+    type: String
+    default: ec2-ami-instance-profile
+    description: >-
+      (Required) The name of the role that enables Systems Manager (SSM) to
+      manage the instance.
+  AutomationAssumeRole:
+    type: String
+    default: 'arn:aws:iam::325381443140:role/inf/ssm-ami'
+    description: >-
+      (Required) The ARN of the role that allows Automation to perform the
+      actions on your behalf.
+  AMISharingRegAccList:
+    type: String
+    default: '{{ssm:/automation/region-account}}'
+    description: region and corresponding accounts where AMI needs to be shared
+mainSteps:
+  - name: sharedDocNewAcc
+    action: 'aws:runCommand'
+    maxAttempts: 3
+    timeoutSeconds: 3600
+    onFailure: 'Abort'
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+      - "{{InstanceId}}"
+      Parameters:
+        commands:
+          - set -e
+          - AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+          - REGION=`echo "$AVAIL_ZONE" | sed 's/[a-z]$//'`
+          - yum install jq -y
+          - list='{{AMISharingRegAccList}}'
+          - regions=`echo "$list" | jq 'keys' | tr -d '[],"\n'`
+          - shared_docs=`aws ssm list-documents --region us-east-1 | grep -w "Name" | awk -F":" '{print $NF}' | tr -d "\"," | grep -e '^ app\|shared'`
+          - for doc in $shared_docs
+          - do
+          - aws ssm get-document --name "$doc" --region "$REGION" | jq -r ".Content" > document.yml
+          - sleep 10
+          - doc_type=`aws ssm list-documents --document-filter-list key=Name,value="$doc" --region "$REGION" | grep -w "DocumentType" | awk -F":" '{print $NF}' | tr -d "\"," | tr -d " "`
+          - doc_vers=`aws ssm list-documents --document-filter-list key=Name,value="$doc" --region "$REGION" | grep -w "DocumentVersion" | awk -F":" '{print $NF}' | tr -d "\"," | tr -d " "`
+          - for reg in $regions 
+          - do
+          - accounts=`echo "$list" | jq --arg reg "$reg" '.[$reg]' | tr -d '[],"\n'`
+          - if [ "$reg" != "$REGION" ]
+          - then
+          - reg_doc=`aws ssm list-documents --document-filter-list key=Name,value="$doc" --region "$reg" | grep -w "Name" | awk -F":" '{print $NF}' | tr -d "\"," | tr -d " "`
+          - ver_doc=`aws ssm list-documents --document-filter-list key=Name,value="$doc" --region "$reg" | grep -w "DocumentVersion" | awk -F":" '{print $NF}' | tr -d "\"," | tr -d " "`
+          - if [[ "$reg_doc" == "$doc" && "$ver_doc" != "$doc_vers" ]]
+          - then
+          - for acc in $accounts
+          - do
+          - aws ssm modify-document-permission --name $doc --permission-type Share --account-ids-to-remove $acc --region $reg
+          - done
+          - aws ssm delete-document --name "$doc" --region "$reg"
+          - aws ssm create-document --content file://document.yml --name "$doc" --region "$reg" --document-type "$doc_type"
+          - fi
+          - if [ "$reg_doc" != "$doc" ]
+          - then
+          - aws ssm create-document --content file://document.yml --name "$doc" --region "$reg" --document-type "$doc_type"
+          - fi
+          - fi
+          - for acc in $accounts
+          - do
+          - aws ssm modify-document-permission --name $doc --permission-type Share --account-ids-to-add $acc --region $reg
+          - done
+          - done
+          - done

@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: For Lambda to assume in spoke accounts for tag restoration
+Resources:
+  AWSBackupTagRestoreLambdaAssumeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "AWSBackup-TagRestore-Lambda-AssumeRole" 
+      Path: '/inf/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::325381443140:role/inf/AWSBackup-TagRestore-Lambda-ExecutionRole'
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: 'TagModifications'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - rds:AddTagsToResource
+                  - ec2:DeleteTags
+                  - ec2:CreateTags
+                  - rds:RemoveTagsFromResource
+                  - elasticfilesystem:TagResource
+                  - backup:ListTags
+                  - dynamodb:TagResource
+                  - backup:Describe*
+                  - ec2:DescribeTags
+                Resource: "*"

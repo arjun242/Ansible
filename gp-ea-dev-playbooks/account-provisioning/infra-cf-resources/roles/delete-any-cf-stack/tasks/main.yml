@@ -1,0 +1,62 @@
+---
+- name: Include vars file
+  include_vars: main.yml
+
+- name: "Create IAM role for Ansible account automation"
+  iam_role:
+    name: "{{automation_role}}"
+    assume_role_policy_document: "{{ lookup('file','ansible-service-assumerolepolicy.json') }}"
+    description: This Role is used by ansible account provision automation
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+    path: "/inf/"
+  register: account_temp_role
+
+# Create a policy to ansible automation role
+- name: Assign policy ansible automation service role
+  iam_policy:
+    iam_type: role
+    iam_name: "{{automation_role}}"
+    policy_name: ansible-stackset-delete-policy
+    state: present
+    policy_json: "{{ lookup( 'file', 'ansible-service-policy.json') }} "
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}" 
+
+- name: AssumeRole
+  sts_assume_role:
+    role_arn: "{{ account_temp_role.iam_role.arn }}"
+    role_session_name: "RoleSession"
+    region: "{{ aws_region }}"
+  register: assumed_role
+
+- name: Delete Stacks
+  cloudformation:
+    stack_name: "{{prefix}}{{ item }}"
+    state: "absent"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+    aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+    security_token: "{{ assumed_role.sts_creds.session_token }}"
+  loop: "{{ stacks_delete.split('\n') }}"
+
+- name: Delete IAM policy
+  iam_policy:
+    iam_type: role
+    iam_name: "{{automation_role}}"
+    policy_name: ansible-stackset-delete-policy
+    state: absent
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}" 
+
+- name: Delete IAM role
+  iam_role:
+    name: "{{automation_role}}"
+    state: absent 
+    aws_access_key: "{{ acc_key }}"
+    aws_secret_key: "{{ sec_key }}"
+    security_token: "{{ security_token }}"
+  register: account_temp_role
